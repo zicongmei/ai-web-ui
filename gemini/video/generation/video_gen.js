@@ -26,6 +26,9 @@ const imageInput = document.getElementById('imageInput'); // New image input
 const generateButton = document.getElementById('generateButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton');
 const recoverVideoButton = document.getElementById('recoverVideoButton');
+const generateInputImageButton = document.getElementById('generateInputImageButton'); // New
+const imageGenerationModal = document.getElementById('imageGenerationModal'); // New
+const closeModalSpan = document.querySelector('.close-modal'); // New
 const statusMessage = document.getElementById('statusMessage');
 const textOutput = document.getElementById('textOutput');
 const videoOutputContainer = document.getElementById('videoOutputContainer');
@@ -91,6 +94,40 @@ function populateModelSelect() {
     }
     geminiModelSelect.value = selectedModel;
 }
+
+// --- Image Generation Modal Logic ---
+
+generateInputImageButton.addEventListener('click', () => {
+    imageGenerationModal.style.display = 'block';
+});
+
+closeModalSpan.addEventListener('click', () => {
+    imageGenerationModal.style.display = 'none';
+});
+
+window.onclick = (event) => {
+    if (event.target === imageGenerationModal) {
+        imageGenerationModal.style.display = 'none';
+    }
+};
+
+window.addEventListener('message', async (event) => {
+    if (event.data.type === 'imageGenerated') {
+        const base64Image = event.data.base64;
+        const blob = await (await fetch(`data:image/png;base64,${base64Image}`)).blob();
+        
+        // Create a File object
+        const file = new File([blob], "generated_input.png", { type: "image/png" });
+        
+        // Create a DataTransfer to simulate user selection
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        imageInput.files = dataTransfer.files;
+        
+        statusMessage.textContent = 'Generated image set as input!';
+        imageGenerationModal.style.display = 'none';
+    }
+});
 
 // --- Generation Logic ---
 

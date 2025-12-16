@@ -37,6 +37,14 @@
                 <div class="image-upload-container">
                     <label for="imageInput">Optional Image Input (for Image-to-Video):</label>
                     <input type="file" id="imageInput" accept="image/*">
+                    <button id="generateInputImageButton" class="secondary-btn">Generate Input Image</button>
+                </div>
+
+                <div id="imageGenerationModal" class="modal hidden">
+                    <div class="modal-content">
+                        <span class="close-modal">&times;</span>
+                        <iframe id="imageGenFrame" src="../../image/index.html" style="width:100%; height:600px; border:none;"></iframe>
+                    </div>
                 </div>
 
                 <div class="generation-buttons">

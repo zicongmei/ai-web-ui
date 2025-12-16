@@ -559,7 +559,14 @@ function processAndDisplayImage(imageData, prompt) {
         const useInputBtn = document.createElement('button');
         useInputBtn.textContent = 'Use as Input';
         useInputBtn.classList.add('use-input-btn');
-        useInputBtn.onclick = () => addImageAsInput(base64Image); // Changed to addImageAsInput
+        useInputBtn.onclick = () => {
+            addImageAsInput(base64Image); // Existing functionality
+            
+            // Post message to parent if inside iframe (for video gen integration)
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'imageGenerated', base64: base64Image }, '*');
+            }
+        };
         buttonGroup.appendChild(useInputBtn);
 
         const saveImageBtn = document.createElement('button');
