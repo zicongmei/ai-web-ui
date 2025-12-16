@@ -1,7 +1,7 @@
 // video_gen.js - Implements Gemini Video Generation using Veo models
 
 let currentApiKey = '';
-let selectedModel = 'veo-3.1';
+let selectedModel = 'veo-3.1-fast-generate-preview';
 let abortController = null;
 let allApiInteractions = [];
 
