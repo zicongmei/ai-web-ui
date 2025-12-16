@@ -5,11 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gemini Video Generation</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="../../image/style.css">
 </head>
 <body>
     <div class="container">
         <h1>Gemini Video Generation</h1>
-        <p id="explanationNote" class="explanation-note">
+        <p id="videoExplanationNote" class="explanation-note">
             <strong>Instructions:</strong>
             Enter your Gemini API Key. Enter a text prompt.
             The system will call the Veo model using <code>predictLongRunning</code> and poll for the video result.
@@ -18,73 +19,192 @@
 
         <div class="input-section">
             <div class="api-key-container">
-                <label for="geminiApiKey">Gemini API Key:</label>
-                <input id="geminiApiKey" placeholder="Enter your Gemini API Key">
-                <button id="setApiKeyButton">Set Key</button>
+                <label for="videoApiKey">Gemini API Key:</label>
+                <input id="videoApiKey" placeholder="Enter your Gemini API Key">
+                <button id="setVideoApiKeyButton">Set Key</button>
             </div>
 
             <div class="model-select-container">
-                <label for="geminiModel">Select Model:</label>
-                <select id="geminiModel">
+                <label for="videoModel">Select Model:</label>
+                <select id="videoModel">
                     <!-- Options populated by JS -->
                 </select>
             </div>
 
             <div class="prompt-container">
-                <label for="promptInput">Prompt:</label>
-                <textarea id="promptInput" rows="3" placeholder="Enter your prompt here (e.g., 'A cyberpunk cat walking in the rain')..."></textarea>
+                <label for="videoPromptInput">Prompt:</label>
+                <textarea id="videoPromptInput" rows="3" placeholder="Enter your prompt here (e.g., 'A cyberpunk cat walking in the rain')..."></textarea>
                 
                 <div class="image-upload-container">
                     <label for="imageInput">Optional Image Input (for Image-to-Video):</label>
                     <input type="file" id="imageInput" accept="image/*">
-                    <button id="generateInputImageButton" class="secondary-btn">Generate Input Image</button>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                        Or select an image generated below. (Selected generated image takes priority over file upload)
+                    </p>
                 </div>
 
-                <div id="imageGenerationModal" class="modal hidden">
-                    <div class="modal-content">
-                        <span class="close-modal">&times;</span>
-                        <iframe id="imageGenFrame" src="../../image/index.html" style="width:100%; height:600px; border:none;"></iframe>
+                <!-- Collapsible Image Generation Session -->
+                <details style="margin: 20px 0; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
+                    <summary style="cursor: pointer; padding: 15px; background-color: #f8f9fa; font-weight: bold; user-select: none;">
+                        Generate Images (Text-to-Image)
+                    </summary>
+                    <div class="image-gen-section" style="padding: 15px; background: #fff;">
+                        <!-- Embedded Image Generation Content -->
+                        <h2>Gemini Text to Image Generator</h2>
+                        <p id="explanationNote" class="explanation-note"></p>
+
+                        <div class="input-section">
+                            <div class="api-key-container">
+                                <label for="geminiApiKey">Gemini API Key (for Image Gen):</label>
+                                <input  id="geminiApiKey" placeholder="Enter your Gemini API Key">
+                                <button id="setApiKeyButton">Set Key</button>
+                            </div>
+
+                            <div class="model-select-container">
+                                <label for="geminiModel">Select Image Generation Model:</label>
+                                <select id="geminiModel"></select>
+                            </div>
+
+                            <div class="options-row">
+                                <div class="option-group output-count-container">
+                                    <label for="imageCountInput">Image Count:</label>
+                                    <input type="number" id="imageCountInput" value="1" min="1" max="8">
+                                </div>
+
+                                <div class="option-group">
+                                    <label for="aspectRatioSelect">Aspect Ratio:</label>
+                                    <select id="aspectRatioSelect">
+                                        <option value="1:1">1:1 (Square)</option>
+                                        <option value="16:9">16:9 (Landscape)</option>
+                                        <option value="9:16">9:16 (Portrait)</option>
+                                        <option value="4:3">4:3</option>
+                                        <option value="3:4">3:4</option>
+                                    </select>
+                                </div>
+
+                                <div class="option-group" id="imageSizeOptionGroup">
+                                    <label for="imageSizeSelect">Image Size:</label>
+                                    <select id="imageSizeSelect">
+                                        <option value="1K">1K: Standard quality (default, usually 1024x1024 for square)</option>
+                                        <option value="2K">2K: High definition (2048x2048 for square)</option>
+                                        <option value="4K">4K: Professional grade (experimental/ultra quality)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="options-row">
+                                 <div class="option-group checkbox-group" id="googleSearchOptionGroup">
+                                    <label for="useGoogleSearch">
+                                        <input type="checkbox" id="useGoogleSearch"> Use Google Search Tool
+                                    </label>
+                                </div>
+                                 <div class="option-group checkbox-group">
+                                    <label for="useBatchMode">
+                                        <input type="checkbox" id="useBatchMode" checked> Generate in Batch
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div id="selectedImageContainer" class="selected-image-container" style="display: none;">
+                                <div class="selected-images-header">
+                                    <label>Input Images (for Image Gen):</label>
+                                    <button id="clearAllImagesButton" class="clear-all-btn">Clear All</button>
+                                </div>
+                                <div id="selectedImagesList" class="selected-images-list">
+                                    <!-- Selected images will be appended here -->
+                                </div>
+                            </div>
+
+                            <div class="prompt-container">
+                                <label for="promptInput">Image Prompt:</label>
+                                <textarea id="promptInput" rows="3" placeholder="Describe the image you want to generate... (e.g., A fluffy cat sitting on a vintage sofa)"></textarea>
+                                <div class="generation-buttons">
+                                    <button id="generateImageButton">Generate Images</button>
+                                    <button id="stopGenerationButton" style="display: none;">Stop Generation</button>
+                                    <button id="recoverBatchButton" style="display: none;" class="secondary-button">Recover Last Batch</button>
+                                </div>
+                                <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
+                            </div>
+                        </div>
+
+                        <div id="statusMessage" class="status-message"></div>
+
+                        <div class="summary-display">
+                            <h2>Generation Summary</h2>
+                            <div class="summary-item">
+                                <strong>Total Time:</strong> <span id="totalGenerationTime">0s</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>Total Input Tokens:</strong> <span id="totalInputTokens">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>Total Output Tokens:</strong> <span id="totalOutputTokens">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>Total Thought Tokens:</strong> <span id="totalThoughtTokens">0</span>
+                            </div>
+                            <div class="summary-item">
+                                <strong>Estimated Total Cost:</strong> <span id="totalEstimatedCost">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div id="debugInfo" class="debug-container">
+                            <div id="apiCallsContainer">
+                                <!-- Individual API call entries will be appended here -->
+                            </div>
+                            <button id="closeDebugButton">Close Debug Info</button>
+                        </div>
+
+                        <div class="image-gallery" id="imageGallery">
+                            <!-- Generated images will be displayed here -->
+                        </div>
+
+                        <div class="image-action-buttons">
+                            <button id="loadImageButton">Load Image(s) as Input</button>
+                            <input type="file" id="imageFileInput" accept="image/png, image/jpeg, image/webp" multiple style="display: none;">
+                        </div>
                     </div>
-                </div>
+                </details>
 
                 <div class="generation-buttons">
-                    <button id="generateButton">Generate Video</button>
-                    <button id="stopGenerationButton" style="display: none;">Stop</button>
+                    <button id="generateVideoButton">Generate Video</button>
+                    <button id="stopVideoGenerationButton" style="display: none;">Stop</button>
                     <button id="recoverVideoButton" style="display: none;" class="secondary-button">Recover Last Video</button>
                 </div>
-                <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
+                <button id="showVideoApiCallsButton" style="display:none;">Show API Calls</button>
             </div>
         </div>
 
-        <div id="statusMessage" class="status-message"></div>
+        <div id="videoStatusMessage" class="status-message"></div>
 
         <div class="summary-display">
             <h2>Session Summary</h2>
             <div class="summary-item">
-                <strong>Total Duration:</strong> <span id="totalGenerationTime">0s</span>
+                <strong>Total Duration:</strong> <span id="videoTotalGenerationTime">0s</span>
             </div>
             <!-- Cost is usually 0 for preview or not calculated per token for video -->
             <div class="summary-item">
-                <strong>Est. Cost:</strong> <span id="totalEstimatedCost">$0.00</span>
+                <strong>Est. Cost:</strong> <span id="videoTotalEstimatedCost">$0.00</span>
             </div>
         </div>
 
-        <div id="debugInfo" class="debug-container">
-            <div id="apiCallsContainer">
+        <div id="videoDebugInfo" class="debug-container">
+            <div id="videoApiCallsContainer">
                 <!-- Individual API call entries will be appended here -->
             </div>
-            <button id="closeDebugButton">Close Debug Info</button>
+            <button id="closeVideoDebugButton">Close Debug Info</button>
         </div>
 
         <div class="output-section">
             <label>Generated Output:</label>
             <div id="videoOutputContainer" class="video-output-container"></div>
-            <div id="textOutput" class="text-output-box"></div>
+            <div id="videoTextOutput" class="text-output-box"></div>
         </div>
             
     </div>
 
     <script src="../../price.js"></script>
+    <script src="../../image/text2img.js"></script>
     <script src="video_gen.js"></script>
 </body>
 </html>
