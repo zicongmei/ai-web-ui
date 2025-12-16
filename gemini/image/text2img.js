@@ -35,12 +35,11 @@ const PRICING_TABLE = {
     'gemini-3-pro-image-preview': {
         input: {
             text_per_m_tokens: 1.00,
-            image_fixed_price: 0.0006, // Per image input
+            image_fixed_price: 0.0011, // Per image input
         },
         output: {
-            // text_and_thinking_per_m_tokens: 6.00, // Not primarily used for image output pricing in this context
-            image_1K_2K_fixed_price: 0.067, // Per image output for 1K/2K sizes
-            image_4K_fixed_price: 0.12, // Per image output for 4K size
+            image_1K_2K_fixed_price: 0.134, // Per image output for 1K/2K sizes
+            image_4K_fixed_price: 0.24, // Per image output for 4K size
         },
     },
     'gemini-2.5-flash-image': {
@@ -48,20 +47,15 @@ const PRICING_TABLE = {
             text_and_image_per_m_tokens: 0.15, // Combined text/image input token price
         },
         output: {
-            // Explicitly stated as $0.0195 per image for 1K (1024x1024px)
-            image_1K_fixed_price: 0.0195, 
+            image_1K_fixed_price: 0.039, 
         },
     },
     'gemini-2.5-pro-image': {
         input: {
-            // Using small prompt pricing tier for prompts <= 200k tokens
             text_and_image_per_m_tokens_small_prompt: 0.625, 
-            // text_and_image_per_m_tokens_large_prompt: 1.25, // Assuming small prompts, unlikely for typical UI
         },
         output: {
-            // Using small prompt pricing tier for prompts <= 200k tokens
             text_and_thinking_per_m_tokens_small_prompt: 5.00, 
-            // text_and_thinking_per_m_tokens_large_prompt: 7.50, // Assuming small prompts, unlikely for typical UI
         },
     },
 };
@@ -373,7 +367,7 @@ function saveGeneratedImage(base64Image, prompt) {
 }
 
 // Token and Price Calculation Logic
-function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize) {
+function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize, useBatch = false) {
     let inputCost = 0;
     let outputCost = 0;
     let totalInputTokensCalculated = inputTextTokens; // Actual tokens contributing to input cost
@@ -425,6 +419,11 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             const outputPricePerM = modelPricing.output.text_and_thinking_per_m_tokens_small_prompt;
             outputCost += (totalOutputTokensCalculated / TOKENS_PER_MILLION) * outputPricePerM;
         }
+    }
+
+    if (useBatch) {
+        inputCost *= 0.5;
+        outputCost *= 0.5;
     }
 
     return {
@@ -745,7 +744,7 @@ async function generateSingleImage(prompt) {
     const inputTextTokens = Math.ceil(prompt.length / 4); // Estimate based on char count
 
     // Calculate cost for this API call (1 output image expected)
-    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, 1, imageOutputSize);
+    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, 1, imageOutputSize, false);
 
     const response = await fetch(imageEndpoint, {
         method: 'POST',
@@ -781,7 +780,7 @@ async function generateSingleImage(prompt) {
     }
 
     // Recalculate cost based on actual successful outputs (Cost calculation logic remains based on image count for G3P as per pricing table)
-    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize);
+    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, false);
 
     logApiInteraction(imageEndpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult);
 
@@ -861,7 +860,8 @@ async function generateBatchImages(prompt, numToGenerate) {
         totalInputTextTokens,
         inputImageCount,
         0, // No output images in submission response
-        imageOutputSizeForBatch
+        imageOutputSizeForBatch,
+        true // useBatch = true
     );
 
     const response = await fetch(batchEndpoint, {
@@ -1007,7 +1007,8 @@ async function generateBatchImages(prompt, numToGenerate) {
             0, // Input tokens for this "output-only" calculation are 0
             0, // No input image present for this output-only calculation
             successCount, // Only count successfully generated images for output cost
-            imageOutputSizeForBatch
+            imageOutputSizeForBatch,
+            true // useBatch = true
         );
 
         // Update the last poll interaction entry with the output cost and tokens
