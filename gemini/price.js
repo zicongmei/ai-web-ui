@@ -70,18 +70,10 @@ const GEMINI_PRICING_CONFIG = {
         },
         'gemini-2.5-flash-image': {
             input: {
-                text_and_image_per_m_tokens: 0.15, // Combined text/image input token price
+                text_and_image_per_m_tokens: 0.30, // Combined text/image input token price
             },
             output: {
                 image_1K_fixed_price: 0.039, 
-            },
-        },
-        'gemini-2.5-pro-image': {
-            input: {
-                text_and_image_per_m_tokens_small_prompt: 0.625, 
-            },
-            output: {
-                text_and_thinking_per_m_tokens_small_prompt: 5.00, 
             },
         },
     },
