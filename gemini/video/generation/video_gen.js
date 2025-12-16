@@ -1,39 +1,34 @@
 // video_gen.js - Implements Gemini Video Understanding (Multimodal)
 
 let currentApiKey = '';
-let selectedModel = 'gemini-1.5-flash';
+let selectedModel = 'veo-3.1';
 let abortController = null;
 let allApiInteractions = [];
-let uploadedFileUri = null;
-let currentVideoDuration = 0;
 
 // Global totals
 let totalGenerationTime = 0;
 let totalEstimatedCost = 0;
 
 const GEMINI_MODELS = {
-    'gemini-1.5-flash': 'Gemini 1.5 Flash',
-    'gemini-1.5-pro': 'Gemini 1.5 Pro',
-    'gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Experimental)'
+    'veo-3.1-generate-preview': 'Veo 3.1',
+    'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast',
+    'veo-3.0-generate-001': 'Veo 3',
+    'veo-3.0-fast-generate-001': 'Veo 3 Fast',
+    'veo-2.0-generate-001': 'Veo 2'
 };
 
 const PRICING_TABLE = {
-    'gemini-1.5-flash': { input: 0.075 / 1000000, output: 0.30 / 1000000 },
-    'gemini-1.5-pro': { input: 3.50 / 1000000, output: 10.50 / 1000000 },
-    'gemini-2.0-flash-exp': { input: 0, output: 0 }
+    'veo-3.1-generate-preview': { input: 0, output: 0 },
+    'veo-3.1-fast-generate-preview': { input: 0, output: 0 },
+    'veo-3.0-generate-001': { input: 0, output: 0 },
+    'veo-3.0-fast-generate-001': { input: 0, output: 0 },
+    'veo-2.0-generate-001': { input: 0, output: 0 }
 };
 
 // DOM Elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
 const geminiModelSelect = document.getElementById('geminiModel');
-const videoFileInput = document.getElementById('videoFileInput');
-const videoPreviewContainer = document.getElementById('videoPreviewContainer');
-const videoPreview = document.getElementById('videoPreview');
-const videoDurationSpan = document.getElementById('videoDuration');
-const uploadStatusContainer = document.getElementById('uploadStatusContainer');
-const uploadProgressBar = document.getElementById('uploadProgressBar');
-const uploadStatusText = document.getElementById('uploadStatusText');
 const promptInput = document.getElementById('promptInput');
 const generateButton = document.getElementById('generateButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton');
@@ -95,127 +90,6 @@ function populateModelSelect() {
     geminiModelSelect.value = selectedModel;
 }
 
-// --- Upload Logic (File API) ---
-
-videoFileInput.addEventListener('change', async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    if (!currentApiKey) {
-        alert("Please set your API Key before uploading.");
-        videoFileInput.value = '';
-        return;
-    }
-
-    uploadedFileUri = null;
-    generateButton.disabled = true;
-    textOutput.textContent = '';
-    statusMessage.textContent = '';
-    
-    // Preview
-    const url = URL.createObjectURL(file);
-    videoPreview.src = url;
-    videoPreviewContainer.style.display = 'block';
-    
-    videoPreview.onloadedmetadata = () => {
-        currentVideoDuration = videoPreview.duration;
-        videoDurationSpan.textContent = `Duration: ${currentVideoDuration.toFixed(1)}s`;
-    };
-
-    try {
-        await uploadVideoFile(file);
-    } catch (e) {
-        console.error("Upload failed:", e);
-        statusMessage.textContent = `Upload failed: ${e.message}`;
-        uploadStatusText.textContent = "Upload failed.";
-        uploadProgressBar.style.width = '0%';
-        uploadProgressBar.style.backgroundColor = '#dc3545';
-    }
-});
-
-async function uploadVideoFile(file) {
-    uploadStatusContainer.style.display = 'block';
-    uploadStatusText.textContent = "Initializing upload...";
-    uploadProgressBar.style.width = '0%';
-    uploadProgressBar.style.backgroundColor = '#007bff';
-
-    const numBytes = file.size;
-    const displayName = file.name;
-
-    // 1. Start Resumable Upload
-    const initUrl = `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${currentApiKey}`;
-    const initHeaders = {
-        'X-Goog-Upload-Protocol': 'resumable',
-        'X-Goog-Upload-Command': 'start',
-        'X-Goog-Upload-Header-Content-Length': numBytes.toString(),
-        'X-Goog-Upload-Header-Content-Type': file.type,
-        'Content-Type': 'application/json'
-    };
-    const initBody = JSON.stringify({ file: { display_name: displayName } });
-
-    const startTime = performance.now();
-    const initResponse = await fetch(initUrl, {
-        method: 'POST',
-        headers: initHeaders,
-        body: initBody
-    });
-
-    if (!initResponse.ok) throw new Error(`Init failed: ${initResponse.statusText}`);
-    
-    const uploadUrl = initResponse.headers.get('x-goog-upload-url');
-    if (!uploadUrl) throw new Error("No upload URL returned.");
-
-    logApiInteraction(initUrl, initBody, {header_url: uploadUrl}, performance.now() - startTime, 0);
-
-    // 2. Upload Bytes
-    uploadStatusText.textContent = "Uploading video data...";
-    const uploadHeaders = {
-        'Content-Length': numBytes.toString(),
-        'X-Goog-Upload-Offset': '0',
-        'X-Goog-Upload-Command': 'upload, finalize'
-    };
-
-    const uploadStartTime = performance.now();
-    const uploadResponse = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: uploadHeaders,
-        body: file
-    });
-    
-    const uploadData = await uploadResponse.json();
-    logApiInteraction("UPLOAD_BYTES", "[Binary Data]", uploadData, performance.now() - uploadStartTime, 0);
-
-    if (!uploadResponse.ok) throw new Error(`Upload failed: ${uploadData.error?.message || uploadResponse.statusText}`);
-
-    const fileUri = uploadData.file.uri;
-    const fileName = uploadData.file.name;
-
-    uploadProgressBar.style.width = '100%';
-    uploadStatusText.textContent = "Processing video...";
-
-    // 3. Poll for Active State
-    await pollFileState(fileName);
-
-    uploadedFileUri = fileUri;
-    uploadStatusText.textContent = "Video ready.";
-    generateButton.disabled = false;
-    statusMessage.textContent = "Video uploaded. Ready to generate.";
-}
-
-async function pollFileState(resourceName) {
-    let state = 'PROCESSING';
-    const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${resourceName}?key=${currentApiKey}`;
-
-    while (state === 'PROCESSING') {
-        await new Promise(r => setTimeout(r, 2000));
-        const resp = await fetch(pollUrl);
-        const data = await resp.json();
-        state = data.state;
-        
-        if (state === 'FAILED') throw new Error("Video processing failed.");
-    }
-}
-
 // --- Generation Logic (generateContent) ---
 
 async function generateContent() {
@@ -224,8 +98,9 @@ async function generateContent() {
         statusMessage.textContent = 'Please enter a prompt.';
         return;
     }
-    if (!uploadedFileUri) {
-        statusMessage.textContent = 'Please upload a video first.';
+    
+    if (!currentApiKey) {
+        statusMessage.textContent = 'Please set your API Key.';
         return;
     }
 
@@ -244,8 +119,7 @@ async function generateContent() {
         const requestBody = {
             contents: [{
                 parts: [
-                    { text: prompt },
-                    { fileData: { mimeType: videoFileInput.files[0].type, fileUri: uploadedFileUri } }
+                    { text: prompt }
                 ]
             }]
         };

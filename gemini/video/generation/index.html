@@ -3,23 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Video Understanding</title>
+    <title>Gemini Video Generation</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Gemini Video Understanding</h1>
+        <h1>Gemini Video Generation</h1>
         <p id="explanationNote" class="explanation-note">
             <strong>Instructions:</strong>
-            Enter your Gemini API Key. Upload a video file.
-            The model will process the video, and you can generate content (like dialogue, descriptions, or summaries) based on it.
+            Enter your Gemini API Key. Enter a prompt.
+            The model will process your prompt and generate content.
             <br><small>Based on: <a href="https://ai.google.dev/gemini-api/docs/video" target="_blank">Gemini API Video Docs</a></small>
         </p>
 
         <div class="input-section">
             <div class="api-key-container">
                 <label for="geminiApiKey">Gemini API Key:</label>
-                <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API Key">
+                <input id="geminiApiKey" placeholder="Enter your Gemini API Key">
                 <button id="setApiKeyButton">Set Key</button>
             </div>
 
@@ -30,31 +30,11 @@
                 </select>
             </div>
 
-            <!-- Video Upload Section -->
-            <div class="upload-section">
-                <label for="videoFileInput" class="upload-label">Select Video File:</label>
-                <input type="file" id="videoFileInput" accept="video/mp4, video/mpeg, video/mov, video/avi, video/x-flv, video/mpg, video/webm">
-                
-                <div id="uploadStatusContainer" style="display: none;">
-                    <div class="progress-bar-container">
-                        <div id="uploadProgressBar" class="progress-bar"></div>
-                    </div>
-                    <span id="uploadStatusText">Ready to upload</span>
-                </div>
-
-                <div id="videoPreviewContainer" style="display: none;">
-                    <video id="videoPreview" controls></video>
-                    <div class="video-meta">
-                        <span id="videoDuration">Duration: -</span>
-                    </div>
-                </div>
-            </div>
-
             <div class="prompt-container">
                 <label for="promptInput">Prompt:</label>
-                <textarea id="promptInput" rows="3" placeholder="E.g., Transcribe the dialogue in this video, or Describe the events taking place."></textarea>
+                <textarea id="promptInput" rows="3" placeholder="Enter your prompt here..."></textarea>
                 <div class="generation-buttons">
-                    <button id="generateButton" disabled>Generate Content</button>
+                    <button id="generateButton">Generate Content</button>
                     <button id="stopGenerationButton" style="display: none;">Stop</button>
                 </div>
                 <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
