@@ -24,6 +24,7 @@ const geminiModelSelect = document.getElementById('geminiModel');
 const promptInput = document.getElementById('promptInput');
 const generateButton = document.getElementById('generateButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton');
+const recoverVideoButton = document.getElementById('recoverVideoButton'); // New
 const statusMessage = document.getElementById('statusMessage');
 const textOutput = document.getElementById('textOutput');
 const videoOutputContainer = document.getElementById('videoOutputContainer');
@@ -69,6 +70,13 @@ function loadSettings() {
     if (storedModel && GEMINI_MODELS[storedModel]) {
         selectedModel = storedModel;
         geminiModelSelect.value = storedModel;
+    }
+
+    // Check for recoverable operation
+    const lastOp = getLocalStorageItem('geminiLastVideoOperationName');
+    if (lastOp) {
+        recoverVideoButton.style.display = 'inline-block';
+        recoverVideoButton.title = `Recover: ${lastOp}`;
     }
 }
 
@@ -155,6 +163,11 @@ async function generateContent() {
         if (!operationName) {
             throw new Error("API did not return an operation name.");
         }
+        
+        // Save for recovery
+        setLocalStorageItem('geminiLastVideoOperationName', operationName);
+        recoverVideoButton.style.display = 'inline-block';
+        recoverVideoButton.title = `Recover: ${operationName}`;
 
         textOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
         statusMessage.textContent = 'Generating video... (this takes time)';
@@ -195,6 +208,67 @@ async function generateContent() {
         }
     } finally {
         generateButton.disabled = false;
+        stopGenerationButton.style.display = 'none';
+        abortController = null;
+    }
+}
+
+async function recoverVideo() {
+    const operationName = getLocalStorageItem('geminiLastVideoOperationName');
+    if (!operationName) {
+        statusMessage.textContent = 'No operation to recover.';
+        return;
+    }
+    
+    if (!currentApiKey) {
+        statusMessage.textContent = 'Please set your API Key.';
+        return;
+    }
+
+    generateButton.disabled = true;
+    recoverVideoButton.disabled = true;
+    stopGenerationButton.style.display = 'inline-block';
+    statusMessage.textContent = `Recovering operation: ${operationName}...`;
+    textOutput.textContent = `Resuming polling for: ${operationName}`;
+    
+    abortController = new AbortController();
+    const startTime = performance.now();
+
+    try {
+        const pollStartIndex = logApiCallStart(`Recover Polling: ${operationName}`, { method: 'Polling loop' });
+        const result = await pollOperation(operationName);
+        const totalDuration = performance.now() - startTime;
+
+        statusMessage.textContent = 'Recovery complete!';
+        
+        // Calculate cost assuming ~5 seconds of video for preview models (estimation)
+        const estimatedDurationSeconds = 5; 
+        const cost = calculateCost(selectedModel, 0, estimatedDurationSeconds);
+        
+        updateApiCallLog(pollStartIndex, result, totalDuration, cost);
+
+        // Handle Result
+        const videoResponse = result.response?.generateVideoResponse;
+        if (videoResponse?.generatedSamples?.[0]?.video?.uri) {
+             const videoUri = videoResponse.generatedSamples[0].video.uri;
+             textOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
+             displayVideo(videoUri);
+        } else if (result.error) {
+             textOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
+        } else {
+             textOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
+        }
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            statusMessage.textContent = 'Recovery cancelled.';
+        } else {
+            console.error(e);
+            statusMessage.textContent = `Recovery failed: ${e.message}`;
+            textOutput.textContent += `\nError: ${e.message}`;
+        }
+    } finally {
+        generateButton.disabled = false;
+        recoverVideoButton.disabled = false;
         stopGenerationButton.style.display = 'none';
         abortController = null;
     }
@@ -362,6 +436,7 @@ geminiModelSelect.addEventListener('change', () => {
     setLocalStorageItem('selectedVideoModel', selectedModel);
 });
 generateButton.addEventListener('click', generateContent);
+recoverVideoButton.addEventListener('click', recoverVideo); // Added listener
 stopGenerationButton.addEventListener('click', stopGeneration);
 showApiCallsButton.addEventListener('click', () => {
     apiCallsContainer.innerHTML = '';

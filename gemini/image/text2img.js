@@ -33,6 +33,7 @@ const imageCountInput = document.getElementById('imageCountInput');
 const promptInput = document.getElementById('promptInput');
 const generateImageButton = document.getElementById('generateImageButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton'); // New stop button
+const recoverBatchButton = document.getElementById('recoverBatchButton'); // New recover button
 const imageGallery = document.getElementById('imageGallery');
 const statusMessage = document.getElementById('statusMessage');
 const explanationNote = document.getElementById('explanationNote');
@@ -161,6 +162,13 @@ function loadSettingsFromLocalStorage() {
         }
     }
     renderSelectedImages();
+
+    // Check for recoverable batch job
+    const lastBatch = getLocalStorageItem('geminiLastBatchName');
+    if (lastBatch) {
+        recoverBatchButton.style.display = 'inline-block';
+        recoverBatchButton.title = `Recover: ${lastBatch}`;
+    }
 }
 
 // Function to populate model dropdown and load selected model
@@ -859,6 +867,11 @@ async function generateBatchImages(prompt, numToGenerate) {
     }
 
     const batchName = data.name;
+    // Save for recovery
+    setLocalStorageItem('geminiLastBatchName', batchName);
+    recoverBatchButton.style.display = 'inline-block';
+    recoverBatchButton.title = `Recover: ${batchName}`;
+
     statusMessage.textContent = `Batch job submitted. Waiting for results...`;
 
     // Polling Logic
@@ -1022,6 +1035,184 @@ async function generateBatchImages(prompt, numToGenerate) {
     }
 }
 
+async function recoverBatch() {
+    const batchName = getLocalStorageItem('geminiLastBatchName');
+    if (!batchName) {
+        statusMessage.textContent = 'No batch job to recover.';
+        return;
+    }
+    
+    if (!currentApiKey) {
+        statusMessage.textContent = 'Please set your API Key.';
+        return;
+    }
+
+    generateImageButton.disabled = true;
+    recoverBatchButton.disabled = true;
+    stopGenerationButton.style.display = 'inline-block';
+    statusMessage.textContent = `Recovering batch job: ${batchName}...`;
+    
+    abortController = new AbortController();
+    const startTime = performance.now(); // Note: This resets timer, ideally we'd store start time too but simplified for now
+
+    try {
+        // ... Polling Logic (Reused from generateBatchImages essentially) ...
+        const getBatchState = (d) => {
+            if (d.state) return d.state;
+            if (d.metadata && d.metadata.state) return d.metadata.state;
+            return undefined;
+        };
+
+        let jobState = 'PROCESSING'; // Assume processing to start polling
+        let pollData = null;
+        let finalPollInteractionIndex = -1;
+
+        while (jobState !== 'BATCH_STATE_SUCCEEDED' && jobState !== 'BATCH_STATE_FAILED' && jobState !== 'BATCH_STATE_CANCELLED') {
+            if (abortController.signal.aborted) {
+                throw new Error('Recovery cancelled by user.');
+            }
+            
+            const pollStartTime = performance.now();
+            const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${batchName}`;
+            const pollResponse = await fetch(pollUrl, {
+                headers: { 'X-Goog-Api-Key': currentApiKey },
+                signal: abortController.signal
+            });
+            
+            pollData = await pollResponse.json();
+            const pollEndTime = performance.now();
+            const pollDuration = pollEndTime - pollStartTime;
+
+            logApiInteraction(
+                pollUrl,
+                { method: 'GET (Recover Poll Status)' },
+                pollData,
+                pollDuration,
+                0, 0, 0,
+                { inputCost: 0, outputCost: 0, totalCost: 0 }
+            );
+            finalPollInteractionIndex = allApiInteractions.length - 1;
+            
+            jobState = getBatchState(pollData);
+            if (!jobState && pollData.response) {
+                jobState = 'BATCH_STATE_SUCCEEDED';
+            }
+            
+            statusMessage.textContent = `Batch Processing (Recovery)... State: ${jobState || 'Unknown'}`;
+            
+            if (jobState !== 'BATCH_STATE_SUCCEEDED' && jobState !== 'BATCH_STATE_FAILED') {
+                 await new Promise(resolve => setTimeout(resolve, 3000));
+            }
+        }
+
+        if (jobState === 'BATCH_STATE_SUCCEEDED') {
+            // Extract results
+            let results = null;
+            if (pollData.response && pollData.response.inlinedResponses && pollData.response.inlinedResponses.inlinedResponses) {
+                results = pollData.response.inlinedResponses.inlinedResponses;
+            } else if (pollData.dest && pollData.dest.inlinedResponses) {
+                results = pollData.dest.inlinedResponses;
+            }
+            
+            if (!results || !Array.isArray(results)) {
+                throw new Error('Job succeeded but result format is unexpected (no inlinedResponses).');
+            }
+
+            let successCount = 0;
+            let batchOutputTokens = 0;
+            let batchThoughtTokens = 0;
+            
+            // Re-used result processing logic
+            const prompt = getLocalStorageItem('promptInput') || 'Recovered Batch';
+
+            for (const item of results) {
+                if (item.status && item.status.code && item.status.code !== 0) {
+                     const errDiv = document.createElement('div');
+                     errDiv.classList.add('image-error');
+                     errDiv.textContent = `Image failed: ${item.status.message}`;
+                     imageGallery.appendChild(errDiv);
+                     continue;
+                }
+
+                const resp = item.response || item;
+                if (processAndDisplayImage(resp, prompt)) {
+                    successCount++;
+                } else {
+                     const errDiv = document.createElement('div');
+                     errDiv.classList.add('image-error');
+                     errDiv.textContent = `Image data missing in batch result.`;
+                     imageGallery.appendChild(errDiv);
+                }
+
+                if (resp.usageMetadata) {
+                    batchOutputTokens += resp.usageMetadata.candidatesTokenCount || 0;
+                    batchThoughtTokens += resp.usageMetadata.thoughtsTokenCount || 0;
+                } else {
+                     if (selectedModel !== GEMINI_3_PRO_MODEL_ID) {
+                         batchOutputTokens += GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+                     }
+                }
+            }
+            
+            // Calculate output cost
+            // Note: We don't have exact input tokens here easily without re-calculation or storage, 
+            // so we skip input cost for recovery (it was paid at submission).
+            const imageOutputSizeForBatch = getLocalStorageItem('imageSize') || '1K';
+            
+            const outputImageCostResult = calculateCost(
+                selectedModel,
+                0, 
+                0, 
+                successCount, 
+                imageOutputSizeForBatch,
+                true 
+            );
+
+            // Update log
+            if (finalPollInteractionIndex !== -1 && allApiInteractions[finalPollInteractionIndex]) {
+                const lastInteraction = allApiInteractions[finalPollInteractionIndex];
+                totalEstimatedCost -= lastInteraction.costDetails.totalCost;
+                totalOutputTokens -= lastInteraction.outputTokens; 
+                totalThoughtTokens -= (lastInteraction.thoughtTokens || 0);
+
+                lastInteraction.outputTokens = batchOutputTokens;
+                lastInteraction.thoughtTokens = batchThoughtTokens;
+                lastInteraction.costDetails.outputCost += outputImageCostResult.outputCost;
+                lastInteraction.costDetails.totalCost += outputImageCostResult.outputCost; 
+                
+                totalOutputTokens += lastInteraction.outputTokens;
+                totalThoughtTokens += lastInteraction.thoughtTokens;
+                totalEstimatedCost += lastInteraction.costDetails.totalCost;
+                updateSummaryDisplay();
+                
+                if (debugInfo.style.display !== 'none') {
+                    apiCallsContainer.innerHTML = ''; 
+                    allApiInteractions.forEach((interaction, idx) => appendApiCallEntry(interaction, idx));
+                    apiCallsContainer.scrollTop = apiCallsContainer.scrollHeight;
+                }
+            }
+
+            statusMessage.textContent = `Successfully recovered ${successCount} images.`;
+
+        } else {
+            throw new Error(`Batch job ended with state: ${jobState}`);
+        }
+
+    } catch (e) {
+        if (e.name === 'AbortError') {
+            statusMessage.textContent = 'Recovery cancelled.';
+        } else {
+            console.error(e);
+            statusMessage.textContent = `Recovery failed: ${e.message}`;
+        }
+    } finally {
+        generateImageButton.disabled = false;
+        recoverBatchButton.disabled = false;
+        stopGenerationButton.style.display = 'none';
+        abortController = null;
+    }
+}
+
 // Function to stop image generation
 function stopGeneration() {
     if (abortController) {
@@ -1085,6 +1276,7 @@ imageFileInput.addEventListener('change', (event) => {
 
 generateImageButton.addEventListener('click', generateImage);
 stopGenerationButton.addEventListener('click', stopGeneration); // New event listener for stop button
+recoverBatchButton.addEventListener('click', recoverBatch); // Added listener
 promptInput.addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault(); 
