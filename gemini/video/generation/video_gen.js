@@ -125,17 +125,11 @@ async function generateContent() {
         // Video generation uses predictLongRunning
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentApiKey}`;
         
-        // Structure for Veo video generation prompt. 
-        // Note: The "Unknown name" error occurs because Veo models via this API expect the 
-        // Vertex AI standard "instances" array with camelCase keys.
+        // Structure for Veo video generation prompt.
         const requestBody = {
             instances: [
                 {
-                    prompt: {
-                        textPrompt: {
-                            text: prompt
-                        }
-                    }
+                    prompt: prompt
                 }
             ],
             parameters: {
@@ -180,15 +174,13 @@ async function generateContent() {
         logApiInteraction(`Polling: ${operationName}`, {}, result, totalDuration, 0);
 
         // 3. Handle Result
-        const responseResult = result.response;
-        // Check for Vertex AI style result (often nested in result.response)
-        if (responseResult && (responseResult.videoUri || responseResult.uri)) {
-             const videoUri = responseResult.videoUri || responseResult.uri;
+        const videoResponse = result.response?.generateVideoResponse;
+        if (videoResponse?.generatedSamples?.[0]?.video?.uri) {
+             const videoUri = videoResponse.generatedSamples[0].video.uri;
              textOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
              displayVideo(videoUri);
-        } else if (result.metadata) {
-             // Sometimes result is in metadata or just completed
-             textOutput.textContent = 'Operation completed. Checking for output... \n' + JSON.stringify(result, null, 2);
+        } else if (result.error) {
+             textOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
         } else {
              textOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
         }
@@ -232,19 +224,35 @@ async function pollOperation(operationName) {
     }
 }
 
-function displayVideo(uri) {
+async function displayVideo(uri) {
     if (!videoOutputContainer) return;
     
-    videoOutputContainer.style.display = 'flex';
-    videoOutputContainer.innerHTML = `
-        <video controls autoplay loop>
-            <source src="${uri}" type="video/mp4">
-            Your browser does not support the video tag.
-        </video>
-        <div style="margin-top: 10px;">
-            <a href="${uri}" target="_blank" download class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
-        </div>
-    `;
+    try {
+        statusMessage.textContent = 'Downloading video media...';
+        const response = await fetch(uri, {
+            headers: { 'x-goog-api-key': currentApiKey }
+        });
+        if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+        
+        const blob = await response.blob();
+        const videoUrl = URL.createObjectURL(blob);
+        
+        videoOutputContainer.style.display = 'flex';
+        videoOutputContainer.innerHTML = `
+            <video controls autoplay loop>
+                <source src="${videoUrl}" type="video/mp4">
+                Your browser does not support the video tag.
+            </video>
+            <div style="margin-top: 10px;">
+                <a href="${videoUrl}" download="gemini_video.mp4" class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
+            </div>
+        `;
+        statusMessage.textContent = 'Video ready!';
+    } catch (e) {
+        console.error(e);
+        textOutput.textContent += `\nError downloading video: ${e.message}`;
+        statusMessage.textContent = 'Failed to load video.';
+    }
 }
 
 function stopGeneration() {
