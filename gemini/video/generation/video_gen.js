@@ -236,6 +236,16 @@ async function displayVideo(uri) {
         
         const blob = await response.blob();
         const videoUrl = URL.createObjectURL(blob);
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const day = now.getDate().toString().padStart(2, '0');
+        const hours = now.getHours().toString().padStart(2, '0');
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const seconds = now.getSeconds().toString().padStart(2, '0');
+        const dateTimeString = `${year}-${month}-${day}-${hours}-${minutes}-${seconds}`;
+        const filename = `gemini_video_${dateTimeString}.mp4`;
         
         videoOutputContainer.style.display = 'flex';
         videoOutputContainer.innerHTML = `
@@ -244,7 +254,7 @@ async function displayVideo(uri) {
                 Your browser does not support the video tag.
             </video>
             <div style="margin-top: 10px;">
-                <a href="${videoUrl}" download="gemini_video.mp4" class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
+                <a href="${videoUrl}" download="${filename}" class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
             </div>
         `;
         statusMessage.textContent = 'Video ready!';
