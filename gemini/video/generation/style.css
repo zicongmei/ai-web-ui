@@ -46,8 +46,7 @@ label {
 
 input[type="password"],
 textarea,
-select,
-input[type="file"] {
+select {
     width: calc(100% - 22px);
     padding: 10px;
     border: 1px solid #ccc;
