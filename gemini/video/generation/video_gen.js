@@ -1,15 +1,15 @@
 // video_gen.js - Implements Gemini Video Generation using Veo models
 
-let currentApiKey = '';
-let selectedModel = 'veo-3.1-fast-generate-preview';
-let abortController = null;
-let allApiInteractions = [];
+let currentVideoApiKey = '';
+let selectedVideoModel = 'veo-3.1-fast-generate-preview';
+let videoAbortController = null;
+let videoApiInteractions = [];
 
 // Global totals
-let totalGenerationTime = 0;
-let totalEstimatedCost = 0;
+let videoTotalTime = 0;
+let videoTotalCost = 0;
 
-const GEMINI_MODELS = {
+const GEMINI_VIDEO_MODELS = {
     'veo-2.0-generate-001': 'Veo 2',
     'veo-3.0-generate-001': 'Veo 3',
     'veo-3.0-fast-generate-001': 'Veo 3 Fast',
@@ -18,28 +18,25 @@ const GEMINI_MODELS = {
 };
 
 // DOM Elements
-const geminiApiKeyInput = document.getElementById('geminiApiKey');
-const setApiKeyButton = document.getElementById('setApiKeyButton');
-const geminiModelSelect = document.getElementById('geminiModel');
-const promptInput = document.getElementById('promptInput');
-const imageInput = document.getElementById('imageInput'); // New image input
-const generateButton = document.getElementById('generateButton');
-const stopGenerationButton = document.getElementById('stopGenerationButton');
+const videoApiKeyInput = document.getElementById('videoApiKey');
+const setVideoApiKeyButton = document.getElementById('setVideoApiKeyButton');
+const videoModelSelect = document.getElementById('videoModel');
+const videoPromptInput = document.getElementById('videoPromptInput');
+const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
+const generateVideoButton = document.getElementById('generateVideoButton');
+const stopVideoGenerationButton = document.getElementById('stopVideoGenerationButton');
 const recoverVideoButton = document.getElementById('recoverVideoButton');
-const generateInputImageButton = document.getElementById('generateInputImageButton'); // New
-const imageGenerationModal = document.getElementById('imageGenerationModal'); // New
-const closeModalSpan = document.querySelector('.close-modal'); // New
-const statusMessage = document.getElementById('statusMessage');
-const textOutput = document.getElementById('textOutput');
+const videoStatusMessage = document.getElementById('videoStatusMessage');
+const videoTextOutput = document.getElementById('videoTextOutput');
 const videoOutputContainer = document.getElementById('videoOutputContainer');
 
 // Debug & Summary Elements
-const showApiCallsButton = document.getElementById('showApiCallsButton');
-const debugInfo = document.getElementById('debugInfo');
-const apiCallsContainer = document.getElementById('apiCallsContainer');
-const closeDebugButton = document.getElementById('closeDebugButton');
-const totalGenerationTimeSpan = document.getElementById('totalGenerationTime');
-const totalEstimatedCostSpan = document.getElementById('totalEstimatedCost');
+const showVideoApiCallsButton = document.getElementById('showVideoApiCallsButton');
+const videoDebugInfo = document.getElementById('videoDebugInfo');
+const videoApiCallsContainer = document.getElementById('videoApiCallsContainer');
+const closeVideoDebugButton = document.getElementById('closeVideoDebugButton');
+const videoTotalTimeSpan = document.getElementById('videoTotalGenerationTime');
+const videoTotalCostSpan = document.getElementById('videoTotalEstimatedCost');
 
 // --- Initialization ---
 
@@ -51,29 +48,29 @@ function getLocalStorageItem(name) {
     try { return localStorage.getItem(name); } catch (e) { return null; }
 }
 
-function setApiKey() {
-    const apiKey = geminiApiKeyInput.value.trim();
+function setVideoApiKey() {
+    const apiKey = videoApiKeyInput.value.trim();
     if (!apiKey) {
-        statusMessage.textContent = 'Please enter your Gemini API Key.';
+        videoStatusMessage.textContent = 'Please enter your Gemini API Key.';
         return false;
     }
-    currentApiKey = apiKey;
-    setLocalStorageItem('geminiApiKey', apiKey);
-    statusMessage.textContent = 'API Key set successfully!';
-    setTimeout(() => statusMessage.textContent = '', 3000);
+    currentVideoApiKey = apiKey;
+    setLocalStorageItem('geminiVideoApiKey', apiKey);
+    videoStatusMessage.textContent = 'API Key set successfully!';
+    setTimeout(() => videoStatusMessage.textContent = '', 3000);
     return true;
 }
 
-function loadSettings() {
-    const apiKey = getLocalStorageItem('geminiApiKey');
+function loadVideoSettings() {
+    const apiKey = getLocalStorageItem('geminiVideoApiKey');
     if (apiKey) {
-        geminiApiKeyInput.value = apiKey;
-        currentApiKey = apiKey;
+        videoApiKeyInput.value = apiKey;
+        currentVideoApiKey = apiKey;
     }
     const storedModel = getLocalStorageItem('selectedVideoModel');
-    if (storedModel && GEMINI_MODELS[storedModel]) {
-        selectedModel = storedModel;
-        geminiModelSelect.value = storedModel;
+    if (storedModel && GEMINI_VIDEO_MODELS[storedModel]) {
+        selectedVideoModel = storedModel;
+        videoModelSelect.value = storedModel;
     }
 
     // Check for recoverable operation
@@ -84,87 +81,54 @@ function loadSettings() {
     }
 }
 
-function populateModelSelect() {
-    geminiModelSelect.innerHTML = '';
-    for (const modelId in GEMINI_MODELS) {
+function populateVideoModelSelect() {
+    videoModelSelect.innerHTML = '';
+    for (const modelId in GEMINI_VIDEO_MODELS) {
         const option = document.createElement('option');
         option.value = modelId;
-        option.textContent = GEMINI_MODELS[modelId];
-        geminiModelSelect.appendChild(option);
+        option.textContent = GEMINI_VIDEO_MODELS[modelId];
+        videoModelSelect.appendChild(option);
     }
-    geminiModelSelect.value = selectedModel;
+    videoModelSelect.value = selectedVideoModel;
 }
-
-// --- Image Generation Modal Logic ---
-
-generateInputImageButton.addEventListener('click', () => {
-    imageGenerationModal.style.display = 'block';
-});
-
-closeModalSpan.addEventListener('click', () => {
-    imageGenerationModal.style.display = 'none';
-});
-
-window.onclick = (event) => {
-    if (event.target === imageGenerationModal) {
-        imageGenerationModal.style.display = 'none';
-    }
-};
-
-window.addEventListener('message', async (event) => {
-    if (event.data.type === 'imageGenerated') {
-        const base64Image = event.data.base64;
-        const blob = await (await fetch(`data:image/png;base64,${base64Image}`)).blob();
-        
-        // Create a File object
-        const file = new File([blob], "generated_input.png", { type: "image/png" });
-        
-        // Create a DataTransfer to simulate user selection
-        const dataTransfer = new DataTransfer();
-        dataTransfer.items.add(file);
-        imageInput.files = dataTransfer.files;
-        
-        statusMessage.textContent = 'Generated image set as input!';
-        imageGenerationModal.style.display = 'none';
-    }
-});
 
 // --- Generation Logic ---
 
-async function generateContent() {
-    const prompt = promptInput.value.trim();
+async function generateVideoContent() {
+    const prompt = videoPromptInput.value.trim();
     if (!prompt) {
-        statusMessage.textContent = 'Please enter a prompt.';
+        videoStatusMessage.textContent = 'Please enter a prompt.';
         return;
     }
     
-    if (!currentApiKey) {
-        statusMessage.textContent = 'Please set your API Key.';
+    if (!currentVideoApiKey) {
+        videoStatusMessage.textContent = 'Please set your API Key.';
         return;
     }
 
     // Reset UI
-    textOutput.textContent = 'Initializing video generation...';
+    videoTextOutput.textContent = 'Initializing video generation...';
     if (videoOutputContainer) {
         videoOutputContainer.innerHTML = '';
         videoOutputContainer.style.display = 'none';
     }
     
-    generateButton.disabled = true;
-    stopGenerationButton.style.display = 'inline-block';
-    statusMessage.textContent = 'Sending request...';
+    generateVideoButton.disabled = true;
+    stopVideoGenerationButton.style.display = 'inline-block';
+    videoStatusMessage.textContent = 'Sending request...';
 
-    abortController = new AbortController();
+    videoAbortController = new AbortController();
     const startTime = performance.now();
 
     try {
-        const model = geminiModelSelect.value;
+        const model = videoModelSelect.value;
         // Video generation uses predictLongRunning
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentApiKey}`;
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentVideoApiKey}`;
         
         let imageBase64 = null;
         let imageMimeType = null;
 
+        // Priority 1: Manual File Input
         if (imageInput.files.length > 0) {
             const file = imageInput.files[0];
             imageMimeType = file.type;
@@ -174,6 +138,12 @@ async function generateContent() {
                 reader.onerror = error => reject(error);
                 reader.readAsDataURL(file);
             });
+        } 
+        // Priority 2: Selected Image from Image Gen Section (global variable from text2img.js)
+        else if (typeof selectedInputImages !== 'undefined' && selectedInputImages.length > 0) {
+            // Use the first selected image
+            imageBase64 = selectedInputImages[0];
+            imageMimeType = "image/png"; // text2img.js currently works with base64 PNGs
         }
 
         // Structure for Veo video generation prompt.
@@ -196,14 +166,14 @@ async function generateContent() {
         };
 
         // Log Start
-        const apiCallIndex = logApiCallStart(endpoint, requestBody);
+        const apiCallIndex = logVideoApiCallStart(endpoint, requestBody);
 
         // 1. Initiate Long-Running Operation
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody),
-            signal: abortController.signal
+            signal: videoAbortController.signal
         });
 
         let data;
@@ -214,7 +184,7 @@ async function generateContent() {
         }
         
         // Log Update
-        updateApiCallLog(apiCallIndex, data, performance.now() - startTime, 0);
+        updateVideoApiCallLog(apiCallIndex, data, performance.now() - startTime, 0);
 
         if (!response.ok) throw new Error(data.error?.message || response.statusText);
 
@@ -228,117 +198,117 @@ async function generateContent() {
         recoverVideoButton.style.display = 'inline-block';
         recoverVideoButton.title = `Recover: ${operationName}`;
 
-        textOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
-        statusMessage.textContent = 'Generating video... (this takes time)';
+        videoTextOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
+        videoStatusMessage.textContent = 'Generating video... (this takes time)';
 
         // 2. Poll for Completion
-        const pollStartIndex = logApiCallStart(`Polling: ${operationName}`, { method: 'Polling loop' });
-        const result = await pollOperation(operationName);
+        const pollStartIndex = logVideoApiCallStart(`Polling: ${operationName}`, { method: 'Polling loop' });
+        const result = await pollVideoOperation(operationName);
         const totalDuration = performance.now() - startTime;
 
-        statusMessage.textContent = 'Generation complete!';
+        videoStatusMessage.textContent = 'Generation complete!';
         
         // Calculate cost assuming ~5 seconds of video for preview models
         const estimatedDurationSeconds = 5; 
-        const cost = calculateCost(model, 0, estimatedDurationSeconds);
+        const cost = calculateVideoCost(model, 0, estimatedDurationSeconds);
         
-        updateApiCallLog(pollStartIndex, result, totalDuration, cost);
+        updateVideoApiCallLog(pollStartIndex, result, totalDuration, cost);
 
         // 3. Handle Result
         const videoResponse = result.response?.generateVideoResponse;
         if (videoResponse?.generatedSamples?.[0]?.video?.uri) {
              const videoUri = videoResponse.generatedSamples[0].video.uri;
-             textOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
-             displayVideo(videoUri);
+             videoTextOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
+             displayGeneratedVideo(videoUri);
         } else if (result.error) {
-             textOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
+             videoTextOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
         } else {
-             textOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
+             videoTextOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
         }
 
     } catch (e) {
         if (e.name === 'AbortError') {
-            statusMessage.textContent = 'Cancelled.';
-            textOutput.textContent += '\nCancelled by user.';
+            videoStatusMessage.textContent = 'Cancelled.';
+            videoTextOutput.textContent += '\nCancelled by user.';
         } else {
             console.error(e);
-            statusMessage.textContent = `Error: ${e.message}`;
-            textOutput.textContent = `Error: ${e.message}`;
+            videoStatusMessage.textContent = `Error: ${e.message}`;
+            videoTextOutput.textContent = `Error: ${e.message}`;
         }
     } finally {
-        generateButton.disabled = false;
-        stopGenerationButton.style.display = 'none';
-        abortController = null;
+        generateVideoButton.disabled = false;
+        stopVideoGenerationButton.style.display = 'none';
+        videoAbortController = null;
     }
 }
 
-async function recoverVideo() {
+async function recoverVideoOperation() {
     const operationName = getLocalStorageItem('geminiLastVideoOperationName');
     if (!operationName) {
-        statusMessage.textContent = 'No operation to recover.';
+        videoStatusMessage.textContent = 'No operation to recover.';
         return;
     }
     
-    if (!currentApiKey) {
-        statusMessage.textContent = 'Please set your API Key.';
+    if (!currentVideoApiKey) {
+        videoStatusMessage.textContent = 'Please set your API Key.';
         return;
     }
 
-    generateButton.disabled = true;
+    generateVideoButton.disabled = true;
     recoverVideoButton.disabled = true;
-    stopGenerationButton.style.display = 'inline-block';
-    statusMessage.textContent = `Recovering operation: ${operationName}...`;
-    textOutput.textContent = `Resuming polling for: ${operationName}`;
+    stopVideoGenerationButton.style.display = 'inline-block';
+    videoStatusMessage.textContent = `Recovering operation: ${operationName}...`;
+    videoTextOutput.textContent = `Resuming polling for: ${operationName}`;
     
-    abortController = new AbortController();
+    videoAbortController = new AbortController();
     const startTime = performance.now();
 
     try {
-        const pollStartIndex = logApiCallStart(`Recover Polling: ${operationName}`, { method: 'Polling loop' });
-        const result = await pollOperation(operationName);
+        const pollStartIndex = logVideoApiCallStart(`Recover Polling: ${operationName}`, { method: 'Polling loop' });
+        const result = await pollVideoOperation(operationName);
         const totalDuration = performance.now() - startTime;
 
-        statusMessage.textContent = 'Recovery complete!';
+        videoStatusMessage.textContent = 'Recovery complete!';
         
         // Calculate cost assuming ~5 seconds of video for preview models (estimation)
         const estimatedDurationSeconds = 5; 
-        const cost = calculateCost(selectedModel, 0, estimatedDurationSeconds);
+        const cost = calculateVideoCost(selectedVideoModel, 0, estimatedDurationSeconds);
         
-        updateApiCallLog(pollStartIndex, result, totalDuration, cost);
+        updateVideoApiCallLog(pollStartIndex, result, totalDuration, cost);
 
         // Handle Result
         const videoResponse = result.response?.generateVideoResponse;
         if (videoResponse?.generatedSamples?.[0]?.video?.uri) {
              const videoUri = videoResponse.generatedSamples[0].video.uri;
-             textOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
-             displayVideo(videoUri);
+             videoTextOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
+             displayGeneratedVideo(videoUri);
         } else if (result.error) {
-             textOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
+             videoTextOutput.textContent = `Operation failed: ${JSON.stringify(result.error, null, 2)}`;
         } else {
-             textOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
+             videoTextOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
         }
     } catch (e) {
         if (e.name === 'AbortError') {
-            statusMessage.textContent = 'Recovery cancelled.';
+            videoStatusMessage.textContent = 'Recovery cancelled.';
         } else {
             console.error(e);
-            statusMessage.textContent = `Recovery failed: ${e.message}`;
-            textOutput.textContent += `\nError: ${e.message}`;
+            videoStatusMessage.textContent = `Recovery failed: ${e.message}`;
+            videoTextOutput.textContent += `\nError: ${e.message}`;
         }
     } finally {
-        generateButton.disabled = false;
+        generateVideoButton.disabled = false;
         recoverVideoButton.disabled = false;
-        stopGenerationButton.style.display = 'none';
-        abortController = null;
+        stopVideoGenerationButton.style.display = 'none';
+        videoAbortController = null;
     }
 }
 
-async function pollOperation(operationName) {
+async function pollVideoOperation(operationName) {
     // Operation name usually looks like "operations/..."
-    const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${currentApiKey}`;
+    const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${currentVideoApiKey}`;
     
     while (true) {
-        if (abortController && abortController.signal.aborted) {
+        if (videoAbortController && videoAbortController.signal.aborted) {
             throw new Error('Operation cancelled.');
         }
 
@@ -356,13 +326,13 @@ async function pollOperation(operationName) {
     }
 }
 
-async function displayVideo(uri) {
+async function displayGeneratedVideo(uri) {
     if (!videoOutputContainer) return;
     
     try {
-        statusMessage.textContent = 'Downloading video media...';
+        videoStatusMessage.textContent = 'Downloading video media...';
         const response = await fetch(uri, {
-            headers: { 'x-goog-api-key': currentApiKey }
+            headers: { 'x-goog-api-key': currentVideoApiKey }
         });
         if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
         
@@ -389,38 +359,41 @@ async function displayVideo(uri) {
                 <a href="${videoUrl}" download="${filename}" class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
             </div>
         `;
-        statusMessage.textContent = 'Video ready!';
+        videoStatusMessage.textContent = 'Video ready!';
     } catch (e) {
         console.error(e);
-        textOutput.textContent += `\nError downloading video: ${e.message}`;
-        statusMessage.textContent = 'Failed to load video.';
+        videoTextOutput.textContent += `\nError downloading video: ${e.message}`;
+        videoStatusMessage.textContent = 'Failed to load video.';
     }
 }
 
-function stopGeneration() {
-    if (abortController) abortController.abort();
+function stopVideoGeneration() {
+    if (videoAbortController) videoAbortController.abort();
 }
 
 // --- Helper Functions ---
 
-function calculateCost(modelId, inputTokens, outputTokens) {
-    const pricing = GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId];
-    if (!pricing) return 0;
-    return (inputTokens * pricing.input) + (outputTokens * pricing.output);
+function calculateVideoCost(modelId, inputTokens, outputTokens) {
+    // Basic stub, uses GEMINI_PRICING_CONFIG if available
+    if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.VIDEO_GEN && GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId]) {
+        const pricing = GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId];
+        return (inputTokens * pricing.input) + (outputTokens * pricing.output);
+    }
+    return 0;
 }
 
-function updateSummaryDisplay() {
-    totalGenerationTimeSpan.textContent = `${(totalGenerationTime / 1000).toFixed(2)}s`;
-    totalEstimatedCostSpan.textContent = `$${totalEstimatedCost.toFixed(6)}`;
+function updateVideoSummaryDisplay() {
+    videoTotalTimeSpan.textContent = `${(videoTotalTime / 1000).toFixed(2)}s`;
+    videoTotalCostSpan.textContent = `$${videoTotalCost.toFixed(6)}`;
 }
 
-function updateDebugButtonText() {
-    const count = allApiInteractions.length;
-    showApiCallsButton.style.display = 'inline-block';
-    showApiCallsButton.textContent = `Show ${count} API Call${count !== 1 ? 's' : ''}`;
+function updateVideoDebugButtonText() {
+    const count = videoApiInteractions.length;
+    showVideoApiCallsButton.style.display = 'inline-block';
+    showVideoApiCallsButton.textContent = `Show ${count} API Call${count !== 1 ? 's' : ''}`;
 }
 
-function logApiCallStart(url, request) {
+function logVideoApiCallStart(url, request) {
     const interaction = { 
         url, 
         request, 
@@ -430,16 +403,16 @@ function logApiCallStart(url, request) {
         timestamp: new Date().toISOString(),
         status: 'pending'
     };
-    allApiInteractions.push(interaction);
-    updateDebugButtonText();
-    if (debugInfo.style.display !== 'none') {
-        appendApiCallEntry(interaction, allApiInteractions.length - 1);
+    videoApiInteractions.push(interaction);
+    updateVideoDebugButtonText();
+    if (videoDebugInfo.style.display !== 'none') {
+        appendVideoApiCallEntry(interaction, videoApiInteractions.length - 1);
     }
-    return allApiInteractions.length - 1;
+    return videoApiInteractions.length - 1;
 }
 
-function updateApiCallLog(index, response, durationMs, cost) {
-    const interaction = allApiInteractions[index];
+function updateVideoApiCallLog(index, response, durationMs, cost) {
+    const interaction = videoApiInteractions[index];
     if (!interaction) return;
     
     interaction.response = response;
@@ -447,19 +420,19 @@ function updateApiCallLog(index, response, durationMs, cost) {
     interaction.cost = cost;
     interaction.status = 'completed';
     
-    totalGenerationTime += durationMs;
-    totalEstimatedCost += cost;
-    updateSummaryDisplay();
+    videoTotalTime += durationMs;
+    videoTotalCost += cost;
+    updateVideoSummaryDisplay();
     
-    if (debugInfo.style.display !== 'none') {
-        const entry = apiCallsContainer.children[index];
+    if (videoDebugInfo.style.display !== 'none') {
+        const entry = videoApiCallsContainer.children[index];
         if (entry) {
-             entry.innerHTML = buildApiCallEntryContent(interaction, index);
+             entry.innerHTML = buildVideoApiCallEntryContent(interaction, index);
         }
     }
 }
 
-function buildApiCallEntryContent(interaction, index) {
+function buildVideoApiCallEntryContent(interaction, index) {
     let endpointName = 'API Call';
     if (interaction.url.includes('predictLongRunning')) endpointName = 'START GEN';
     else if (interaction.url.includes('operations/')) endpointName = 'POLL';
@@ -474,44 +447,38 @@ function buildApiCallEntryContent(interaction, index) {
     `;
 }
 
-function appendApiCallEntry(interaction, index) {
+function appendVideoApiCallEntry(interaction, index) {
     const details = document.createElement('details');
     details.className = 'api-call-entry';
-    details.innerHTML = buildApiCallEntryContent(interaction, index);
-    apiCallsContainer.appendChild(details);
-}
-
-function logApiInteraction(url, request, response, durationMs, cost) {
-    // Legacy support: logs a completed interaction immediately
-    const index = logApiCallStart(url, request);
-    updateApiCallLog(index, response, durationMs, cost);
+    details.innerHTML = buildVideoApiCallEntryContent(interaction, index);
+    videoApiCallsContainer.appendChild(details);
 }
 
 // --- Event Listeners ---
 
-setApiKeyButton.addEventListener('click', setApiKey);
-geminiModelSelect.addEventListener('change', () => {
-    selectedModel = geminiModelSelect.value;
-    setLocalStorageItem('selectedVideoModel', selectedModel);
+setVideoApiKeyButton.addEventListener('click', setVideoApiKey);
+videoModelSelect.addEventListener('change', () => {
+    selectedVideoModel = videoModelSelect.value;
+    setLocalStorageItem('selectedVideoModel', selectedVideoModel);
 });
-generateButton.addEventListener('click', generateContent);
-recoverVideoButton.addEventListener('click', recoverVideo); // Added listener
-stopGenerationButton.addEventListener('click', stopGeneration);
-showApiCallsButton.addEventListener('click', () => {
-    apiCallsContainer.innerHTML = '';
-    allApiInteractions.forEach((ia, idx) => appendApiCallEntry(ia, idx));
-    debugInfo.style.display = 'block';
+generateVideoButton.addEventListener('click', generateVideoContent);
+recoverVideoButton.addEventListener('click', recoverVideoOperation);
+stopVideoGenerationButton.addEventListener('click', stopVideoGeneration);
+showVideoApiCallsButton.addEventListener('click', () => {
+    videoApiCallsContainer.innerHTML = '';
+    videoApiInteractions.forEach((ia, idx) => appendVideoApiCallEntry(ia, idx));
+    videoDebugInfo.style.display = 'block';
 });
-closeDebugButton.addEventListener('click', () => debugInfo.style.display = 'none');
-promptInput.addEventListener('keydown', (e) => {
+closeVideoDebugButton.addEventListener('click', () => videoDebugInfo.style.display = 'none');
+videoPromptInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
-        generateContent();
+        generateVideoContent();
     }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
-    populateModelSelect();
-    updateSummaryDisplay();
+    loadVideoSettings();
+    populateVideoModelSelect();
+    updateVideoSummaryDisplay();
 });
