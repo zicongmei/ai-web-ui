@@ -294,15 +294,20 @@ function appendApiCallEntry(interaction, index) {
     summary.innerHTML = `<h4>#${index + 1} ${endpointName} (${(interaction.durationMs/1000).toFixed(2)}s)</h4>`;
     details.appendChild(summary);
     
+    const resDiv = document.createElement('div');
+    resDiv.className = 'debug-section';
+    resDiv.innerHTML = `<h5>URL</h5><div class="debug-content">${interaction.url}</div>`;
+    details.appendChild(resDiv);
+    
     const reqDiv = document.createElement('div');
     reqDiv.className = 'debug-section';
     reqDiv.innerHTML = `<h5>Request</h5><div class="debug-content">${JSON.stringify(interaction.request, null, 2)}</div>`;
     details.appendChild(reqDiv);
     
-    const resDiv = document.createElement('div');
-    resDiv.className = 'debug-section';
-    resDiv.innerHTML = `<h5>Response</h5><div class="debug-content">${JSON.stringify(interaction.response, null, 2)}</div>`;
-    details.appendChild(resDiv);
+    const resDiv2 = document.createElement('div');
+    resDiv2.className = 'debug-section';
+    resDiv2.innerHTML = `<h5>Response</h5><div class="debug-content">${JSON.stringify(interaction.response, null, 2)}</div>`;
+    details.appendChild(resDiv2);
     
     apiCallsContainer.appendChild(details);
 }
