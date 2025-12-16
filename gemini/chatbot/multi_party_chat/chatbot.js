@@ -24,7 +24,12 @@ const MODEL_PRICES = {
         getPricing: (promptTokenCount) => ({ inputRate: 0.30 / 1_000_000, outputRate: 2.50 / 1_000_000 })
     },
     'gemini-2.5-pro': { 
-        getPricing: (promptTokenCount) => ({ inputRate: 1.25 / 1_000_000, outputRate: 10.00 / 1_000_000 })
+        getPricing: (promptTokenCount) => {
+            const PROMPT_THRESHOLD_TOKENS = 200_000;
+            let inputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 1.25 / 1_000_000 : 2.50 / 1_000_000;
+            let outputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 10.00 / 1_000_000 : 15.00 / 1_000_000;
+            return { inputRate, outputRate };
+        }
     },
     'gemini-2.5-flash-lite': { 
         getPricing: (promptTokenCount) => ({ inputRate: 0.10 / 1_000_000, outputRate: 0.40 / 1_000_000 })
