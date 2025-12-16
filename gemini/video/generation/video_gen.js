@@ -22,9 +22,10 @@ const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
 const geminiModelSelect = document.getElementById('geminiModel');
 const promptInput = document.getElementById('promptInput');
+const imageInput = document.getElementById('imageInput'); // New image input
 const generateButton = document.getElementById('generateButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton');
-const recoverVideoButton = document.getElementById('recoverVideoButton'); // New
+const recoverVideoButton = document.getElementById('recoverVideoButton');
 const statusMessage = document.getElementById('statusMessage');
 const textOutput = document.getElementById('textOutput');
 const videoOutputContainer = document.getElementById('videoOutputContainer');
@@ -124,13 +125,34 @@ async function generateContent() {
         // Video generation uses predictLongRunning
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentApiKey}`;
         
+        let imageBase64 = null;
+        let imageMimeType = null;
+
+        if (imageInput.files.length > 0) {
+            const file = imageInput.files[0];
+            imageMimeType = file.type;
+            const reader = new FileReader();
+            imageBase64 = await new Promise((resolve, reject) => {
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
         // Structure for Veo video generation prompt.
+        const instance = {
+            prompt: prompt
+        };
+
+        if (imageBase64) {
+            instance.image = {
+                bytesBase64Encoded: imageBase64,
+                mimeType: imageMimeType
+            };
+        }
+
         const requestBody = {
-            instances: [
-                {
-                    prompt: prompt
-                }
-            ],
+            instances: [instance],
             parameters: {
                 sampleCount: 1
             }
