@@ -19,30 +19,6 @@ let saveThoughtSignature = true;
 
 const STORAGE_PREFIX = 'mpc_'; // Prefix to separate storage from other pages
 
-const MODEL_PRICES = {
-    'gemini-2.5-flash': { 
-        getPricing: (promptTokenCount) => ({ inputRate: 0.30 / 1_000_000, outputRate: 2.50 / 1_000_000 })
-    },
-    'gemini-2.5-pro': { 
-        getPricing: (promptTokenCount) => {
-            const PROMPT_THRESHOLD_TOKENS = 200_000;
-            let inputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 1.25 / 1_000_000 : 2.50 / 1_000_000;
-            let outputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 10.00 / 1_000_000 : 15.00 / 1_000_000;
-            return { inputRate, outputRate };
-        }
-    },
-    'gemini-2.5-flash-lite': { 
-        getPricing: (promptTokenCount) => ({ inputRate: 0.10 / 1_000_000, outputRate: 0.40 / 1_000_000 })
-    },
-    'gemini-3-pro-preview': {
-        getPricing: (promptTokenCount) => {
-            const PROMPT_THRESHOLD_TOKENS = 200_000;
-            let inputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 2.00 / 1_000_000 : 4.00 / 1_000_000;
-            let outputRate = promptTokenCount <= PROMPT_THRESHOLD_TOKENS ? 12.00 / 1_000_000 : 18.00 / 1_000_000;
-            return { inputRate, outputRate };
-        }
-    }
-};
 let currentRequestCost = 0;
 let totalCost = 0;
 
@@ -656,7 +632,7 @@ function toggleInputs(enable) {
 // --- Utils & Stats ---
 
 function calculateCost() {
-    const prices = MODEL_PRICES[selectedModel];
+    const prices = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
     if (prices) {
         const { inputRate, outputRate } = prices.getPricing(currentInputTokens);
         currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);

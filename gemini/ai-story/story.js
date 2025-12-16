@@ -35,30 +35,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Global AbortController for stopping fetch requests
     let abortController = null;
 
-    // Pricing Configuration (Prices per 1 million tokens)
-    const PRICING = {
-        'gemini-3-pro-preview': {
-            tierLimit: 200000,
-            inputLow: 2.00, inputHigh: 4.00,
-            outputLow: 12.00, outputHigh: 18.00
-        },
-        'gemini-2.5-pro': {
-            tierLimit: 200000,
-            inputLow: 1.25, inputHigh: 2.50,
-            outputLow: 10.00, outputHigh: 15.00
-        },
-        'gemini-2.5-flash': {
-            tierLimit: Infinity, // No tier threshold mentioned for flash
-            inputLow: 0.30, inputHigh: 0.30,
-            outputLow: 2.50, outputHigh: 2.50
-        },
-        'gemini-2.5-flash-lite': {
-            tierLimit: Infinity,
-            inputLow: 0.10, inputHigh: 0.10,
-            outputLow: 0.40, outputHigh: 0.40
-        }
-    };
-
     // Load accumulated tokens from localStorage, default to 0 if not found
     let totalAccumulatedInputTokens = parseInt(localStorage.getItem('geminiTotalAccumulatedInputTokens') || '0', 10);
     let totalAccumulatedOutputTokens = parseInt(localStorage.getItem('geminiTotalAccumulatedOutputTokens') || '0', 10);
@@ -217,16 +193,14 @@ Use the same language as input or previous paragraph.`;
     }
 
     function calculateRequestCost(model, inputTokens, outputTokens) {
-        const pricing = PRICING[model];
-        if (!pricing) return 0;
+        const pricingConfig = GEMINI_PRICING_CONFIG.TEXT[model];
+        if (!pricingConfig) return 0;
 
-        // Prompt length determines the price tier for both input and output if tiered
-        const isHighTier = inputTokens > pricing.tierLimit;
-        const inputPricePerMillion = isHighTier ? pricing.inputHigh : pricing.inputLow;
-        const outputPricePerMillion = isHighTier ? pricing.outputHigh : pricing.outputLow;
-
-        const inputCost = (inputTokens / 1000000) * inputPricePerMillion;
-        const outputCost = (outputTokens / 1000000) * outputPricePerMillion;
+        const { inputRate, outputRate } = pricingConfig.getPricing(inputTokens);
+        
+        // inputRate and outputRate are already per token (e.g. 0.30 / 1_000_000)
+        const inputCost = inputTokens * inputRate;
+        const outputCost = outputTokens * outputRate;
 
         return inputCost + outputCost;
     }

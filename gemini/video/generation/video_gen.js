@@ -17,15 +17,6 @@ const GEMINI_MODELS = {
     'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast'
 };
 
-const PRICING_TABLE = {
-    // Video generation pricing (per second of generated video)
-    'veo-2.0-generate-001': { input: 0, output: 0.35 },
-    'veo-3.0-generate-001': { input: 0, output: 0.40 },
-    'veo-3.0-fast-generate-001': { input: 0, output: 0.15 },
-    'veo-3.1-generate-preview': { input: 0, output: 0.40 },
-    'veo-3.1-fast-generate-preview': { input: 0, output: 0.15 }
-};
-
 // DOM Elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
@@ -280,7 +271,7 @@ function stopGeneration() {
 // --- Helper Functions ---
 
 function calculateCost(modelId, inputTokens, outputTokens) {
-    const pricing = PRICING_TABLE[modelId];
+    const pricing = GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId];
     if (!pricing) return 0;
     return (inputTokens * pricing.input) + (outputTokens * pricing.output);
 }

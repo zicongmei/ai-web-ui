@@ -18,50 +18,6 @@ let thinkingLevel = 'low'; // Default for gemini3 models
 let saveThoughtSignature = true; // Default to saving thought signature
 
 // New: Variables for cost calculation
-const MODEL_PRICES = {
-    'gemini-2.5-flash': { 
-        getPricing: (promptTokenCount) => ({
-            inputRate: 0.30 / 1_000_000,
-            outputRate: 2.50 / 1_000_000
-        })
-    },
-    'gemini-2.5-pro': { 
-        getPricing: (promptTokenCount) => {
-            const PROMPT_THRESHOLD_TOKENS = 200_000;
-            let inputRate, outputRate;
-
-            if (promptTokenCount <= PROMPT_THRESHOLD_TOKENS) {
-                inputRate = 1.25 / 1_000_000;
-                outputRate = 10.00 / 1_000_000;
-            } else {
-                inputRate = 2.50 / 1_000_000;
-                outputRate = 15.00 / 1_000_000;
-            }
-            return { inputRate, outputRate };
-        }
-    },
-    'gemini-2.5-flash-lite': { 
-        getPricing: (promptTokenCount) => ({
-            inputRate: 0.10 / 1_000_000,
-            outputRate: 0.40 / 1_000_000
-        })
-    },
-    'gemini-3-pro-preview': {
-        getPricing: (promptTokenCount) => {
-            const PROMPT_THRESHOLD_TOKENS = 200_000; // 200k tokens
-            let inputRate, outputRate;
-
-            if (promptTokenCount <= PROMPT_THRESHOLD_TOKENS) {
-                inputRate = 2.00 / 1_000_000;  // $2.00 per 1M tokens
-                outputRate = 12.00 / 1_000_000; // $12.00 per 1M tokens
-            } else {
-                inputRate = 4.00 / 1_000_000;  // $4.00 per 1M tokens
-                outputRate = 18.00 / 1_000_000; // $18.00 per 1M tokens
-            }
-            return { inputRate, outputRate };
-        }
-    }
-};
 let currentRequestCost = 0; // Cost of the last API call
 let totalCost = 0; // Cumulative cost of all API calls
 
@@ -589,7 +545,7 @@ async function _sendContentToModel(userMessageTextForAPI, contentToSendForAPI) {
             totalOutputTokens += currentOutputTokens;
             
             // Calculate cost for the current request
-            const modelPricing = MODEL_PRICES[selectedModel];
+            const modelPricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
             if (modelPricing && modelPricing.getPricing) {
                 const { inputRate, outputRate } = modelPricing.getPricing(currentInputTokens);
                 currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);
