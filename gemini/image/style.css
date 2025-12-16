@@ -1,0 +1,610 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f7f6;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    min-height: 100vh;
+}
+
+.container {
+    background-color: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 30px;
+    width: 100%;
+    max-width: 900px;
+}
+
+h1 {
+    text-align: center;
+    color: #007bff;
+    margin-bottom: 20px;
+}
+
+.explanation-note {
+    background-color: #e0f7fa;
+    border-left: 5px solid #00bcd4;
+    padding: 15px;
+    margin-bottom: 25px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    color: #006064;
+}
+
+.explanation-note a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.explanation-note a:hover {
+    text-decoration: underline;
+}
+
+.input-section div {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="password"],
+textarea,
+select {
+    width: calc(100% - 22px); /* Account for padding and border */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
+
+textarea {
+    resize: vertical;
+    min-height: 60px;
+}
+
+.api-key-container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
+.api-key-container label {
+    flex-basis: 150px; /* Give label a fixed width */
+    margin-right: 10px;
+    margin-bottom: 0; /* Override default margin */
+}
+
+.api-key-container input {
+    flex-grow: 1; /* Allow input to take remaining space */
+    margin-right: 10px;
+}
+
+.api-key-container button {
+    flex-shrink: 0; /* Prevent button from shrinking */
+    padding: 10px 15px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s;
+}
+
+.api-key-container button:hover {
+    background-color: #218838;
+}
+
+.generation-buttons {
+    display: flex;
+    gap: 10px; /* Space between Generate and Stop buttons */
+    margin-top: 10px;
+}
+
+.generation-buttons button {
+    flex: 1; /* Make both buttons take equal space */
+    width: auto; /* Override global button width */
+}
+
+button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px; /* Changed from 44px to 4px for consistency */
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.2s;
+    width: 100%; /* Make generate button full width (unless in .generation-buttons) */
+    margin-top: 10px;
+}
+
+#stopGenerationButton {
+    background-color: #ffc107; /* Warning yellow for stop */
+    color: #333;
+}
+
+#stopGenerationButton:hover:not(:disabled) {
+    background-color: #e0a800;
+}
+
+
+button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.status-message {
+    text-align: center;
+    margin-top: 20px;
+    padding: 10px;
+    border-radius: 4px;
+    color: #d64a00;
+    font-weight: bold;
+    min-height: 20px; /* Ensure space even when empty */
+}
+
+.image-gallery {
+    margin-top: 30px;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    justify-content: center;
+}
+
+.image-item {
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column; /* Changed to column to stack image and button */
+    justify-content: center;
+    align-items: center;
+    min-height: 200px; /* Placeholder height */
+    position: relative;
+    padding-bottom: 0; /* Remove padding at bottom as buttons are in own container */
+}
+
+.image-item img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 8px; /* Maintain existing radius */
+}
+
+/* Styles for button group within image-item */
+.image-item-buttons {
+    display: flex;
+    flex-wrap: wrap; /* Allow buttons to wrap if space is tight */
+    gap: 8px; /* Space between buttons */
+    justify-content: center;
+    padding: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.image-item .use-input-btn,
+.image-item .save-image-btn {
+    flex-grow: 1; /* Allow buttons to grow to fill space */
+    width: auto; /* Reset width from global button style */
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    margin: 0; /* Reset margin from image-item .use-input-btn */
+}
+
+.image-item .use-input-btn {
+    background-color: #6f42c1; /* Different color to distinguish */
+}
+
+.image-item .use-input-btn:hover {
+    background-color: #59359a;
+}
+
+.image-item .save-image-btn {
+    background-color: #17a2b8; /* A different color for save */
+}
+
+.image-item .save-image-btn:hover {
+    background-color: #138496;
+}
+
+.image-item .image-error {
+    color: #dc3545;
+    text-align: center;
+    padding: 10px;
+}
+
+/* Selected Image Styles */
+.selected-image-container {
+    margin-bottom: 15px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+}
+
+.selected-images-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.selected-images-header label {
+    margin-bottom: 0;
+}
+
+.clear-all-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    font-size: 0.85em;
+    width: auto;
+    margin: 0;
+}
+
+.clear-all-btn:hover {
+    background-color: #bd2130;
+}
+
+.selected-images-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.selected-image-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.selected-image-wrapper img {
+    height: 80px;
+    width: auto;
+    border-radius: 4px;
+    border: 1px solid #adb5bd;
+    display: block;
+}
+
+.clear-image-btn {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background-color: #dc3545;
+    color: white;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    margin-top: 0; /* Reset global button margin */
+}
+
+.clear-image-btn:hover {
+    background-color: #bd2130;
+}
+
+/* New styles for image action buttons (load image) */
+.image-action-buttons {
+    margin-bottom: 15px;
+    text-align: center; /* Center the button */
+}
+
+.image-action-buttons button {
+    width: auto; /* Override 100% width for general buttons */
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px; /* Use smaller radius for these action buttons */
+    cursor: pointer;
+    font-size: 1.1em;
+    transition: background-color 0.2s;
+}
+
+.image-action-buttons button:hover:not(:disabled) {
+    background-color: #0056b3;
+}
+
+
+/* Debug and Options Styles */
+
+.debug-container {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-family: monospace;
+    display: none;
+}
+
+#apiCallsContainer {
+    max-height: 500px; /* Limit height and make it scrollable */
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.api-call-entry { /* This will be the <details> tag */
+    background-color: #fff;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    margin-bottom: 15px;
+    padding: 0; /* Remove padding from details itself, apply to summary and inner sections */
+}
+
+.api-call-entry summary {
+    display: block; /* Make summary behave like a block element */
+    cursor: pointer;
+    padding: 10px; /* Padding for the clickable header */
+    background-color: #e9ecef; /* Slightly different background for summary */
+    border-bottom: 1px solid #eee;
+    border-radius: 4px 4px 0 0; /* Rounded top corners */
+    margin-bottom: 0; /* Remove default margin */
+    color: #007bff;
+    font-weight: bold;
+    outline: none; /* Remove focus outline */
+}
+
+.api-call-entry summary::-webkit-details-marker {
+    display: none; /* Hide default arrow marker */
+}
+
+.api-call-entry summary::before {
+    content: '▶'; /* Custom arrow for collapsed state */
+    display: inline-block;
+    width: 1em;
+    margin-right: 0.5em;
+    transition: transform 0.2s;
+}
+
+.api-call-entry[open] summary::before {
+    content: '▼'; /* Custom arrow for open state */
+    transform: rotate(0deg); /* No rotation needed if content is '▼' */
+}
+
+/* Ensure h4 inside summary doesn't interfere with summary padding */
+.api-call-entry summary h4 {
+    display: inline; /* Keep h4 inline with arrow */
+    margin: 0;
+    color: #007bff; /* Keep blue color */
+    border-bottom: none; /* No border for h4 inside summary */
+    padding-bottom: 0;
+}
+
+/* Adjust padding for debug sections *inside* the details element */
+.api-call-entry .debug-section {
+    padding: 10px; /* Add padding to content sections */
+    border-top: 1px solid #eee; /* Separate sections visually */
+}
+.api-call-entry .debug-section:first-of-type {
+    border-top: none; /* No top border for the first section after summary */
+}
+.api-call-entry[open] .debug-section:last-of-type {
+    border-bottom: none; /* No bottom border for the last section when open */
+    border-radius: 0 0 4px 4px;
+}
+
+
+.debug-section {
+    margin-bottom: 10px;
+}
+
+.debug-section h5 {
+    margin-top: 0;
+    margin-bottom: 5px;
+    color: #495057;
+    font-size: 1em;
+}
+
+.debug-content {
+    background: #fdfdfd;
+    padding: 8px;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    max-height: 150px; /* Limit height for individual request/response */
+    overflow: auto;
+    white-space: pre; /* Changed from pre-wrap to pre to prevent line wrapping */
+    /* Removed word-wrap: break-word as it's not needed with white-space: pre; */
+    font-size: 0.9em;
+}
+
+#showApiCallsButton {
+    margin-top: 10px;
+    background-color: #6c757d;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+}
+
+#showApiCallsButton:hover {
+    background-color: #5a6268;
+}
+
+
+#closeDebugButton {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.output-count-container label {
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.output-count-container input[type="number"] {
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.options-row {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.option-group {
+    flex: 1;
+    min-width: 120px;
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-group label {
+    margin-bottom: 0;
+    cursor: pointer;
+    font-weight: normal;
+    display: flex;
+    align-items: center;
+}
+
+.checkbox-group input {
+    width: auto;
+    margin-right: 10px;
+}
+
+/* Styles for model-dependent features */
+.feature-disabled-by-model {
+    opacity: 0.6;
+    pointer-events: none; /* Disables all mouse events on children */
+    user-select: none; /* Prevents text selection */
+}
+
+.feature-disabled-by-model label {
+    cursor: not-allowed;
+}
+
+/* Summary Display Styles */
+.summary-display {
+    background-color: #e6f7ff;
+    border: 1px solid #91d5ff;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 25px;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.summary-display h2 {
+    color: #007bff;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.summary-item {
+    display: inline-block;
+    margin: 0 15px;
+    font-size: 1.1em;
+}
+
+.summary-item strong {
+    color: #333;
+}
+
+/* New styles for debug info within api-call-entry */
+.api-call-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    padding: 10px;
+    background-color: #f0f8ff;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.api-call-metric {
+    flex: 1 1 auto; /* Allow items to grow/shrink and wrap */
+    min-width: 150px; /* Minimum width before wrapping */
+    text-align: center;
+    margin: 5px;
+    padding: 5px;
+    border: 1px dashed #d1e7dd;
+    border-radius: 3px;
+    background-color: #fff;
+    font-size: 0.9em;
+}
+
+.api-call-metric strong {
+    display: block;
+    color: #0056b3;
+    margin-bottom: 3px;
+}
+
+
+@media (max-width: 768px) {
+    .container {
+        padding: 20px;
+    }
+    .api-key-container {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .api-key-container label,
+    .api-key-container input,
+    .api-key-container button {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .api-key-container button {
+        width: 100%;
+    }
+    .options-row {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .image-action-buttons button {
+        width: 100%; /* Make load button full width on small screens */
+    }
+    .generation-buttons {
+        flex-direction: column;
+    }
+    .summary-item {
+        margin: 5px 0; /* Stack summary items vertically */
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.8em;
+    }
+    button {
+        font-size: 1em;
+        padding: 10px 15px;
+    }
+}

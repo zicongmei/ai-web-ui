@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Party Chat</title>
+    <link rel="stylesheet" href="sytle.css">
+</head>
+<body>
+    <div class="header">Gemini Multi-Party Chat</div>
+
+    <div class="container">
+        
+        <!-- Controls for Chat Display -->
+        <div class="chat-history-controls">
+            <button id="decreaseFontSizeButton">-</button>
+            <button id="increaseFontSizeButton">+</button>
+            <button id="resetFontSizeButton">Reset</button>
+            <span>Font Size</span>
+        </div>
+        
+        <!-- Chat History Area (Editable & Auto-expanding) -->
+        <textarea class="chat-history-box" id="chatHistoryBox" placeholder="Chat history will appear here. You can edit this text directly..."></textarea>
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- User Input Area -->
+        <div class="chat-input-area">
+            <textarea id="messageInput" placeholder="Type a message..." rows="1" autocomplete="off"></textarea>
+            <button id="sendUserMessageButton">Add as User</button>
+        </div>
+
+        <!-- Narrator Input Area -->
+        <div class="chat-input-area">
+            <textarea id="narratorMessageInput" placeholder="Type a message for Narrator..." rows="1" autocomplete="off"></textarea>
+            <button id="sendNarratorMessageButton">Add as Narrator</button>
+        </div>
+
+        <!-- Response Generation Section (Dynamic Buttons) -->
+        <div class="section-box bot-actions-section">
+            <h3>Generate Response</h3>
+            <div id="responseGenerationButtonsContainer" class="bot-buttons-container">
+                <!-- Buttons like "Generate as User", "Generate as Mike" will appear here -->
+            </div>
+            <button id="stopMessageButton" class="stop-button hidden">Stop Generation</button>
+        </div>
+
+        <!-- History Actions - Grouped Here -->
+        <div class="chat-actions-section">
+            <button id="removeLastEntryButton">Remove Last Line</button>
+            <button id="regenerateLastLineButton">Regenerate Last Line</button>
+        </div>
+
+        <!-- Role Management Section -->
+        <div class="section-box role-management-section">
+            <h3>Role Management</h3>
+            <div class="add-role-controls">
+                <input type="text" id="newRoleNameInput" placeholder="Enter Bot Name (e.g. Mike)" autocomplete="off">
+                <button id="addRoleButton">Add Role</button>
+            </div>
+            <div id="activeRolesList" class="active-roles-list">
+                <!-- Roles will be listed here -->
+            </div>
+        </div>
+
+        <!-- User Name Section -->
+        <div class="user-name-section">
+            <label for="userNameInput">Your Name:</label>
+            <input id="userNameInput" type="text" value="User" autocomplete="off">
+        </div>
+      
+        <!-- System Instruction -->
+        <div class="system-instruction-section">
+            <label for="systemInstructionInput">Background / System Context:</label>
+            <textarea id="systemInstructionInput" placeholder="Define the setting, scenario, or shared context for all characters..." autocomplete="off">Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language as input or previous diaglog. Do not include the thought in repsonse text.</textarea>
+            <button id="clearSystemInstructionButton">Clear Context</button>
+        </div>
+
+
+        <!-- History Actions - Grouped Here -->
+        <div class="chat-actions-section">
+            <button id="cleanThinkingSignatureButton">Clean Last Thought</button>
+            <button id="saveChatButton">Save to File</button>
+            <input type="file" id="loadChatFileInput" accept=".json" style="display: none;">
+            <button id="loadChatButton">Load from File</button>
+            <button id="clearAllHistoryButton" class="danger-button">Clear All History</button>
+        </div>
+
+
+        <!-- Config Sections -->
+        <div class="api-key-section">
+            <label for="geminiApiKey">Gemini API Key:</label>
+            <input id="geminiApiKey" type="text" placeholder="Enter Key" autocomplete="off">
+            <button id="setApiKeyButton">Set</button>
+        </div>
+
+        <div class="model-selection-section">
+            <label for="geminiModel">Model:</label>
+            <select id="geminiModel">
+                <option value="gemini-3-pro-preview">gemini-3-pro-preview</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                <option value="gemini-2.5-flash" selected>gemini-2.5-flash</option>
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+            </select>
+        </div>
+
+        <!-- Thinking Config -->
+        <div id="thinkingConfigSection" class="thinking-config-section">
+            <div class="thinking-control-container hidden">
+                <label for="thinkingBudgetInput">Thinking Budget:</label>
+                <input id="thinkingBudgetInput" type="number" value="-1" min="-1" autocomplete="off">
+            </div>
+            <div class="thinking-control-container hidden">
+                <label for="thinkingLevelSelect">Thinking Level:</label>
+                <select id="thinkingLevelSelect">
+                    <option value="low">low</option>
+                    <option value="high">high</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="thought-signature-config-section">
+            <label>
+                <input type="checkbox" id="saveThoughtSignatureCheckbox" checked>
+                Save thought signature
+            </label>
+            <button id="cleanupAllThoughtSignaturesButton" class="cleanup-button">Cleanup All Thoughts</button>
+        </div>
+
+        <!-- Debug Sections (JSON Editor Removed) -->
+        <div class="api-debug-section">
+            <button id="showApiDebugButton">Show Last API Call</button>
+            <div id="apiDebugContent" class="hidden">
+                <h4>Request:</h4>
+                <pre id="apiRequestBody"></pre>
+                <h4>Response:</h4>
+                <pre id="apiResponseBody"></pre>
+            </div>
+        </div>
+
+         <div id="tokenStats" class="token-stats"></div>
+         <div id="costStats" class="token-stats"></div>
+    </div>
+
+    <script src="chatbot.js" defer></script>
+</body>
+</html>
