@@ -18,12 +18,12 @@ const GEMINI_MODELS = {
 };
 
 const PRICING_TABLE = {
-    // Video generation pricing varies; set placeholders for now.
-    'veo-2.0-generate-001': { input: 0, output: 0 },
-    'veo-3.0-generate-001': { input: 0, output: 0 },
-    'veo-3.0-fast-generate-001': { input: 0, output: 0 },
-    'veo-3.1-generate-preview': { input: 0, output: 0 },
-    'veo-3.1-fast-generate-preview': { input: 0, output: 0 }
+    // Video generation pricing (per second of generated video)
+    'veo-2.0-generate-001': { input: 0, output: 0.35 },
+    'veo-3.0-generate-001': { input: 0, output: 0.40 },
+    'veo-3.0-fast-generate-001': { input: 0, output: 0.15 },
+    'veo-3.1-generate-preview': { input: 0, output: 0.40 },
+    'veo-3.1-fast-generate-preview': { input: 0, output: 0.15 }
 };
 
 // DOM Elements
@@ -174,7 +174,12 @@ async function generateContent() {
         const totalDuration = performance.now() - startTime;
 
         statusMessage.textContent = 'Generation complete!';
-        updateApiCallLog(pollStartIndex, result, totalDuration, 0);
+        
+        // Calculate cost assuming ~5 seconds of video for preview models
+        const estimatedDurationSeconds = 5; 
+        const cost = calculateCost(model, 0, estimatedDurationSeconds);
+        
+        updateApiCallLog(pollStartIndex, result, totalDuration, cost);
 
         // 3. Handle Result
         const videoResponse = result.response?.generateVideoResponse;
