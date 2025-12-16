@@ -23,6 +23,9 @@ const setVideoApiKeyButton = document.getElementById('setVideoApiKeyButton');
 const videoModelSelect = document.getElementById('videoModel');
 const videoPromptInput = document.getElementById('videoPromptInput');
 const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
+const selectedImagePreview = document.getElementById('selectedImagePreview');
+const inputImageDisplay = document.getElementById('inputImageDisplay');
+const clearInputImageButton = document.getElementById('clearInputImageButton');
 const generateVideoButton = document.getElementById('generateVideoButton');
 const stopVideoGenerationButton = document.getElementById('stopVideoGenerationButton');
 const recoverVideoButton = document.getElementById('recoverVideoButton');
@@ -92,6 +95,38 @@ function populateVideoModelSelect() {
     videoModelSelect.value = selectedVideoModel;
 }
 
+// --- Image Input Handling ---
+
+function displayVideoInputImage(base64) {
+    inputImageDisplay.src = `data:image/png;base64,${base64}`;
+    selectedImagePreview.style.display = 'block';
+    videoStatusMessage.textContent = 'Video input image updated.';
+}
+
+function clearVideoInputImage() {
+    inputImageDisplay.src = '';
+    selectedImagePreview.style.display = 'none';
+    imageInput.value = ''; // Clear file input
+    // Clear global selection from text2img if it matches
+    if (typeof selectedInputImages !== 'undefined') {
+        // We don't necessarily want to clear the *text2img* inputs, just the video input.
+        // But for consistency, let's assume this clear button is for the video context.
+    }
+    videoStatusMessage.textContent = 'Video input image cleared.';
+}
+
+// Hook into text2img.js addImageAsInput to update video preview
+// This assumes text2img.js is loaded and defines addImageAsInput
+if (typeof addImageAsInput === 'function') {
+    const originalAddImageAsInput = addImageAsInput;
+    addImageAsInput = function(base64) {
+        originalAddImageAsInput(base64); // Call original to update text2img UI
+        displayVideoInputImage(base64);  // Update video UI
+        // Scroll to video input section
+        selectedImagePreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+}
+
 // --- Generation Logic ---
 
 async function generateVideoContent() {
@@ -128,22 +163,13 @@ async function generateVideoContent() {
         let imageBase64 = null;
         let imageMimeType = null;
 
-        // Priority 1: Manual File Input
-        if (imageInput.files.length > 0) {
-            const file = imageInput.files[0];
-            imageMimeType = file.type;
-            const reader = new FileReader();
-            imageBase64 = await new Promise((resolve, reject) => {
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = error => reject(error);
-                reader.readAsDataURL(file);
-            });
-        } 
-        // Priority 2: Selected Image from Image Gen Section (global variable from text2img.js)
-        else if (typeof selectedInputImages !== 'undefined' && selectedInputImages.length > 0) {
-            // Use the first selected image
-            imageBase64 = selectedInputImages[0];
-            imageMimeType = "image/png"; // text2img.js currently works with base64 PNGs
+        // Use the displayed image as the source of truth
+        if (selectedImagePreview.style.display !== 'none' && inputImageDisplay.src) {
+            const src = inputImageDisplay.src;
+            if (src.startsWith('data:image/')) {
+                imageBase64 = src.split(',')[1];
+                imageMimeType = src.substring(5, src.indexOf(';'));
+            }
         }
 
         // Structure for Veo video generation prompt.
@@ -154,7 +180,7 @@ async function generateVideoContent() {
         if (imageBase64) {
             instance.image = {
                 bytesBase64Encoded: imageBase64,
-                mimeType: imageMimeType
+                mimeType: imageMimeType || 'image/png'
             };
         }
 
@@ -464,6 +490,21 @@ videoModelSelect.addEventListener('change', () => {
 generateVideoButton.addEventListener('click', generateVideoContent);
 recoverVideoButton.addEventListener('click', recoverVideoOperation);
 stopVideoGenerationButton.addEventListener('click', stopVideoGeneration);
+clearInputImageButton.addEventListener('click', clearVideoInputImage); // Listener for clear button
+
+// Listener for manual file upload
+imageInput.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            displayVideoInputImage(base64);
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
 showVideoApiCallsButton.addEventListener('click', () => {
     videoApiCallsContainer.innerHTML = '';
     videoApiInteractions.forEach((ia, idx) => appendVideoApiCallEntry(ia, idx));

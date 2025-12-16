@@ -41,6 +41,13 @@
                     <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
                         Or select an image generated below. (Selected generated image takes priority over file upload)
                     </p>
+                    <div id="selectedImagePreview" class="selected-image-preview" style="display: none; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #f9f9f9;">
+                        <label style="display:block; margin-bottom:5px;">Selected Input Image:</label>
+                        <div style="position: relative; display: inline-block;">
+                            <img id="inputImageDisplay" src="" alt="Selected Input" style="max-height: 200px; max-width: 100%; display: block; border-radius: 4px; border: 1px solid #ccc;">
+                            <button id="clearInputImageButton" style="position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold;">&times;</button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Collapsible Image Generation Session -->
