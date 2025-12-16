@@ -25,41 +25,6 @@ const GEMINI_IMAGE_MODELS = {
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
 
-// Pricing and token constants
-const TOKEN_EQUIVALENTS = {
-    // 1024x1024px image token equivalent for 2.5 models for both input/output
-    IMAGE_DEFAULT_1K_TOKENS: 1290, 
-};
-
-const PRICING_TABLE = {
-    'gemini-3-pro-image-preview': {
-        input: {
-            text_per_m_tokens: 1.00,
-            image_fixed_price: 0.0011, // Per image input
-        },
-        output: {
-            image_1K_2K_fixed_price: 0.134, // Per image output for 1K/2K sizes
-            image_4K_fixed_price: 0.24, // Per image output for 4K size
-        },
-    },
-    'gemini-2.5-flash-image': {
-        input: {
-            text_and_image_per_m_tokens: 0.15, // Combined text/image input token price
-        },
-        output: {
-            image_1K_fixed_price: 0.039, 
-        },
-    },
-    'gemini-2.5-pro-image': {
-        input: {
-            text_and_image_per_m_tokens_small_prompt: 0.625, 
-        },
-        output: {
-            text_and_thinking_per_m_tokens_small_prompt: 5.00, 
-        },
-    },
-};
-
 // Get DOM elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
@@ -373,7 +338,7 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
     let totalInputTokensCalculated = inputTextTokens; // Actual tokens contributing to input cost
     let totalOutputTokensCalculated = 0; // Actual tokens contributing to output cost
 
-    const modelPricing = PRICING_TABLE[modelId];
+    const modelPricing = GEMINI_PRICING_CONFIG.IMAGE_GEN[modelId];
     if (!modelPricing) {
         console.warn(`Pricing info not found for model: ${modelId}`);
         return { inputCost: 0, outputCost: 0, totalCost: 0, inputTokens: 0, outputTokens: 0 };
@@ -389,12 +354,12 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         }
     } else if (modelId === 'gemini-2.5-flash-image') {
         if (inputImageCount > 0) {
-            totalInputTokensCalculated += inputImageCount * TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+            totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
         inputCost += (totalInputTokensCalculated / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
     } else if (modelId === 'gemini-2.5-pro-image') {
         if (inputImageCount > 0) {
-            totalInputTokensCalculated += inputImageCount * TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+            totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
         // Assuming small prompt for pricing tier (<= 200k tokens)
         const inputPricePerM = modelPricing.input.text_and_image_per_m_tokens_small_prompt;
@@ -412,9 +377,9 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         } else if (modelId === 'gemini-2.5-flash-image') {
             // Use fixed per-image price for Flash as per table "equivalent to $0.0195 per image"
             outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
-            totalOutputTokensCalculated = outputImageCount * TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+            totalOutputTokensCalculated = outputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         } else if (modelId === 'gemini-2.5-pro-image') {
-            totalOutputTokensCalculated = outputImageCount * TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+            totalOutputTokensCalculated = outputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
             // Assuming small prompt for output pricing tier too
             const outputPricePerM = modelPricing.output.text_and_thinking_per_m_tokens_small_prompt;
             outputCost += (totalOutputTokensCalculated / TOKENS_PER_MILLION) * outputPricePerM;
@@ -770,7 +735,7 @@ async function generateSingleImage(prompt) {
     
     // Parse Usage Metadata
     let actualInputTokens = inputTextTokens; // Default to estimate
-    let actualOutputTokens = (selectedModel === GEMINI_3_PRO_MODEL_ID) ? 0 : (successfulOutputImages * TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS);
+    let actualOutputTokens = (selectedModel === GEMINI_3_PRO_MODEL_ID) ? 0 : (successfulOutputImages * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS);
     let actualThoughtTokens = 0;
 
     if (data.usageMetadata) {
@@ -992,7 +957,7 @@ async function generateBatchImages(prompt, numToGenerate) {
                 batchThoughtTokens += resp.usageMetadata.thoughtsTokenCount || 0;
             } else {
                  if (selectedModel !== GEMINI_3_PRO_MODEL_ID) {
-                     batchOutputTokens += TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+                     batchOutputTokens += GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
                  }
             }
         }
