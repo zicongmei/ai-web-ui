@@ -137,6 +137,9 @@ async function generateContent() {
             }
         };
 
+        // Log Start
+        const apiCallIndex = logApiCallStart(endpoint, requestBody);
+
         // 1. Initiate Long-Running Operation
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -152,9 +155,8 @@ async function generateContent() {
             data = { error: { message: response.statusText, details: "Failed to parse JSON response" } };
         }
         
-        // Log API Interaction immediately.
-        // This ensures the debug button appears and works even if the API returns an error.
-        logApiInteraction(endpoint, requestBody, data, performance.now() - startTime, 0);
+        // Log Update
+        updateApiCallLog(apiCallIndex, data, performance.now() - startTime, 0);
 
         if (!response.ok) throw new Error(data.error?.message || response.statusText);
 
@@ -167,11 +169,12 @@ async function generateContent() {
         statusMessage.textContent = 'Generating video... (this takes time)';
 
         // 2. Poll for Completion
+        const pollStartIndex = logApiCallStart(`Polling: ${operationName}`, { method: 'Polling loop' });
         const result = await pollOperation(operationName);
         const totalDuration = performance.now() - startTime;
 
         statusMessage.textContent = 'Generation complete!';
-        logApiInteraction(`Polling: ${operationName}`, {}, result, totalDuration, 0);
+        updateApiCallLog(pollStartIndex, result, totalDuration, 0);
 
         // 3. Handle Result
         const videoResponse = result.response?.generateVideoResponse;
@@ -277,18 +280,6 @@ function calculateCost(modelId, inputTokens, outputTokens) {
     return (inputTokens * pricing.input) + (outputTokens * pricing.output);
 }
 
-function logApiInteraction(url, request, response, durationMs, cost) {
-    const interaction = { url, request, response, durationMs, cost, timestamp: new Date().toISOString() };
-    allApiInteractions.push(interaction);
-    totalGenerationTime += durationMs;
-    totalEstimatedCost += cost;
-    updateSummaryDisplay();
-    updateDebugButtonText();
-    if (debugInfo.style.display !== 'none') {
-        appendApiCallEntry(interaction, allApiInteractions.length - 1);
-    }
-}
-
 function updateSummaryDisplay() {
     totalGenerationTimeSpan.textContent = `${(totalGenerationTime / 1000).toFixed(2)}s`;
     totalEstimatedCostSpan.textContent = `$${totalEstimatedCost.toFixed(6)}`;
@@ -300,34 +291,71 @@ function updateDebugButtonText() {
     showApiCallsButton.textContent = `Show ${count} API Call${count !== 1 ? 's' : ''}`;
 }
 
-function appendApiCallEntry(interaction, index) {
-    const details = document.createElement('details');
-    details.className = 'api-call-entry';
-    const summary = document.createElement('summary');
-    // Simplify URL for display
+function logApiCallStart(url, request) {
+    const interaction = { 
+        url, 
+        request, 
+        response: 'Pending...', 
+        durationMs: 0, 
+        cost: 0, 
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+    };
+    allApiInteractions.push(interaction);
+    updateDebugButtonText();
+    if (debugInfo.style.display !== 'none') {
+        appendApiCallEntry(interaction, allApiInteractions.length - 1);
+    }
+    return allApiInteractions.length - 1;
+}
+
+function updateApiCallLog(index, response, durationMs, cost) {
+    const interaction = allApiInteractions[index];
+    if (!interaction) return;
+    
+    interaction.response = response;
+    interaction.durationMs = durationMs;
+    interaction.cost = cost;
+    interaction.status = 'completed';
+    
+    totalGenerationTime += durationMs;
+    totalEstimatedCost += cost;
+    updateSummaryDisplay();
+    
+    if (debugInfo.style.display !== 'none') {
+        const entry = apiCallsContainer.children[index];
+        if (entry) {
+             entry.innerHTML = buildApiCallEntryContent(interaction, index);
+        }
+    }
+}
+
+function buildApiCallEntryContent(interaction, index) {
     let endpointName = 'API Call';
     if (interaction.url.includes('predictLongRunning')) endpointName = 'START GEN';
     else if (interaction.url.includes('operations/')) endpointName = 'POLL';
     
-    summary.innerHTML = `<h4>#${index + 1} ${endpointName} (${(interaction.durationMs/1000).toFixed(2)}s)</h4>`;
-    details.appendChild(summary);
+    const durationDisplay = interaction.status === 'pending' ? 'Pending...' : `${(interaction.durationMs/1000).toFixed(2)}s`;
     
-    const resDiv = document.createElement('div');
-    resDiv.className = 'debug-section';
-    resDiv.innerHTML = `<h5>URL</h5><div class="debug-content">${interaction.url}</div>`;
-    details.appendChild(resDiv);
-    
-    const reqDiv = document.createElement('div');
-    reqDiv.className = 'debug-section';
-    reqDiv.innerHTML = `<h5>Request</h5><div class="debug-content">${JSON.stringify(interaction.request, null, 2)}</div>`;
-    details.appendChild(reqDiv);
-    
-    const resDiv2 = document.createElement('div');
-    resDiv2.className = 'debug-section';
-    resDiv2.innerHTML = `<h5>Response</h5><div class="debug-content">${JSON.stringify(interaction.response, null, 2)}</div>`;
-    details.appendChild(resDiv2);
-    
+    return `
+        <summary><h4>#${index + 1} ${endpointName} (${durationDisplay})</h4></summary>
+        <div class="debug-section"><h5>URL</h5><div class="debug-content">${interaction.url}</div></div>
+        <div class="debug-section"><h5>Request</h5><div class="debug-content">${JSON.stringify(interaction.request, null, 2)}</div></div>
+        <div class="debug-section"><h5>Response</h5><div class="debug-content">${JSON.stringify(interaction.response, null, 2)}</div></div>
+    `;
+}
+
+function appendApiCallEntry(interaction, index) {
+    const details = document.createElement('details');
+    details.className = 'api-call-entry';
+    details.innerHTML = buildApiCallEntryContent(interaction, index);
     apiCallsContainer.appendChild(details);
+}
+
+function logApiInteraction(url, request, response, durationMs, cost) {
+    // Legacy support: logs a completed interaction immediately
+    const index = logApiCallStart(url, request);
+    updateApiCallLog(index, response, durationMs, cost);
 }
 
 // --- Event Listeners ---
