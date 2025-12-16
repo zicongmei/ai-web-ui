@@ -1,7 +1,7 @@
 // video.js
 
 let currentApiKey = '';
-let selectedModel = 'gemini-1.5-flash'; // Default model
+let selectedModel = 'gemini-2.5-flash'; // Default model
 let abortController = null; // To manage ongoing fetch requests
 let allApiInteractions = []; // To store all API calls for debug info
 
@@ -16,29 +16,46 @@ let totalEstimatedCost = 0;
 
 // Gemini Models suitable for Video Analysis
 const GEMINI_VIDEO_MODELS = {
-    'gemini-1.5-flash': 'Gemini 1.5 Flash',
-    'gemini-1.5-pro': 'Gemini 1.5 Pro',
-    'gemini-2.0-flash-exp': 'Gemini 2.0 Flash (Experimental)'
+    'gemini-2.5-flash': 'Gemini 2.5 Flash',
+    'gemini-2.5-pro': 'Gemini 2.5 Pro',
+    'gemini-2.5-flash-lite': 'Gemini 2.5 Flash-Lite',
+    'gemini-3-pro-preview': 'Gemini 3.0 Pro Preview'
 };
 
-// Pricing Constants (Estimated)
-const PRICING_TABLE = {
-    'gemini-1.5-flash': {
-        input: 0.075 / 1000000, // Per token
-        output: 0.30 / 1000000, // Per token
-        // Video tokens: Approx 263 tokens per second of video
-        video_tokens_per_sec: 263 
+// New: Variables for cost calculation
+const MODEL_PRICES = {
+    'gemini-2.5-flash': { 
+        getPricing: (promptTokenCount) => ({
+            inputRate: 0.30 / 1_000_000,
+            outputRate: 2.50 / 1_000_000
+        })
     },
-    'gemini-1.5-pro': {
-        input: 3.50 / 1000000, // Per token (assuming <128k context for simplicity)
-        output: 10.50 / 1000000, // Per token
-        video_tokens_per_sec: 263 
+    'gemini-2.5-pro': { 
+        getPricing: (promptTokenCount) => ({
+            inputRate: 1.25 / 1_000_000,
+            outputRate: 10.00 / 1_000_000
+        })
     },
-    'gemini-2.0-flash-exp': {
-        // Assuming similar to 1.5 Flash for now or Free tier in preview
-        input: 0, 
-        output: 0, 
-        video_tokens_per_sec: 263 
+    'gemini-2.5-flash-lite': { 
+        getPricing: (promptTokenCount) => ({
+            inputRate: 0.10 / 1_000_000,
+            outputRate: 0.40 / 1_000_000
+        })
+    },
+    'gemini-3-pro-preview': {
+        getPricing: (promptTokenCount) => {
+            const PROMPT_THRESHOLD_TOKENS = 200_000; // 200k tokens
+            let inputRate, outputRate;
+
+            if (promptTokenCount <= PROMPT_THRESHOLD_TOKENS) {
+                inputRate = 2.00 / 1_000_000;  // $2.00 per 1M tokens
+                outputRate = 12.00 / 1_000_000; // $12.00 per 1M tokens
+            } else {
+                inputRate = 4.00 / 1_000_000;  // $4.00 per 1M tokens
+                outputRate = 18.00 / 1_000_000; // $18.00 per 1M tokens
+            }
+            return { inputRate, outputRate };
+        }
     }
 };
 
@@ -292,7 +309,7 @@ async function generateAnalysis() {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentApiKey}`;
         
         // Estimate tokens
-        const estimatedVideoTokens = Math.ceil(currentVideoDuration * (PRICING_TABLE[model]?.video_tokens_per_sec || 263));
+        const estimatedVideoTokens = Math.ceil(currentVideoDuration * 263);
         const estimatedPromptTokens = Math.ceil(prompt.length / 4);
         const totalEstInputTokens = estimatedVideoTokens + estimatedPromptTokens;
 
@@ -345,10 +362,11 @@ function stopGeneration() {
 // --- Helper Functions ---
 
 function calculateCost(modelId, inputTokens, outputTokens) {
-    const pricing = PRICING_TABLE[modelId];
+    const pricing = MODEL_PRICES[modelId];
     if (!pricing) return 0;
-    const inputCost = inputTokens * pricing.input;
-    const outputCost = outputTokens * pricing.output;
+    const { inputRate, outputRate } = pricing.getPricing(inputTokens);
+    const inputCost = inputTokens * inputRate;
+    const outputCost = outputTokens * outputRate;
     return inputCost + outputCost;
 }
 

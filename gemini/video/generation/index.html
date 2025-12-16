@@ -11,8 +11,8 @@
         <h1>Gemini Video Generation</h1>
         <p id="explanationNote" class="explanation-note">
             <strong>Instructions:</strong>
-            Enter your Gemini API Key. Enter a prompt.
-            The model will process your prompt and generate content.
+            Enter your Gemini API Key. Enter a text prompt.
+            The system will call the Veo model using <code>predictLongRunning</code> and poll for the video result.
             <br><small>Based on: <a href="https://ai.google.dev/gemini-api/docs/video" target="_blank">Gemini API Video Docs</a></small>
         </p>
 
@@ -32,9 +32,9 @@
 
             <div class="prompt-container">
                 <label for="promptInput">Prompt:</label>
-                <textarea id="promptInput" rows="3" placeholder="Enter your prompt here..."></textarea>
+                <textarea id="promptInput" rows="3" placeholder="Enter your prompt here (e.g., 'A cyberpunk cat walking in the rain')..."></textarea>
                 <div class="generation-buttons">
-                    <button id="generateButton">Generate Content</button>
+                    <button id="generateButton">Generate Video</button>
                     <button id="stopGenerationButton" style="display: none;">Stop</button>
                 </div>
                 <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
@@ -46,8 +46,9 @@
         <div class="summary-display">
             <h2>Session Summary</h2>
             <div class="summary-item">
-                <strong>Total Latency:</strong> <span id="totalGenerationTime">0s</span>
+                <strong>Total Duration:</strong> <span id="totalGenerationTime">0s</span>
             </div>
+            <!-- Cost is usually 0 for preview or not calculated per token for video -->
             <div class="summary-item">
                 <strong>Est. Cost:</strong> <span id="totalEstimatedCost">$0.00</span>
             </div>
@@ -62,6 +63,7 @@
 
         <div class="output-section">
             <label>Generated Output:</label>
+            <div id="videoOutputContainer" class="video-output-container"></div>
             <div id="textOutput" class="text-output-box"></div>
         </div>
             
