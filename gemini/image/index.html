@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Text to Image Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gemini Text to Image Generator</h1>
+        <p id="explanationNote" class="explanation-note"></p>
+
+        <div class="input-section">
+            <div class="api-key-container">
+                <label for="geminiApiKey">Gemini API Key:</label>
+                <input  id="geminiApiKey" placeholder="Enter your Gemini API Key">
+                <button id="setApiKeyButton">Set Key</button>
+            </div>
+
+            <div class="model-select-container">
+                <label for="geminiModel">Select Image Generation Model:</label>
+                <select id="geminiModel"></select>
+            </div>
+
+            <div class="options-row">
+                <div class="option-group output-count-container">
+                    <label for="imageCountInput">Image Count:</label>
+                    <input type="number" id="imageCountInput" value="1" min="1" max="8">
+                </div>
+
+                <div class="option-group">
+                    <label for="aspectRatioSelect">Aspect Ratio:</label>
+                    <select id="aspectRatioSelect">
+                        <option value="1:1">1:1 (Square)</option>
+                        <option value="16:9">16:9 (Landscape)</option>
+                        <option value="9:16">9:16 (Portrait)</option>
+                        <option value="4:3">4:3</option>
+                        <option value="3:4">3:4</option>
+                    </select>
+                </div>
+
+                <div class="option-group" id="imageSizeOptionGroup">
+                    <label for="imageSizeSelect">Image Size:</label>
+                    <select id="imageSizeSelect">
+                        <option value="1K">1K: Standard quality (default, usually 1024x1024 for square)</option>
+                        <option value="2K">2K: High definition (2048x2048 for square)</option>
+                        <option value="4K">4K: Professional grade (experimental/ultra quality)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="options-row">
+                 <div class="option-group checkbox-group" id="googleSearchOptionGroup">
+                    <label for="useGoogleSearch">
+                        <input type="checkbox" id="useGoogleSearch"> Use Google Search Tool
+                    </label>
+                </div>
+                 <div class="option-group checkbox-group">
+                    <label for="useBatchMode">
+                        <input type="checkbox" id="useBatchMode" checked> Generate in Batch
+                    </label>
+                </div>
+            </div>
+
+            <div id="selectedImageContainer" class="selected-image-container" style="display: none;">
+                <div class="selected-images-header">
+                    <label>Input Images:</label>
+                    <button id="clearAllImagesButton" class="clear-all-btn">Clear All</button>
+                </div>
+                <div id="selectedImagesList" class="selected-images-list">
+                    <!-- Selected images will be appended here -->
+                </div>
+            </div>
+
+            <div class="prompt-container">
+                <label for="promptInput">Prompt:</label>
+                <textarea id="promptInput" rows="3" placeholder="Describe the image you want to generate... (e.g., A fluffy cat sitting on a vintage sofa)"></textarea>
+                <div class="generation-buttons">
+                    <button id="generateImageButton">Generate Images</button>
+                    <button id="stopGenerationButton" style="display: none;">Stop Generation</button>
+                </div>
+                <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="summary-display">
+            <h2>Generation Summary</h2>
+            <div class="summary-item">
+                <strong>Total Time:</strong> <span id="totalGenerationTime">0s</span>
+            </div>
+            <div class="summary-item">
+                <strong>Total Input Tokens:</strong> <span id="totalInputTokens">0</span>
+            </div>
+            <div class="summary-item">
+                <strong>Total Output Tokens:</strong> <span id="totalOutputTokens">0</span>
+            </div>
+            <div class="summary-item">
+                <strong>Total Thought Tokens:</strong> <span id="totalThoughtTokens">0</span>
+            </div>
+            <div class="summary-item">
+                <strong>Estimated Total Cost:</strong> <span id="totalEstimatedCost">$0.00</span>
+            </div>
+        </div>
+
+        <div id="debugInfo" class="debug-container">
+            <div id="apiCallsContainer">
+                <!-- Individual API call entries will be appended here -->
+            </div>
+            <button id="closeDebugButton">Close Debug Info</button>
+        </div>
+
+        <div class="image-gallery" id="imageGallery">
+            <!-- Generated images will be displayed here -->
+        </div>
+
+
+            <div class="image-action-buttons">
+                <button id="loadImageButton">Load Image(s) as Input</button>
+                <input type="file" id="imageFileInput" accept="image/png, image/jpeg, image/webp" multiple style="display: none;">
+            </div>
+            
+    </div>
+
+    <script src="text2img.js"></script>
+</body>
+</html>

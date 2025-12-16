@@ -1,0 +1,341 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Align to the top */
+    min-height: 100vh;
+    box-sizing: border-box;
+    padding-bottom: 70px; /* Add padding to body to prevent fixed debug button from overlapping main content */
+}
+
+.container {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 800px; /* Limit overall width */
+    margin-top: 20px;
+    margin-bottom: 20px;
+    box-sizing: border-box;
+}
+
+h1 {
+    text-align: center;
+    color: #0056b3;
+    margin-bottom: 25px;
+}
+
+.error-message { /* Moved to apply to the top */
+    color: #d9534f;
+    background-color: #f2dede;
+    border: 1px solid #ebccd1;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 15px; /* Add bottom margin if it's at the top */
+    text-align: center;
+}
+
+.input-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #555;
+}
+
+input[type="text"],
+input[type="password"],
+textarea,
+select {
+    width: 100%; /* Set to 100% to fill container correctly with border-box */
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Include padding in width calculation */
+    font-family: inherit;
+}
+
+textarea {
+    resize: vertical; /* Allow vertical resizing only */
+}
+
+#storyOutput {
+    min-height: 300px; /* Make story box taller */
+}
+
+/* New: Styles for the nextParagraphPrompt input group */
+.next-paragraph-input-controls {
+    display: flex;
+    gap: 10px; /* Space between textarea and button */
+    align-items: flex-start; /* Align items to the top */
+}
+
+.next-paragraph-input-controls textarea {
+    flex-grow: 1; /* Allow textarea to take available space */
+    width: auto; /* Override generic textarea width to play nice with flex */
+}
+
+.clear-prompt-btn {
+    /* Make the clear button smaller and specific to its context */
+    flex-shrink: 0; /* Prevent button from shrinking */
+    width: auto; /* Allow button to size naturally based on content */
+    padding: 8px 15px; /* Smaller padding than main buttons */
+    font-size: 0.9rem;
+    margin-top: 0; /* Override general button margin-top */
+    align-self: flex-start; /* Align button to the top of its flex container */
+}
+
+
+button {
+    display: block;
+    width: 100%;
+    padding: 12px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 20px;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.secondary-btn { /* New style for the clear button */
+    background-color: #6c757d;
+    margin-top: 10px;
+}
+
+.secondary-btn:hover {
+    background-color: #5a6268;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+}
+
+.action-buttons button {
+    flex: 1; /* Allow buttons to grow and shrink */
+    min-width: 150px; /* Minimum width for buttons */
+    margin-top: 0; /* Reset margin from general button style */
+}
+
+.stop-btn {
+    background-color: #dc3545; /* Red color for stop */
+}
+
+.stop-btn:hover {
+    background-color: #c82333;
+}
+
+.hidden {
+    display: none !important;
+}
+
+#loadingIndicator {
+    text-align: center;
+    margin-top: 15px;
+    font-style: italic;
+    color: #666;
+}
+
+
+/* New: Styles for token display */
+.token-display-group {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #eee;
+    font-size: 0.9em;
+    color: #666;
+    text-align: center;
+}
+
+.token-display-group p {
+    margin: 5px 0;
+}
+
+.token-display-group strong {
+    color: #333;
+}
+
+.token-display-group hr {
+    margin: 5px 0;
+    border: 0;
+    border-top: 1px solid #ccc;
+}
+
+/* Debug Button */
+.debug-toggle-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 8px 15px;
+    background-color: #f0ad4e; /* Warning-like color */
+    color: white;
+    border: none;
+    border-radius: 50px; /* Pill shape */
+    font-size: 0.9em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    z-index: 1001; /* Above other content */
+    /* Overrides for general button styles */
+    display: inline-block;
+    width: auto;
+    margin: 0;
+}
+
+.debug-toggle-btn:hover {
+    background-color: #ec971f;
+}
+
+/* Debug Panel */
+.debug-panel {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    max-height: 50vh; /* Max height for the console */
+    background-color: #282c34; /* Dark background */
+    color: #abb2bf; /* Light text color */
+    border-top: 1px solid #61afef; /* Accent border */
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+    z-index: 1000;
+    font-family: 'Fira Code', 'Cascadia Code', 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 0.85em;
+    display: flex; /* Use flexbox for header and content */
+    flex-direction: column;
+}
+
+.debug-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #21252b; /* Slightly darker header */
+    border-bottom: 1px solid #3e4451;
+}
+
+.debug-header h3 {
+    margin: 0;
+    color: #e06c75; /* Reddish color for title */
+    font-size: 1.1em;
+}
+
+.debug-clear-btn {
+    /* Overrides for general button styles */
+    display: inline-block;
+    width: auto;
+    margin: 0;
+    
+    padding: 5px 10px;
+    font-size: 0.8em;
+    background-color: #e06c75; /* Red for clear */
+    border-radius: 4px; /* Standard button shape for clear */
+}
+
+.debug-clear-btn:hover {
+    background-color: #be5046;
+}
+
+.debug-logs-content {
+    flex-grow: 1; /* Allows content to take available height */
+    overflow-y: auto; /* Scrollable content area */
+    padding: 10px 15px;
+}
+
+.debug-log-entry {
+    background-color: #323842; /* Slightly lighter background for each entry */
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid #3e4451;
+}
+
+.debug-log-entry details {
+    margin-bottom: 5px;
+    cursor: pointer;
+}
+
+.debug-log-entry summary {
+    font-weight: bold;
+    color: #61afef; /* Blueish for summary */
+    padding: 5px 0;
+    outline: none; /* Remove default focus outline */
+}
+
+.debug-log-entry pre {
+    background-color: #21252b;
+    padding: 10px;
+    border-radius: 3px;
+    overflow-x: auto; /* Horizontal scroll for code */
+    white-space: pre-wrap; /* Wrap long lines */
+    word-break: break-all; /* Break words if necessary */
+    color: #abb2bf;
+    font-size: 0.9em;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+        padding-bottom: 80px;
+    }
+
+    .container {
+        padding: 20px;
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .next-paragraph-input-controls {
+        flex-direction: column;
+    }
+    
+    .next-paragraph-input-controls textarea {
+        width: 100%;
+    }
+
+    .clear-prompt-btn {
+        width: 100%;
+        margin-top: 5px;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+    }
+    
+    .action-buttons button {
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    /* Remove margin from top button in stack */
+    .action-buttons button:first-child {
+        margin-top: 0;
+    }
+}
