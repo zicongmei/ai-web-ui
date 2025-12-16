@@ -1,4 +1,4 @@
-// video_gen.js - Implements Gemini Video Understanding (Multimodal)
+// video_gen.js - Implements Gemini Video Generation using Veo models
 
 let currentApiKey = '';
 let selectedModel = 'veo-3.1';
@@ -10,19 +10,20 @@ let totalGenerationTime = 0;
 let totalEstimatedCost = 0;
 
 const GEMINI_MODELS = {
-    'veo-3.1-generate-preview': 'Veo 3.1',
-    'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast',
+    'veo-2.0-generate-001': 'Veo 2',
     'veo-3.0-generate-001': 'Veo 3',
     'veo-3.0-fast-generate-001': 'Veo 3 Fast',
-    'veo-2.0-generate-001': 'Veo 2'
+    'veo-3.1-generate-preview': 'Veo 3.1',
+    'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast'
 };
 
 const PRICING_TABLE = {
-    'veo-3.1-generate-preview': { input: 0, output: 0 },
-    'veo-3.1-fast-generate-preview': { input: 0, output: 0 },
+    // Video generation pricing varies; set placeholders for now.
+    'veo-2.0-generate-001': { input: 0, output: 0 },
     'veo-3.0-generate-001': { input: 0, output: 0 },
     'veo-3.0-fast-generate-001': { input: 0, output: 0 },
-    'veo-2.0-generate-001': { input: 0, output: 0 }
+    'veo-3.1-generate-preview': { input: 0, output: 0 },
+    'veo-3.1-fast-generate-preview': { input: 0, output: 0 }
 };
 
 // DOM Elements
@@ -34,6 +35,7 @@ const generateButton = document.getElementById('generateButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton');
 const statusMessage = document.getElementById('statusMessage');
 const textOutput = document.getElementById('textOutput');
+const videoOutputContainer = document.getElementById('videoOutputContainer');
 
 // Debug & Summary Elements
 const showApiCallsButton = document.getElementById('showApiCallsButton');
@@ -90,7 +92,7 @@ function populateModelSelect() {
     geminiModelSelect.value = selectedModel;
 }
 
-// --- Generation Logic (generateContent) ---
+// --- Generation Logic ---
 
 async function generateContent() {
     const prompt = promptInput.value.trim();
@@ -104,7 +106,13 @@ async function generateContent() {
         return;
     }
 
-    textOutput.textContent = 'Generating...';
+    // Reset UI
+    textOutput.textContent = 'Initializing video generation...';
+    if (videoOutputContainer) {
+        videoOutputContainer.innerHTML = '';
+        videoOutputContainer.style.display = 'none';
+    }
+    
     generateButton.disabled = true;
     stopGenerationButton.style.display = 'inline-block';
     statusMessage.textContent = 'Sending request...';
@@ -114,16 +122,28 @@ async function generateContent() {
 
     try {
         const model = geminiModelSelect.value;
-        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${currentApiKey}`;
+        // Video generation uses predictLongRunning
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentApiKey}`;
         
+        // Structure for Veo video generation prompt. 
+        // Note: The "Unknown name" error occurs because Veo models via this API expect the 
+        // Vertex AI standard "instances" array with camelCase keys.
         const requestBody = {
-            contents: [{
-                parts: [
-                    { text: prompt }
-                ]
-            }]
+            instances: [
+                {
+                    prompt: {
+                        textPrompt: {
+                            text: prompt
+                        }
+                    }
+                }
+            ],
+            parameters: {
+                sampleCount: 1
+            }
         };
 
+        // 1. Initiate Long-Running Operation
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -131,24 +151,52 @@ async function generateContent() {
             signal: abortController.signal
         });
 
-        const data = await response.json();
-        const duration = performance.now() - startTime;
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseErr) {
+            data = { error: { message: response.statusText, details: "Failed to parse JSON response" } };
+        }
+        
+        // Log API Interaction immediately.
+        // This ensures the debug button appears and works even if the API returns an error.
+        logApiInteraction(endpoint, requestBody, data, performance.now() - startTime, 0);
 
         if (!response.ok) throw new Error(data.error?.message || response.statusText);
 
-        const text = data.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || 'No output.';
-        textOutput.textContent = text;
+        const operationName = data.name;
+        if (!operationName) {
+            throw new Error("API did not return an operation name.");
+        }
 
-        const inputTokens = data.usageMetadata?.promptTokenCount || 0;
-        const outputTokens = data.usageMetadata?.candidatesTokenCount || 0;
-        const cost = calculateCost(model, inputTokens, outputTokens);
+        textOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
+        statusMessage.textContent = 'Generating video... (this takes time)';
 
-        logApiInteraction(endpoint, requestBody, data, duration, cost);
-        statusMessage.textContent = 'Generation complete.';
+        // 2. Poll for Completion
+        const result = await pollOperation(operationName);
+        const totalDuration = performance.now() - startTime;
+
+        statusMessage.textContent = 'Generation complete!';
+        logApiInteraction(`Polling: ${operationName}`, {}, result, totalDuration, 0);
+
+        // 3. Handle Result
+        const responseResult = result.response;
+        // Check for Vertex AI style result (often nested in result.response)
+        if (responseResult && (responseResult.videoUri || responseResult.uri)) {
+             const videoUri = responseResult.videoUri || responseResult.uri;
+             textOutput.textContent = `Success!\nVideo URI: ${videoUri}`;
+             displayVideo(videoUri);
+        } else if (result.metadata) {
+             // Sometimes result is in metadata or just completed
+             textOutput.textContent = 'Operation completed. Checking for output... \n' + JSON.stringify(result, null, 2);
+        } else {
+             textOutput.textContent = 'Operation completed, but no video URI found.\nResult: ' + JSON.stringify(result, null, 2);
+        }
 
     } catch (e) {
         if (e.name === 'AbortError') {
             statusMessage.textContent = 'Cancelled.';
+            textOutput.textContent += '\nCancelled by user.';
         } else {
             console.error(e);
             statusMessage.textContent = `Error: ${e.message}`;
@@ -159,6 +207,44 @@ async function generateContent() {
         stopGenerationButton.style.display = 'none';
         abortController = null;
     }
+}
+
+async function pollOperation(operationName) {
+    // Operation name usually looks like "operations/..."
+    const pollUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${currentApiKey}`;
+    
+    while (true) {
+        if (abortController && abortController.signal.aborted) {
+            throw new Error('Operation cancelled.');
+        }
+
+        const res = await fetch(pollUrl);
+        const data = await res.json();
+
+        if (data.error) throw new Error(data.error.message);
+
+        if (data.done) {
+            return data;
+        }
+
+        // Wait before next poll (e.g., 3 seconds)
+        await new Promise(r => setTimeout(r, 3000));
+    }
+}
+
+function displayVideo(uri) {
+    if (!videoOutputContainer) return;
+    
+    videoOutputContainer.style.display = 'flex';
+    videoOutputContainer.innerHTML = `
+        <video controls autoplay loop>
+            <source src="${uri}" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+        <div style="margin-top: 10px;">
+            <a href="${uri}" target="_blank" download class="button" style="text-decoration:none; background:#28a745; color:white; padding:5px 10px; border-radius:4px;">Download Video</a>
+        </div>
+    `;
 }
 
 function stopGeneration() {
@@ -200,7 +286,11 @@ function appendApiCallEntry(interaction, index) {
     const details = document.createElement('details');
     details.className = 'api-call-entry';
     const summary = document.createElement('summary');
-    const endpointName = interaction.url.includes('upload') ? 'UPLOAD' : interaction.url.split('models/')[1]?.split(':')[0] || 'API Call';
+    // Simplify URL for display
+    let endpointName = 'API Call';
+    if (interaction.url.includes('predictLongRunning')) endpointName = 'START GEN';
+    else if (interaction.url.includes('operations/')) endpointName = 'POLL';
+    
     summary.innerHTML = `<h4>#${index + 1} ${endpointName} (${(interaction.durationMs/1000).toFixed(2)}s)</h4>`;
     details.appendChild(summary);
     
