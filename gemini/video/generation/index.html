@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Video Understanding</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gemini Video Understanding</h1>
+        <p id="explanationNote" class="explanation-note">
+            <strong>Instructions:</strong>
+            Enter your Gemini API Key. Upload a video file.
+            The model will process the video, and you can generate content (like dialogue, descriptions, or summaries) based on it.
+            <br><small>Based on: <a href="https://ai.google.dev/gemini-api/docs/video" target="_blank">Gemini API Video Docs</a></small>
+        </p>
+
+        <div class="input-section">
+            <div class="api-key-container">
+                <label for="geminiApiKey">Gemini API Key:</label>
+                <input type="password" id="geminiApiKey" placeholder="Enter your Gemini API Key">
+                <button id="setApiKeyButton">Set Key</button>
+            </div>
+
+            <div class="model-select-container">
+                <label for="geminiModel">Select Model:</label>
+                <select id="geminiModel">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <!-- Video Upload Section -->
+            <div class="upload-section">
+                <label for="videoFileInput" class="upload-label">Select Video File:</label>
+                <input type="file" id="videoFileInput" accept="video/mp4, video/mpeg, video/mov, video/avi, video/x-flv, video/mpg, video/webm">
+                
+                <div id="uploadStatusContainer" style="display: none;">
+                    <div class="progress-bar-container">
+                        <div id="uploadProgressBar" class="progress-bar"></div>
+                    </div>
+                    <span id="uploadStatusText">Ready to upload</span>
+                </div>
+
+                <div id="videoPreviewContainer" style="display: none;">
+                    <video id="videoPreview" controls></video>
+                    <div class="video-meta">
+                        <span id="videoDuration">Duration: -</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="prompt-container">
+                <label for="promptInput">Prompt:</label>
+                <textarea id="promptInput" rows="3" placeholder="E.g., Transcribe the dialogue in this video, or Describe the events taking place."></textarea>
+                <div class="generation-buttons">
+                    <button id="generateButton" disabled>Generate Content</button>
+                    <button id="stopGenerationButton" style="display: none;">Stop</button>
+                </div>
+                <button id="showApiCallsButton" style="display:none;">Show API Calls</button>
+            </div>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="summary-display">
+            <h2>Session Summary</h2>
+            <div class="summary-item">
+                <strong>Total Latency:</strong> <span id="totalGenerationTime">0s</span>
+            </div>
+            <div class="summary-item">
+                <strong>Est. Cost:</strong> <span id="totalEstimatedCost">$0.00</span>
+            </div>
+        </div>
+
+        <div id="debugInfo" class="debug-container">
+            <div id="apiCallsContainer">
+                <!-- Individual API call entries will be appended here -->
+            </div>
+            <button id="closeDebugButton">Close Debug Info</button>
+        </div>
+
+        <div class="output-section">
+            <label>Generated Output:</label>
+            <div id="textOutput" class="text-output-box"></div>
+        </div>
+            
+    </div>
+
+    <script src="video_gen.js"></script>
+</body>
+</html>
