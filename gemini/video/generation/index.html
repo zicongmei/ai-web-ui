@@ -36,10 +36,13 @@
                 <textarea id="videoPromptInput" rows="3" placeholder="Enter your prompt here (e.g., 'A cyberpunk cat walking in the rain')..."></textarea>
                 
                 <div class="image-upload-container">
-                    <label for="imageInput">Optional Image Input (for Image-to-Video):</label>
+                    <label for="imageUrlInput">Optional Image URL (GS URI or Public URL):</label>
+                    <input type="text" id="imageUrlInput" placeholder="gs://bucket/image.jpg or https://example.com/image.jpg" style="width: 100%; margin-bottom: 10px;">
+                    
+                    <label for="imageInput">Or Upload Image / Select Generated Image:</label>
                     <input type="file" id="imageInput" accept="image/*">
                     <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
-                        Or select an image generated below. (Selected generated image takes priority over file upload)
+                        Or select an image generated below. (Selected generated image takes priority over file upload and URL)
                     </p>
                     <div id="selectedImagePreview" class="selected-image-preview" style="display: none; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #f9f9f9;">
                         <label style="display:block; margin-bottom:5px;">Selected Input Image:</label>

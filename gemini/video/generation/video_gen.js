@@ -29,6 +29,7 @@ const videoSampleCountInput = document.getElementById('sampleCount');
 const videoSeedInput = document.getElementById('seed');
 const videoNegativePromptInput = document.getElementById('negativePrompt');
 const videoPersonGenerationSelect = document.getElementById('personGeneration');
+const imageUrlInput = document.getElementById('imageUrlInput');
 const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
 const selectedImagePreview = document.getElementById('selectedImagePreview');
 const inputImageDisplay = document.getElementById('inputImageDisplay');
@@ -169,6 +170,7 @@ async function generateVideoContent() {
         
         let imageBase64 = null;
         let imageMimeType = null;
+        const imageUrl = imageUrlInput.value.trim();
 
         // Use the displayed image as the source of truth
         if (selectedImagePreview.style.display !== 'none' && inputImageDisplay.src) {
@@ -188,6 +190,10 @@ async function generateVideoContent() {
             instance.image = {
                 bytesBase64Encoded: imageBase64,
                 mimeType: imageMimeType || 'image/png'
+            };
+        } else if (imageUrl) {
+            instance.image = {
+                uri: imageUrl
             };
         }
 
