@@ -29,6 +29,7 @@ const videoSampleCountInput = document.getElementById('sampleCount');
 const videoSeedInput = document.getElementById('seed');
 const videoNegativePromptInput = document.getElementById('negativePrompt');
 const videoPersonGenerationSelect = document.getElementById('personGeneration');
+const videoGenerateAudioSelect = document.getElementById('generateAudio');
 const imageUrlInput = document.getElementById('imageUrlInput');
 const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
 const selectedImagePreview = document.getElementById('selectedImagePreview');
@@ -205,6 +206,7 @@ async function generateVideoContent() {
         const seed = videoSeedInput.value;
         const negativePrompt = videoNegativePromptInput.value.trim();
         const personGeneration = videoPersonGenerationSelect.value;
+        const generateAudio = videoGenerateAudioSelect.value;
 
         const parameters = {};
         if (durationSeconds) parameters.durationSeconds = parseInt(durationSeconds, 10);
@@ -214,6 +216,7 @@ async function generateVideoContent() {
         if (seed) parameters.seed = parseInt(seed, 10);
         if (negativePrompt) parameters.negativePrompt = negativePrompt;
         if (personGeneration) parameters.personGeneration = personGeneration;
+        if (generateAudio) parameters.generateAudio = (generateAudio === 'true');
 
         const requestBody = {
             instances: [instance],
