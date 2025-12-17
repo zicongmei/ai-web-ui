@@ -525,6 +525,11 @@ function renderChapters(item) {
         const card = document.createElement('div');
         card.className = 'chapter-card';
         
+        const isLast = (index === item.chapters.length - 1);
+        if (!isLast) {
+            card.classList.add('collapsed');
+        }
+
         const header = document.createElement('div');
         header.className = 'chapter-header';
         
@@ -536,6 +541,9 @@ function renderChapters(item) {
         toggleIcon.textContent = '▼';
         toggleIcon.style.color = '#007bff';
         toggleIcon.style.fontSize = '1.2em';
+        if (!isLast) {
+            toggleIcon.style.transform = 'rotate(-90deg)';
+        }
 
         const title = document.createElement('h2');
         title.textContent = chapter.title || `Chapter ${index + 1}`;
@@ -722,25 +730,54 @@ async function generateNextChapter(id) {
     const useThought = item.storyParams.useThought;
     const useBatch = item.storyParams.useBatch;
 
-    let previousChaptersContent = "Abstract:\n" + item.content + "\n\n";
-    item.chapters.forEach((c, i) => {
-        previousChaptersContent += `Chapter ${i+1}: ${c.title}\n`;
-        if (useThought && c.thought) {
-            previousChaptersContent += `[Thought Signature: ${c.thought}]\n`;
-        }
-        previousChaptersContent += `${c.content}\n\n`;
+    // Build multi-turn contents for narrative continuity and thought signatures
+    const contents = [];
+    
+    // 1. Initial turn: Abstract + Plan + Ch 1 request
+    let initialPrompt = `You are a creative writer. Here is the full story plan:\n\n${item.content}\n\n`;
+    initialPrompt += `Please write Chapter 1 now. It should be approximately ${words} words.`;
+    if (chapterNum === 1 && additionalPrompt) {
+        initialPrompt += `\nAdditional Instructions: ${additionalPrompt}`;
+    }
+
+    contents.push({
+        role: "user",
+        parts: [{ text: initialPrompt }]
     });
 
-    const prompt = CHAPTER_PROMPT_TEMPLATE
-        .replace(/{{chapter_num}}/g, chapterNum)
-        .replace('{{words}}', words)
-        .replace('{{abstract}}', item.content)
-        .replace('{{previous_chapters}}', previousChaptersContent);
+    // 2. Model turns for written chapters (including thoughts) and user turns for continuity
+    item.chapters.forEach((ch, i) => {
+        const modelParts = [];
+        if (useThought && ch.thought) {
+            modelParts.push({ thought: ch.thought });
+        }
+        modelParts.push({ text: `Title: ${ch.title}\n${ch.content}` });
+        contents.push({ role: "model", parts: modelParts });
 
-    const fullPrompt = additionalPrompt ? `${prompt}\n\nAdditional Chapter Instructions: ${additionalPrompt}` : prompt;
+        // Add user prompt for the next chapter in history
+        const nextIdx = i + 2; // Chapter number for the one following 'ch'
+        if (i < item.chapters.length - 1) {
+            contents.push({
+                role: "user",
+                parts: [{ text: `Great. Now please write Chapter ${nextIdx}. Approximately ${words} words.` }]
+            });
+        }
+    });
+
+    // 3. Final turn: Request for the CURRENT chapter if not Ch 1
+    if (chapterNum > 1) {
+        let currentChPrompt = `Great. Now please write Chapter ${chapterNum}. Approximately ${words} words.`;
+        if (additionalPrompt) {
+            currentChPrompt += `\nAdditional Instructions: ${additionalPrompt}`;
+        }
+        contents.push({
+            role: "user",
+            parts: [{ text: currentChPrompt }]
+        });
+    }
 
     const request = {
-        contents: [{ parts: [{ text: fullPrompt }] }],
+        contents: contents,
         generationConfig: { temperature: 0.7 }
     };
 
