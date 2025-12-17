@@ -24,7 +24,7 @@ body {
 }
 
 .sidebar.collapsed {
-    transform: translateX(-300px);
+    transform: translateX(-100%);
 }
 
 .sidebar-toggle-btn {
@@ -51,13 +51,15 @@ body {
     margin-left: 300px;
     padding: 30px;
     max-width: 1200px;
-    transition: margin-left 0.3s ease;
+    transition: margin-left 0.3s ease, width 0.3s ease;
+    width: calc(100% - 300px);
 }
 
 .sidebar-collapsed .main-content {
     margin-left: 0;
+    width: 100%;
+    max-width: none;
 }
-
 
 .sidebar-header {
     padding: 20px;
@@ -142,13 +144,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-}
-
-.main-content {
-    flex-grow: 1;
-    margin-left: 300px;
-    padding: 30px;
-    max-width: 1200px;
 }
 
 .container {
@@ -522,17 +517,36 @@ button.danger:hover {
 
 @media (max-width: 768px) {
     .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
-        border-right: none;
-        border-bottom: 1px solid #ddd;
+        width: 280px;
+        z-index: 200;
     }
+
+    .sidebar-toggle-btn {
+        left: 280px;
+    }
+
+    .sidebar-collapsed .sidebar-toggle-btn {
+        left: 0;
+    }
+
     .main-content {
         margin-left: 0;
+        width: 100%;
+        padding: 15px;
     }
+
+    .sidebar-collapsed .main-content {
+        width: 100%;
+        margin-left: 0;
+        max-width: none;
+    }
+
     .row {
         flex-direction: column;
         gap: 0;
+    }
+
+    .container {
+        padding: 20px;
     }
 }
