@@ -329,7 +329,7 @@ function saveGeneratedImage(base64Image, prompt) {
     const link = document.createElement('a');
     link.href = `data:image/png;base64,${base64Image}`;
     // Sanitize prompt for filename
-    const filename = `gemini_image_${prompt.substring(0, 50).replace(/[^a-z0-9]/gi, '_') || 'generated'}_${Date.now()}.png`;
+    const filename = `gemini_image_${prompt.substring(0, 50).replace(/[\\/:*?"<>|]/g, '_') || 'generated'}_${Date.now()}.png`;
     link.download = filename;
     document.body.appendChild(link); // Required for Firefox
     link.click();
