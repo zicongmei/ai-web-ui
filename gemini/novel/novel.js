@@ -21,6 +21,7 @@ const thinkingLevelGroup = document.getElementById('thinkingLevelGroup');
 const useGoogleSearchCheckbox = document.getElementById('useGoogleSearch');
 const useBatchAbstractCheckbox = document.getElementById('useBatchAbstract');
 const numChaptersInput = document.getElementById('numChapters');
+const planWordsPerChapterInput = document.getElementById('planWordsPerChapter');
 const additionalPromptInput = document.getElementById('additionalPrompt');
 const generateButton = document.getElementById('generateButton');
 const stopButton = document.getElementById('stopButton');
@@ -47,6 +48,7 @@ const abstractGenContent = document.getElementById('abstractGenContent');
 
 // Template Elements
 const tplChapters = document.getElementById('tplChapters');
+const tplPlanWords = document.getElementById('tplPlanWords');
 const tplIdea = document.getElementById('tplIdea');
 const tplIdeaWrapper = document.getElementById('tplIdeaWrapper');
 const tplLanguage = document.getElementById('tplLanguage');
@@ -72,6 +74,7 @@ const useBatchStoryCheckbox = document.getElementById('useBatchStory');
 const startStoryButton = document.getElementById('startStoryButton');
 const pauseStoryButton = document.getElementById('pauseStoryButton');
 const resumeStoryButton = document.getElementById('resumeStoryButton');
+const deleteAllChaptersButton = document.getElementById('deleteAllChaptersButton');
 const storyArea = document.getElementById('storyArea');
 
 // History Management DOM
@@ -81,6 +84,10 @@ const loadFromFileButton = document.getElementById('loadFromFileButton');
 const fileInput = document.getElementById('fileInput');
 const clearHistoryButton = document.getElementById('clearHistoryButton');
 const newAbstractButton = document.getElementById('newAbstractButton');
+
+// Sidebar Elements
+const sidebar = document.getElementById('sidebar');
+const toggleSidebar = document.getElementById('toggleSidebar');
 
 const SYSTEM_INSTRUCTION_BASE = `
 Write a concise, compelling story writing plan.
@@ -154,6 +161,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (toggleStoryDebug && storyDebugContent) {
+        toggleStoryDebug.addEventListener('click', () => {
+            const isCollapsed = storyDebugContent.classList.toggle('collapsed');
+            toggleStoryDebug.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+    }
+
+    if (toggleSidebar && sidebar) {
+        toggleSidebar.addEventListener('click', () => {
+            const isCollapsed = sidebar.classList.toggle('collapsed');
+            document.body.classList.toggle('sidebar-collapsed');
+            toggleSidebar.querySelector('.toggle-icon').textContent = isCollapsed ? '▶' : '◀';
+            localStorage.setItem(STORAGE_PREFIX + 'sidebarCollapsed', isCollapsed);
+        });
+
+        // Initial state
+        if (localStorage.getItem(STORAGE_PREFIX + 'sidebarCollapsed') === 'true') {
+            sidebar.classList.add('collapsed');
+            document.body.classList.add('sidebar-collapsed');
+            toggleSidebar.querySelector('.toggle-icon').textContent = '▶';
+        }
+    }
+
     // Edit logic
     resultContent.addEventListener('input', () => {
         if (currentAbstractId) {
@@ -172,8 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
     startStoryButton.addEventListener('click', startStoryGeneration);
     pauseStoryButton.addEventListener('click', pauseStoryGeneration);
     resumeStoryButton.addEventListener('click', resumeStoryGeneration);
+    deleteAllChaptersButton.addEventListener('click', deleteAllChapters);
 
     retryButton.addEventListener('click', () => {
+
         if (currentAbstractId) retryBatchJob(currentAbstractId);
     });
 });
@@ -198,6 +230,9 @@ function loadSettings() {
     const chapters = localStorage.getItem(STORAGE_PREFIX + 'chapters');
     if (chapters) numChaptersInput.value = chapters;
 
+    const planWords = localStorage.getItem(STORAGE_PREFIX + 'planWords');
+    if (planWords) planWordsPerChapterInput.value = planWords;
+
     const batchAbstract = localStorage.getItem(STORAGE_PREFIX + 'batchAbstract');
     if (batchAbstract !== null) useBatchAbstractCheckbox.checked = batchAbstract === 'true';
 
@@ -210,6 +245,7 @@ function saveSettings() {
     localStorage.setItem(STORAGE_PREFIX + 'model', selectedModel);
     localStorage.setItem(STORAGE_PREFIX + 'language', languageInput.value);
     localStorage.setItem(STORAGE_PREFIX + 'chapters', numChaptersInput.value);
+    localStorage.setItem(STORAGE_PREFIX + 'planWords', planWordsPerChapterInput.value);
     localStorage.setItem(STORAGE_PREFIX + 'batchAbstract', useBatchAbstractCheckbox.checked);
     localStorage.setItem(STORAGE_PREFIX + 'batchStory', useBatchStoryCheckbox.checked);
 }
@@ -307,13 +343,17 @@ function getTimestampTitle() {
 
 function updateDebugPreview() {
     const chapters = numChaptersInput.value || 'xx';
+    const planWords = planWordsPerChapterInput.value || '100';
     const idea = additionalPromptInput.value || '';
     const language = languageInput.value || 'xx';
 
     if (tplChapters) tplChapters.textContent = chapters;
+    if (tplPlanWords) tplPlanWords.textContent = planWords;
     if (tplLanguage) tplLanguage.textContent = language;
     
-    let systemInst = SYSTEM_INSTRUCTION_BASE.replace('{{chapters}}', chapters);
+    let systemInst = SYSTEM_INSTRUCTION_BASE
+        .replace('{{chapters}}', chapters)
+        .replace('{{plan_words}}', planWords);
 
     if (idea) {
         if (tplIdea) tplIdea.textContent = idea;
@@ -434,19 +474,29 @@ function loadAbstract(id) {
         storyGenControls.classList.remove('hidden');
         renderChapters(item);
         
+        // Show debug section if generating or paused
+        if (item.storyStatus === 'generating' || item.storyStatus === 'paused') {
+            if (storyDebugSection) storyDebugSection.classList.remove('hidden');
+        } else {
+            if (storyDebugSection) storyDebugSection.classList.add('hidden');
+        }
+
         // Show/hide buttons based on story status
         if (item.storyStatus === 'generating') {
             startStoryButton.classList.add('hidden');
             pauseStoryButton.classList.remove('hidden');
             resumeStoryButton.classList.add('hidden');
+            deleteAllChaptersButton.classList.add('hidden');
         } else if (item.storyStatus === 'paused') {
             startStoryButton.classList.add('hidden');
             pauseStoryButton.classList.add('hidden');
             resumeStoryButton.classList.remove('hidden');
+            deleteAllChaptersButton.classList.remove('hidden');
         } else {
-            startStoryButton.classList.remove('hidden');
+            startStoryButton.classList.toggle('hidden', !!(item.chapters && item.chapters.length > 0));
             pauseStoryButton.classList.add('hidden');
             resumeStoryButton.classList.add('hidden');
+            deleteAllChaptersButton.classList.toggle('hidden', !(item.chapters && item.chapters.length > 0));
         }
 
         if (item.storyParams) {
@@ -478,32 +528,105 @@ function renderChapters(item) {
         const header = document.createElement('div');
         header.className = 'chapter-header';
         
+        const titleGroup = document.createElement('div');
+        titleGroup.className = 'chapter-title-group';
+
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'toggle-icon';
+        toggleIcon.textContent = '▼';
+        toggleIcon.style.color = '#007bff';
+        toggleIcon.style.fontSize = '1.2em';
+
         const title = document.createElement('h2');
         title.textContent = chapter.title || `Chapter ${index + 1}`;
         
-        const editBtn = document.createElement('button');
-        editBtn.className = 'secondary';
-        editBtn.textContent = 'Edit';
-        editBtn.onclick = () => {
-            const newContent = prompt(`Edit Chapter ${index + 1}:`, chapter.content);
-            if (newContent !== null) {
-                chapter.content = newContent;
-                saveHistory();
-                renderChapters(item);
-            }
-        };
+        titleGroup.appendChild(toggleIcon);
+        titleGroup.appendChild(title);
 
-        header.appendChild(title);
-        header.appendChild(editBtn);
+        const actions = document.createElement('div');
+        actions.className = 'chapter-actions';
+
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'hidden';
+        saveBtn.textContent = 'Save';
+
+        const discardBtn = document.createElement('button');
+        discardBtn.className = 'secondary hidden';
+        discardBtn.textContent = 'Discard';
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'danger';
+        deleteBtn.textContent = 'Delete';
+
+        actions.appendChild(saveBtn);
+        actions.appendChild(discardBtn);
+        actions.appendChild(deleteBtn);
+
+        header.appendChild(titleGroup);
+        header.appendChild(actions);
         
         const content = document.createElement('div');
         content.className = 'chapter-content';
+        content.contentEditable = true;
         content.textContent = chapter.content;
         
+        header.addEventListener('click', (e) => {
+            // Don't toggle if a button was clicked
+            if (e.target.tagName === 'BUTTON') return;
+            
+            const isCollapsed = card.classList.toggle('collapsed');
+            toggleIcon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+        });
+
+        content.addEventListener('input', () => {
+            const hasChanged = content.textContent !== chapter.content;
+            saveBtn.classList.toggle('hidden', !hasChanged);
+            discardBtn.classList.toggle('hidden', !hasChanged);
+        });
+
+        saveBtn.onclick = () => {
+            chapter.content = content.textContent;
+            saveHistory();
+            saveBtn.classList.add('hidden');
+            discardBtn.classList.add('hidden');
+        };
+
+        discardBtn.onclick = () => {
+            content.textContent = chapter.content;
+            saveBtn.classList.add('hidden');
+            discardBtn.classList.add('hidden');
+        };
+
+        deleteBtn.onclick = () => {
+            if (confirm(`Delete Chapter ${index + 1}?`)) {
+                item.chapters.splice(index, 1);
+                // Adjust currentChapterIndex if we were generating
+                if (item.currentChapterIndex > item.chapters.length + 1) {
+                    item.currentChapterIndex = item.chapters.length + 1;
+                }
+                saveHistory();
+                loadAbstract(item.id);
+            }
+        };
+
         card.appendChild(header);
         card.appendChild(content);
         storyArea.appendChild(card);
     });
+}
+
+function deleteAllChapters() {
+    const item = history.find(h => h.id === currentAbstractId);
+    if (!item) return;
+
+    if (confirm('Delete ALL chapters? This cannot be undone.')) {
+        item.chapters = [];
+        item.currentChapterIndex = 1;
+        item.storyStatus = 'idle';
+        item.currentChapterBatchName = null;
+        saveHistory();
+        loadAbstract(item.id);
+    }
 }
 
 function saveAbstractEdits() {
@@ -529,16 +652,20 @@ async function startStoryGeneration() {
     item.chapters = [];
     item.currentChapterIndex = 1;
     item.storyStatus = 'generating';
-    item.storyParams = {
-        model: storyModelSelect.value,
-        words: wordsPerChapterInput.value,
-        prompt: storyAdditionalPromptInput.value,
-        useThought: useThoughtSignatureCheckbox.checked,
-        useBatch: useBatchStoryCheckbox.checked
-    };
-    saveHistory();
-    loadAbstract(item.id);
-    generateNextChapter(item.id);
+            item.storyParams = {
+                model: storyModelSelect.value,
+                words: wordsPerChapterInput.value,
+                prompt: storyAdditionalPromptInput.value,
+                useThought: useThoughtSignatureCheckbox.checked,
+                useBatch: useBatchStoryCheckbox.checked
+            };
+            saveHistory();
+        
+            // Clear story debug logs on new start
+            if (storyDebugContent) storyDebugContent.innerHTML = '';
+            if (storyDebugSection) storyDebugSection.classList.remove('hidden');
+    
+            loadAbstract(item.id);    generateNextChapter(item.id);
 }
 
 function pauseStoryGeneration() {
@@ -595,8 +722,14 @@ async function generateNextChapter(id) {
     const useThought = item.storyParams.useThought;
     const useBatch = item.storyParams.useBatch;
 
-    const previousChaptersContent = "Abstract:\n" + item.content + "\n\n" + 
-        item.chapters.map((c, i) => `Chapter ${i+1}: ${c.title}\n${c.content}`).join("\n\n");
+    let previousChaptersContent = "Abstract:\n" + item.content + "\n\n";
+    item.chapters.forEach((c, i) => {
+        previousChaptersContent += `Chapter ${i+1}: ${c.title}\n`;
+        if (useThought && c.thought) {
+            previousChaptersContent += `[Thought Signature: ${c.thought}]\n`;
+        }
+        previousChaptersContent += `${c.content}\n\n`;
+    });
 
     const prompt = CHAPTER_PROMPT_TEMPLATE
         .replace(/{{chapter_num}}/g, chapterNum)
@@ -649,9 +782,12 @@ async function generateNextChapter(id) {
             body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error(await response.text());
-        
         const data = await response.json();
+        
+        // Add to story debug log
+        addStoryDebugLog(`Ch ${chapterNum} Submission`, url, 'POST', requestBody, data);
+
+        if (!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
         
         if (currentAbstractId === id) {
             debugResponse.textContent = JSON.stringify(data, null, 2);
@@ -671,10 +807,11 @@ async function generateNextChapter(id) {
             const candidate = data.candidates?.[0];
             if (!candidate) throw new Error('No candidate in response');
 
-            const text = candidate.content.parts.map(p => p.text).join('');
+            const text = candidate.content.parts.filter(p => p.text).map(p => p.text).join('');
+            const thought = candidate.content.parts.find(p => p.thought)?.thought;
             const { title, content } = parseChapterResponse(text, chapterNum);
 
-            item.chapters.push({ title, content });
+            item.chapters.push({ title, content, thought });
             item.currentChapterIndex++;
             saveHistory();
 
@@ -750,6 +887,11 @@ async function pollStoryChapter(id) {
             });
             pollData = await pollResponse.json();
             
+            // Add to story debug log
+            if (isCurrent) {
+                addStoryDebugLog(`Ch ${item.currentChapterIndex} Polling`, pollUrl, 'GET', null, pollData);
+            }
+
             if (pollData.error) throw new Error(pollData.error.message);
             
             if (isCurrent) {
@@ -779,10 +921,11 @@ async function pollStoryChapter(id) {
         const candidate = candidateResponse.candidates?.[0];
         if (!candidate) throw new Error('No candidate in response');
 
-        const text = candidate.content.parts.map(p => p.text).join('');
+        const text = candidate.content.parts.filter(p => p.text).map(p => p.text).join('');
+        const thought = candidate.content.parts.find(p => p.thought)?.thought;
         const { title, content } = parseChapterResponse(text, item.currentChapterIndex);
 
-        item.chapters.push({ title, content });
+        item.chapters.push({ title, content, thought });
         item.currentChapterIndex++;
         item.currentChapterBatchName = null;
         saveHistory();
@@ -817,12 +960,15 @@ async function generateAbstract() {
     const language = languageInput.value;
     const model = modelSelect.value;
     const chapters = numChaptersInput.value;
+    const planWords = planWordsPerChapterInput.value;
     const prompt = additionalPromptInput.value;
     const useSearch = useGoogleSearchCheckbox.checked;
     const useBatch = useBatchAbstractCheckbox.checked;
     const thinkingLevel = thinkingLevelSelect.value;
 
-    let systemInst = SYSTEM_INSTRUCTION_BASE.replace('{{chapters}}', chapters);
+    let systemInst = SYSTEM_INSTRUCTION_BASE
+        .replace('{{chapters}}', chapters)
+        .replace('{{plan_words}}', planWords);
     if (prompt) {
         systemInst += `\n\nThe story idea is: ${prompt}`;
     }
@@ -1143,6 +1289,53 @@ function updateStatsDisplay(stats) {
     priceStats.textContent = `Est. Cost: $${stats.cost.toFixed(6)}`;
 }
 
+function addStoryDebugLog(title, url, method, request, response) {
+    if (!storyDebugContent) return;
+
+    const entry = document.createElement('div');
+    entry.className = 'debug-log-entry';
+
+    const header = document.createElement('div');
+    header.className = 'debug-log-header';
+    header.innerHTML = `<span>${title} (${method})</span><span class="debug-log-time">${new Date().toLocaleTimeString()}</span>`;
+
+    const urlDiv = document.createElement('div');
+    urlDiv.className = 'debug-url';
+    urlDiv.textContent = `URL: ${url}`;
+
+    entry.appendChild(header);
+    entry.appendChild(urlDiv);
+
+    if (request) {
+        const reqLabel = document.createElement('label');
+        reqLabel.textContent = 'Request Body:';
+        reqLabel.style.color = '#ffc66d';
+        reqLabel.style.fontSize = '0.9em';
+        reqLabel.style.display = 'block';
+        reqLabel.style.marginBottom = '5px';
+        const reqPre = document.createElement('pre');
+        reqPre.textContent = JSON.stringify(request, null, 2);
+        entry.appendChild(reqLabel);
+        entry.appendChild(reqPre);
+    }
+
+    if (response) {
+        const resLabel = document.createElement('label');
+        resLabel.textContent = 'Response Body:';
+        resLabel.style.color = '#ffc66d';
+        resLabel.style.fontSize = '0.9em';
+        resLabel.style.marginTop = '10px';
+        resLabel.style.display = 'block';
+        resLabel.style.marginBottom = '5px';
+        const resPre = document.createElement('pre');
+        resPre.textContent = JSON.stringify(response, null, 2);
+        entry.appendChild(resLabel);
+        entry.appendChild(resPre);
+    }
+
+    storyDebugContent.prepend(entry); // Most recent at top
+}
+
 // Model Options
 function updateModelOptions() {
     const isGemini3 = modelSelect.value.startsWith('gemini-3');
@@ -1173,6 +1366,7 @@ stopButton.addEventListener('click', () => {
 modelSelect.addEventListener('change', updateModelOptions);
 languageInput.addEventListener('input', () => { saveSettings(); updateDebugPreview(); });
 numChaptersInput.addEventListener('input', () => { saveSettings(); updateDebugPreview(); });
+planWordsPerChapterInput.addEventListener('input', () => { saveSettings(); updateDebugPreview(); });
 additionalPromptInput.addEventListener('input', () => { saveSettings(); updateDebugPreview(); });
 useGoogleSearchCheckbox.addEventListener('change', () => { saveSettings(); updateDebugPreview(); });
 useBatchAbstractCheckbox.addEventListener('change', () => { saveSettings(); updateDebugPreview(); });
