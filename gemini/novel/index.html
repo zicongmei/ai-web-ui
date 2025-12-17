@@ -108,21 +108,28 @@
             
             <div id="statusDiv" class="status-bar hidden"></div>
 
-                <div class="debug-header">Debug Panel</div>
-                <div class="debug-group" id="requestPreviewGroup">
-                    <label>Request Preview:</label>
-                    <div class="debug-url">URL: <span id="debugUrlPreview">-</span></div>
-                    <pre id="debugRequestPreview"></pre>
+            <div id="debugSection" class="debug-section">
+                <div class="debug-header collapsible-header" id="toggleDebug">
+                    <label>Debug Panel</label>
+                    <span class="toggle-icon">▼</span>
                 </div>
-                <div class="debug-group hidden" id="actualRequestGroup">
-                    <label>Actual API Request:</label>
-                    <div class="debug-url">URL: <span id="debugActualUrl">-</span></div>
-                    <pre id="debugActualRequest"></pre>
+                <div id="debugContent" class="collapsible-content collapsed">
+                    <div class="debug-group" id="requestPreviewGroup">
+                        <label>Request Preview:</label>
+                        <div class="debug-url">URL: <span id="debugUrlPreview">-</span></div>
+                        <pre id="debugRequestPreview"></pre>
+                    </div>
+                    <div class="debug-group hidden" id="actualRequestGroup">
+                        <label>Actual API Request:</label>
+                        <div class="debug-url">URL: <span id="debugActualUrl">-</span></div>
+                        <pre id="debugActualRequest"></pre>
+                    </div>
+                    <div class="debug-group hidden" id="apiResponseGroup">
+                        <label>API Response:</label>
+                        <pre id="debugResponse"></pre>
+                    </div>
                 </div>
-                <div class="debug-group hidden" id="apiResponseGroup">
-                    <label>API Response:</label>
-                    <pre id="debugResponse"></pre>
-                </div>
+            </div>
             </div>
         </div>
 

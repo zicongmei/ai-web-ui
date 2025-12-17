@@ -27,68 +27,22 @@ const statusDiv = document.getElementById('statusDiv');
 
 // Debug Elements
 const debugSection = document.getElementById('debugSection');
+const toggleDebug = document.getElementById('toggleDebug');
+const debugContent = document.getElementById('debugContent');
 const debugUrlPreview = document.getElementById('debugUrlPreview');
-const debugRequestPreview = document.getElementById('debugRequestPreview');
-const debugActualUrl = document.getElementById('debugActualUrl');
-const debugActualRequest = document.getElementById('debugActualRequest');
-const debugResponse = document.getElementById('debugResponse');
-const requestPreviewGroup = document.getElementById('requestPreviewGroup');
-const actualRequestGroup = document.getElementById('actualRequestGroup');
-const debugResponseGroup = document.getElementById('apiResponseGroup');
-
-// Template Elements
-const tplChapters = document.getElementById('tplChapters');
-const tplIdea = document.getElementById('tplIdea');
-const tplIdeaWrapper = document.getElementById('tplIdeaWrapper');
-const tplLanguage = document.getElementById('tplLanguage');
-const toggleInstruction = document.getElementById('toggleInstruction');
-const systemInstructionTemplate = document.getElementById('systemInstructionTemplate');
-
-// Result Elements
-const resultArea = document.getElementById('resultArea');
-const resultTitle = document.getElementById('resultTitle');
-const resultContent = document.getElementById('resultContent');
-const tokenStats = document.getElementById('tokenStats');
-const priceStats = document.getElementById('priceStats');
-const saveEditButton = document.getElementById('saveEditButton');
-const discardEditButton = document.getElementById('discardEditButton');
-
-const SYSTEM_INSTRUCTION_BASE = `
-Write a concise, compelling story writing plan.
-It need to include the settings, the name of main characters and a detail plan for all {{chapters}} chapters
-
-Create a detailed story idea. Use around 100 words to describe each chapter in the story planning.
-`.trim();
-
-// Initialization
-document.addEventListener('DOMContentLoaded', () => {
-    loadSettings();
-    loadHistory();
-    renderHistory();
-    updateModelOptions();
-    updateDebugPreview();
-    
-    // Check for API key in general storage if not in novel storage
-    if (!apiKeyInput.value) {
-        const globalKey = localStorage.getItem('geminiApiKey');
-        if (globalKey) {
-            apiKeyInput.value = globalKey;
-            currentApiKey = globalKey;
-        }
-    }
-
-    // Auto-resume pending jobs
-    history.forEach(item => {
-        if (item.status === 'pending') {
-            pollBatchJob(item.id);
-        }
-    });
-
+...
     // Collapsible Logic
     if (toggleInstruction && systemInstructionTemplate) {
         toggleInstruction.addEventListener('click', () => {
             const isCollapsed = systemInstructionTemplate.classList.toggle('collapsed');
             toggleInstruction.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
+        });
+    }
+
+    if (toggleDebug && debugContent) {
+        toggleDebug.addEventListener('click', () => {
+            const isCollapsed = debugContent.classList.toggle('collapsed');
+            toggleDebug.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)';
         });
     }
 
