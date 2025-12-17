@@ -31,11 +31,29 @@
             <div class="form-group">
                 <label for="apiKey">Gemini API Key:</label>
                 <div class="row">
-                    <input id="apiKey" placeholder="Enter your Gemini API Key">
+                    <input id="apiKey" type="text" placeholder="Enter your Gemini API Key">
                     <button id="setApiKeyButton" style="width: auto;">Set Key</button>
                 </div>
             </div>
 
+            <div class="form-group">
+                <div class="collapsible-header" id="toggleInstruction">
+                    <label>System Instruction (Read-only)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="systemInstructionTemplate" class="instruction-template collapsible-content collapsed">
+                    Write a concise, compelling story writing plan.
+                    It need to include the settings, the name of main characters and a detail plan for all <span id="tplChapters">xx</span> chapters.
+                    <br><br>
+                    Create a detailed story idea. Use around 100 words to describe each chapter in the story planning.
+                    <div id="tplIdeaWrapper">
+                        <br>
+                        The story idea is: <span id="tplIdea">xx</span>
+                    </div>
+                    <br>
+                    The story language is <span id="tplLanguage">xx</span>
+                </div>
+            </div>
             <div class="row">
                 <div class="col">
                     <div class="form-group">
@@ -89,17 +107,36 @@
             <button id="stopButton" class="danger hidden">Stop Generation</button>
             
             <div id="statusDiv" class="status-bar hidden"></div>
+
+                <div class="debug-header">Debug Panel</div>
+                <div class="debug-group" id="requestPreviewGroup">
+                    <label>Request Preview:</label>
+                    <div class="debug-url">URL: <span id="debugUrlPreview">-</span></div>
+                    <pre id="debugRequestPreview"></pre>
+                </div>
+                <div class="debug-group hidden" id="actualRequestGroup">
+                    <label>Actual API Request:</label>
+                    <div class="debug-url">URL: <span id="debugActualUrl">-</span></div>
+                    <pre id="debugActualRequest"></pre>
+                </div>
+                <div class="debug-group hidden" id="apiResponseGroup">
+                    <label>API Response:</label>
+                    <pre id="debugResponse"></pre>
+                </div>
+            </div>
         </div>
 
         <div id="resultArea" class="container result-area hidden">
             <div class="result-header">
                 <h2 id="resultTitle">Title</h2>
-                <div>
+                <div class="result-actions">
+                    <button id="saveEditButton" class="hidden">Save Changes</button>
+                    <button id="discardEditButton" class="secondary hidden">Discard</button>
                     <span id="tokenStats" class="result-stats">Tokens: -</span>
                     <span id="priceStats" class="result-stats">Cost: -</span>
                 </div>
             </div>
-            <div id="resultContent" class="abstract-content"></div>
+            <div id="resultContent" class="abstract-content" contenteditable="true"></div>
         </div>
     </div>
 

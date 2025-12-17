@@ -48,6 +48,8 @@ body {
     border-radius: 4px;
     cursor: pointer;
     transition: background-color 0.2s;
+    position: relative;
+    padding-right: 35px;
 }
 
 .history-item:hover {
@@ -57,6 +59,28 @@ body {
 .history-item.active {
     border-left: 4px solid #007bff;
     background-color: #eef6fc;
+}
+
+.history-item .delete-btn {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #dc3545;
+    font-weight: bold;
+    font-size: 1.2em;
+    padding: 5px;
+    line-height: 1;
+    opacity: 0.3;
+    transition: opacity 0.2s;
+}
+
+.history-item:hover .delete-btn {
+    opacity: 1;
+}
+
+.history-item .delete-btn:hover {
+    color: #bd2130;
 }
 
 .history-item h4 {
@@ -190,6 +214,61 @@ button.danger:hover {
     color: #495057;
 }
 
+.instruction-template {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 15px;
+    font-style: italic;
+    color: #495057;
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+
+.instruction-template span {
+    font-weight: bold;
+    color: #007bff;
+    border-bottom: 1px dashed #007bff;
+}
+
+.debug-section {
+    margin-top: 20px;
+    background-color: #2b2b2b;
+    color: #a9b7c6;
+    border-radius: 4px;
+    font-size: 0.85em;
+    border: 1px solid #3c3f41;
+}
+
+.debug-header {
+    background-color: #3c3f41;
+    padding: 5px 15px;
+    font-weight: bold;
+    color: #bbb;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}
+
+.debug-group {
+    padding: 15px;
+    border-top: 1px solid #3c3f41;
+}
+
+.debug-group label {
+    display: block;
+    color: #ffc66d;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
+
+.debug-group pre {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
 .result-area {
     margin-top: 30px;
 }
@@ -208,6 +287,57 @@ button.danger:hover {
     padding: 5px 10px;
     border-radius: 4px;
     border: 1px solid #dee2e6;
+}
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background-color: #f1f1f1;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    border: 1px solid #ddd;
+}
+
+.collapsible-header label {
+    margin: 0;
+    cursor: pointer;
+}
+
+.toggle-icon {
+    transition: transform 0.3s;
+}
+
+.collapsed + .instruction-template {
+    display: none;
+}
+
+.collapsible-content.collapsed {
+    display: none;
+}
+
+.debug-url {
+    background-color: #1e1e1e;
+    padding: 5px 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.9em;
+    color: #ce9178;
+    word-break: break-all;
+}
+
+.result-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.abstract-content[contenteditable="true"]:focus {
+    outline: 2px solid #007bff;
+    background-color: #fff;
 }
 
 .abstract-content {
