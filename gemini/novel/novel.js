@@ -30,7 +30,70 @@ const debugSection = document.getElementById('debugSection');
 const toggleDebug = document.getElementById('toggleDebug');
 const debugContent = document.getElementById('debugContent');
 const debugUrlPreview = document.getElementById('debugUrlPreview');
-...
+const debugRequestPreview = document.getElementById('debugRequestPreview');
+const debugActualUrl = document.getElementById('debugActualUrl');
+const debugActualRequest = document.getElementById('debugActualRequest');
+const debugResponse = document.getElementById('debugResponse');
+const requestPreviewGroup = document.getElementById('requestPreviewGroup');
+const actualRequestGroup = document.getElementById('actualRequestGroup');
+const debugResponseGroup = document.getElementById('apiResponseGroup');
+
+// Template Elements
+const tplChapters = document.getElementById('tplChapters');
+const tplIdea = document.getElementById('tplIdea');
+const tplIdeaWrapper = document.getElementById('tplIdeaWrapper');
+const tplLanguage = document.getElementById('tplLanguage');
+const toggleInstruction = document.getElementById('toggleInstruction');
+const systemInstructionTemplate = document.getElementById('systemInstructionTemplate');
+
+// Result Elements
+const resultArea = document.getElementById('resultArea');
+const resultTitle = document.getElementById('resultTitle');
+const resultContent = document.getElementById('resultContent');
+const tokenStats = document.getElementById('tokenStats');
+const priceStats = document.getElementById('priceStats');
+const saveEditButton = document.getElementById('saveEditButton');
+const discardEditButton = document.getElementById('discardEditButton');
+
+// History Management DOM
+const historyList = document.getElementById('historyList');
+const saveToFileButton = document.getElementById('saveToFileButton');
+const loadFromFileButton = document.getElementById('loadFromFileButton');
+const fileInput = document.getElementById('fileInput');
+const clearHistoryButton = document.getElementById('clearHistoryButton');
+const newAbstractButton = document.getElementById('newAbstractButton');
+
+const SYSTEM_INSTRUCTION_BASE = `
+Write a concise, compelling story writing plan.
+It need to include the settings, the name of main characters and a detail plan for all {{chapters}} chapters
+
+Create a detailed story idea. Use around 100 words to describe each chapter in the story planning.
+`.trim();
+
+// Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    loadSettings();
+    loadHistory();
+    renderHistory();
+    updateModelOptions();
+    updateDebugPreview();
+    
+    // Check for API key in general storage if not in novel storage
+    if (!apiKeyInput.value) {
+        const globalKey = localStorage.getItem('geminiApiKey');
+        if (globalKey) {
+            apiKeyInput.value = globalKey;
+            currentApiKey = globalKey;
+        }
+    }
+
+    // Auto-resume pending jobs
+    history.forEach(item => {
+        if (item.status === 'pending') {
+            pollBatchJob(item.id);
+        }
+    });
+
     // Collapsible Logic
     if (toggleInstruction && systemInstructionTemplate) {
         toggleInstruction.addEventListener('click', () => {
@@ -225,7 +288,7 @@ function updateDebugPreview() {
 
 function loadAbstract(id) {
     const item = history.find(h => h.id === id);
-    if (!item) return;
+    if (!item) return; 
     
     currentAbstractId = id;
     resultTitle.textContent = item.title;
@@ -576,11 +639,18 @@ clearHistoryButton.addEventListener('click', () => {
 });
 
 saveToFileButton.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(history, null, 2)], { type: 'application/json' });
+    if (!currentAbstractId) {
+        alert('Please select a job from history to save.');
+        return;
+    }
+    const item = history.find(h => h.id === currentAbstractId);
+    if (!item) return;
+
+    const blob = new Blob([JSON.stringify(item, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `novel_abstracts_${Date.now()}.json`;
+    a.download = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${item.id}.json`;
     a.click();
 });
 
@@ -593,16 +663,44 @@ fileInput.addEventListener('change', (e) => {
     reader.onload = (evt) => {
         try {
             const loaded = JSON.parse(evt.target.result);
+            const processItem = (item) => {
+                if (!item || !item.id) return false;
+                // If ID exists, append a suffix to make it unique or just skip if exactly same
+                const existing = history.find(h => h.id === item.id);
+                if (existing) {
+                    if (JSON.stringify(existing) === JSON.stringify(item)) {
+                        return false; // Skip identical
+                    }
+                    item.id = item.id + '_' + Date.now(); // Make unique
+                }
+                history.push(item);
+                return true;
+            };
+
+            let addedCount = 0;
             if (Array.isArray(loaded)) {
-                history = loaded;
+                loaded.forEach(item => {
+                    if (processItem(item)) addedCount++;
+                });
+            } else if (typeof loaded === 'object') {
+                if (processItem(loaded)) addedCount = 1;
+            }
+
+            if (addedCount > 0) {
                 saveHistory();
-                alert('History loaded successfully');
+                renderHistory();
+                if (addedCount === 1 && !Array.isArray(loaded)) {
+                    loadAbstract(loaded.id);
+                }
+                alert(`Successfully loaded ${addedCount} job(s).`);
             } else {
-                alert('Invalid file format');
+                alert('No new unique jobs found in the file.');
             }
         } catch (err) {
             alert('Error loading file: ' + err.message);
         }
+        // Reset file input so same file can be selected again
+        e.target.value = '';
     };
     reader.readAsText(file);
 });
