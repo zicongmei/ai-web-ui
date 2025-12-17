@@ -221,9 +221,8 @@ function deleteHistoryItem(id) {
         saveHistory();
         if (currentAbstractId === id) {
             newAbstractButton.click();
-        } else {
-            renderHistory();
         }
+        renderHistory();
     }
 }
 
@@ -627,6 +626,7 @@ newAbstractButton.addEventListener('click', () => {
     resultArea.classList.add('hidden');
     resultTitle.textContent = '';
     resultContent.textContent = '';
+    renderHistory();
     // Optional: Clear inputs
 });
 
