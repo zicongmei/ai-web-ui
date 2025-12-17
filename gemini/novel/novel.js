@@ -1439,7 +1439,7 @@ saveToFileButton.addEventListener('click', () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${item.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${item.id}.json`;
+    a.download = `${item.title.replace(/[\\/:*?"<>|]/g, '_')}_${item.id}.json`;
     a.click();
 });
 
