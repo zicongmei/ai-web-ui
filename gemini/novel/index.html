@@ -8,7 +8,11 @@
 </head>
 <body>
 
-    <div class="sidebar">
+    <button id="toggleSidebar" class="sidebar-toggle-btn" title="Toggle History">
+        <span class="toggle-icon">◀</span>
+    </button>
+
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h2>History</h2>
         </div>
@@ -51,7 +55,7 @@
                         <br><br>
                         It need to include the settings, the name of main characters and a detail plan for all <span id="tplChapters">xx</span> chapters.
                         <br><br>
-                        Create a detailed story idea. Use around 100 words to describe each chapter in the story planning.
+                        Create a detailed story idea. Use around <span id="tplPlanWords">100</span> words to describe each chapter in the story planning.
                         <div id="tplIdeaWrapper">
                             <br>
                             The story idea is: <span id="tplIdea">xx</span>
@@ -83,18 +87,24 @@
 
                 <div class="row">
                     <div class="col">
+                        <div class="form-group">
+                            <label for="numChapters">Number of Chapters:</label>
+                            <input type="number" id="numChapters" value="10" min="1" max="100">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="planWordsPerChapter">Words per Chapter (Plan):</label>
+                            <input type="number" id="planWordsPerChapter" value="100" min="10" max="1000">
+                        </div>
+                    </div>
+                    <div class="col">
                         <div class="form-group" id="thinkingLevelGroup">
                             <label for="thinkingLevelSelect">Thinking Level:</label>
                             <select id="thinkingLevelSelect">
                                 <option value="low">Low</option>
                                 <option value="high">High</option>
                             </select>
-                        </div>
-                    </div>
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="numChapters">Number of Chapters:</label>
-                            <input type="number" id="numChapters" value="10" min="1" max="100">
                         </div>
                     </div>
                 </div>
@@ -202,6 +212,17 @@
                     <button id="startStoryButton">Start Story Generation</button>
                     <button id="pauseStoryButton" class="secondary hidden">Pause Generation</button>
                     <button id="resumeStoryButton" class="hidden">Resume Generation</button>
+                    <button id="deleteAllChaptersButton" class="danger hidden">Delete All Chapters</button>
+                </div>
+
+                <div id="storyDebugSection" class="debug-section hidden">
+                    <div class="debug-header collapsible-header" id="toggleStoryDebug">
+                        <label>Story Generation Debug Logs</label>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="storyDebugContent" class="collapsible-content collapsed" style="padding: 0;">
+                        <!-- Log entries will be injected here -->
+                    </div>
                 </div>
             </div>
         </div>
