@@ -44,6 +44,12 @@ const GEMINI_PRICING_CONFIG = {
                 }
                 return { inputRate, outputRate };
             }
+        },
+        'gemini-3-flash-preview': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 0.50 / 1_000_000,
+                outputRate: 3.00 / 1_000_000
+            })
         }
     },
 
