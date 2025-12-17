@@ -22,6 +22,13 @@ const videoApiKeyInput = document.getElementById('videoApiKey');
 const setVideoApiKeyButton = document.getElementById('setVideoApiKeyButton');
 const videoModelSelect = document.getElementById('videoModel');
 const videoPromptInput = document.getElementById('videoPromptInput');
+const videoDurationSecondsSelect = document.getElementById('durationSeconds');
+const videoAspectRatioSelect = document.getElementById('aspectRatio');
+const videoResolutionSelect = document.getElementById('resolution');
+const videoSampleCountInput = document.getElementById('sampleCount');
+const videoSeedInput = document.getElementById('seed');
+const videoNegativePromptInput = document.getElementById('negativePrompt');
+const videoPersonGenerationSelect = document.getElementById('personGeneration');
 const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
 const selectedImagePreview = document.getElementById('selectedImagePreview');
 const inputImageDisplay = document.getElementById('inputImageDisplay');
@@ -184,11 +191,27 @@ async function generateVideoContent() {
             };
         }
 
+        // Retrieve video generation parameters
+        const durationSeconds = videoDurationSecondsSelect.value;
+        const aspectRatio = videoAspectRatioSelect.value;
+        const resolution = videoResolutionSelect.value;
+        const sampleCount = videoSampleCountInput.value;
+        const seed = videoSeedInput.value;
+        const negativePrompt = videoNegativePromptInput.value.trim();
+        const personGeneration = videoPersonGenerationSelect.value;
+
+        const parameters = {};
+        if (durationSeconds) parameters.durationSeconds = parseInt(durationSeconds, 10);
+        if (aspectRatio) parameters.aspectRatio = aspectRatio;
+        if (resolution) parameters.resolution = resolution;
+        if (sampleCount) parameters.sampleCount = parseInt(sampleCount, 10);
+        if (seed) parameters.seed = parseInt(seed, 10);
+        if (negativePrompt) parameters.negativePrompt = negativePrompt;
+        if (personGeneration) parameters.personGeneration = personGeneration;
+
         const requestBody = {
             instances: [instance],
-            parameters: {
-                sampleCount: 1
-            }
+            parameters: parameters
         };
 
         // Log Start
@@ -234,9 +257,10 @@ async function generateVideoContent() {
 
         videoStatusMessage.textContent = 'Generation complete!';
         
-        // Calculate cost assuming ~5 seconds of video for preview models
-        const estimatedDurationSeconds = 5; 
-        const cost = calculateVideoCost(model, 0, estimatedDurationSeconds);
+        // Use actual parameters if available, otherwise fallback to defaults for estimation
+        const actualDurationSeconds = parameters.durationSeconds || 8; 
+        const actualSampleCount = parameters.sampleCount || 1;
+        const cost = calculateVideoCost(model, 0, actualDurationSeconds, actualSampleCount);
         
         updateVideoApiCallLog(pollStartIndex, result, totalDuration, cost);
 
@@ -296,9 +320,12 @@ async function recoverVideoOperation() {
 
         videoStatusMessage.textContent = 'Recovery complete!';
         
-        // Calculate cost assuming ~5 seconds of video for preview models (estimation)
-        const estimatedDurationSeconds = 5; 
-        const cost = calculateVideoCost(selectedVideoModel, 0, estimatedDurationSeconds);
+        // For recovery, parameters are not directly available from the DOM in the same way, 
+        // so we'll make an estimation or potentially try to parse from the original request log if available.
+        // For now, use sensible defaults or a simplified estimation similar to generateVideoContent's fallback.
+        const estimatedDurationSeconds = 8; // Default duration
+        const estimatedSampleCount = 1; // Default sample count
+        const cost = calculateVideoCost(selectedVideoModel, 0, estimatedDurationSeconds, estimatedSampleCount);
         
         updateVideoApiCallLog(pollStartIndex, result, totalDuration, cost);
 
@@ -399,11 +426,11 @@ function stopVideoGeneration() {
 
 // --- Helper Functions ---
 
-function calculateVideoCost(modelId, inputTokens, outputTokens) {
+function calculateVideoCost(modelId, inputTokens, actualDurationSeconds, actualSampleCount) {
     // Basic stub, uses GEMINI_PRICING_CONFIG if available
     if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.VIDEO_GEN && GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId]) {
         const pricing = GEMINI_PRICING_CONFIG.VIDEO_GEN[modelId];
-        return (inputTokens * pricing.input) + (outputTokens * pricing.output);
+        return (inputTokens * pricing.input) + (actualDurationSeconds * actualSampleCount * pricing.output_per_second_per_sample);
     }
     return 0;
 }
