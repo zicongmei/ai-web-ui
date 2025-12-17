@@ -49,11 +49,11 @@ const GEMINI_PRICING_CONFIG = {
 
     // Video Generation Models (Veo)
     VIDEO_GEN: {
-        'veo-2.0-generate-001': { input: 0, output: 0.35 }, // Output per second
-        'veo-3.0-generate-001': { input: 0, output: 0.40 },
-        'veo-3.0-fast-generate-001': { input: 0, output: 0.15 },
-        'veo-3.1-generate-preview': { input: 0, output: 0.40 },
-        'veo-3.1-fast-generate-preview': { input: 0, output: 0.15 }
+        'veo-2.0-generate-001': { input: 0, output_per_second_per_sample: 0.35 }, 
+        'veo-3.0-generate-001': { input: 0, output_per_second_per_sample: 0.40 },
+        'veo-3.0-fast-generate-001': { input: 0, output_per_second_per_sample: 0.15 },
+        'veo-3.1-generate-preview': { input: 0, output_per_second_per_sample: 0.40 },
+        'veo-3.1-fast-generate-preview': { input: 0, output_per_second_per_sample: 0.15 }
     },
 
     // Image Generation Models
