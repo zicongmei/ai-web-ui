@@ -101,6 +101,48 @@ function populateVideoModelSelect() {
         videoModelSelect.appendChild(option);
     }
     videoModelSelect.value = selectedVideoModel;
+    updateDurationSecondsOptions();
+}
+
+function updateDurationSecondsOptions() {
+    const model = videoModelSelect.value;
+    const isVeo2 = model.includes('veo-2');
+    const isVeo3 = model.includes('veo-3');
+    const hasImage = (selectedImagePreview.style.display !== 'none' && inputImageDisplay.src);
+
+    const currentVal = videoDurationSecondsSelect.value;
+    videoDurationSecondsSelect.innerHTML = '<option value="" selected>Not Set (Default: 8)</option>';
+
+    if (hasImage) {
+        const option = document.createElement('option');
+        option.value = "8";
+        option.textContent = "8 (Fixed for Image-to-Video)";
+        videoDurationSecondsSelect.appendChild(option);
+        videoDurationSecondsSelect.value = "8";
+        videoDurationSecondsSelect.disabled = true;
+    } else {
+        videoDurationSecondsSelect.disabled = false;
+        let options = [];
+        if (isVeo2) {
+            options = [5, 6, 7, 8];
+        } else if (isVeo3) {
+            options = [4, 6, 8];
+        } else {
+            options = [4, 5, 6, 7, 8]; // Default
+        }
+
+        options.forEach(d => {
+            const option = document.createElement('option');
+            option.value = d.toString();
+            option.textContent = d.toString();
+            videoDurationSecondsSelect.appendChild(option);
+        });
+
+        // Restore previous value if it's still in the list
+        if (currentVal && options.includes(parseInt(currentVal, 10))) {
+            videoDurationSecondsSelect.value = currentVal;
+        }
+    }
 }
 
 // --- Image Input Handling ---
@@ -109,6 +151,7 @@ function displayVideoInputImage(base64) {
     inputImageDisplay.src = `data:image/png;base64,${base64}`;
     selectedImagePreview.style.display = 'block';
     videoStatusMessage.textContent = 'Video input image updated.';
+    updateDurationSecondsOptions();
 }
 
 function clearVideoInputImage() {
@@ -121,6 +164,7 @@ function clearVideoInputImage() {
         // But for consistency, let's assume this clear button is for the video context.
     }
     videoStatusMessage.textContent = 'Video input image cleared.';
+    updateDurationSecondsOptions();
 }
 
 // Hook into text2img.js addImageAsInput to update video preview
@@ -193,7 +237,7 @@ async function generateVideoContent() {
         }
 
         // Retrieve video generation parameters
-        const durationSeconds = videoDurationSecondsSelect.value;
+        let durationSecondsValue = videoDurationSecondsSelect.value;
         const aspectRatio = videoAspectRatioSelect.value;
         const resolution = videoResolutionSelect.value;
         const sampleCount = videoSampleCountInput.value;
@@ -203,7 +247,14 @@ async function generateVideoContent() {
         const generateAudio = videoGenerateAudioSelect.value;
 
         const parameters = {};
-        if (durationSeconds) parameters.durationSeconds = parseInt(durationSeconds, 10);
+        
+        // Requirement: When using referenceImages: 8.
+        if (imageBase64) {
+            parameters.durationSeconds = 8;
+        } else if (durationSecondsValue) {
+            parameters.durationSeconds = parseInt(durationSecondsValue, 10);
+        }
+
         if (aspectRatio) parameters.aspectRatio = aspectRatio;
         if (resolution) parameters.resolution = resolution;
         if (sampleCount) parameters.sampleCount = parseInt(sampleCount, 10);
@@ -516,6 +567,7 @@ setVideoApiKeyButton.addEventListener('click', setVideoApiKey);
 videoModelSelect.addEventListener('change', () => {
     selectedVideoModel = videoModelSelect.value;
     setLocalStorageItem('selectedVideoModel', selectedVideoModel);
+    updateDurationSecondsOptions();
 });
 generateVideoButton.addEventListener('click', generateVideoContent);
 recoverVideoButton.addEventListener('click', recoverVideoOperation);
