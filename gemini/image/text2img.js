@@ -24,6 +24,33 @@ const GEMINI_IMAGE_MODELS = {
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
 
+const IMAGE_RESOLUTION_DATA = {
+    'gemini-2.5-flash-image': [
+        { ratio: '1:1', res: '1024x1024', tokens: 1290 },
+        { ratio: '2:3', res: '832x1248', tokens: 1290 },
+        { ratio: '3:2', res: '1248x832', tokens: 1290 },
+        { ratio: '3:4', res: '864x1184', tokens: 1290 },
+        { ratio: '4:3', res: '1184x864', tokens: 1290 },
+        { ratio: '4:5', res: '896x1152', tokens: 1290 },
+        { ratio: '5:4', res: '1152x896', tokens: 1290 },
+        { ratio: '9:16', res: '768x1344', tokens: 1290 },
+        { ratio: '16:9', res: '1344x768', tokens: 1290 },
+        { ratio: '21:9', res: '1536x672', tokens: 1290 }
+    ],
+    'gemini-3-pro-image-preview': [
+        { ratio: '1:1', res: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '2:3', res: { '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '3:2', res: { '1K': '1264x848', '2K': '2528x1696', '4K': '5056x3392' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '3:4', res: { '1K': '896x1200', '2K': '1792x2400', '4K': '3584x4800' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '4:3', res: { '1K': '1200x896', '2K': '2400x1792', '4K': '4800x3584' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '4:5', res: { '1K': '928x1152', '2K': '1856x2304', '4K': '3712x4608' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '5:4', res: { '1K': '1152x928', '2K': '2304x1856', '4K': '4608x3712' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '9:16', res: { '1K': '768x1376', '2K': '1536x2752', '4K': '3072x5504' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '16:9', res: { '1K': '1376x768', '2K': '2752x1536', '4K': '5504x3072' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '21:9', res: { '1K': '1584x672', '2K': '3168x1344', '4K': '6336x2688' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } }
+    ]
+};
+
 // Get DOM elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
@@ -101,6 +128,40 @@ function setApiKey() {
     return true;
 }
 
+// Function to update Aspect Ratio options based on model and size
+function updateAspectRatioOptions() {
+    const model = geminiModelSelect.value;
+    const size = imageSizeSelect.value;
+    const data = IMAGE_RESOLUTION_DATA[model];
+    
+    if (!data) return;
+
+    const currentVal = aspectRatioSelect.value;
+    aspectRatioSelect.innerHTML = '';
+
+    data.forEach(item => {
+        const option = document.createElement('option');
+        option.value = item.ratio;
+        
+        let resolution, tokens;
+        if (model === GEMINI_3_PRO_MODEL_ID) {
+            resolution = item.res[size];
+            tokens = item.tokens[size];
+        } else {
+            resolution = item.res;
+            tokens = item.tokens;
+        }
+        
+        option.textContent = `${item.ratio} (${resolution}, ${tokens} tokens)`;
+        aspectRatioSelect.appendChild(option);
+    });
+
+    // Try to restore previous value
+    if (currentVal && Array.from(aspectRatioSelect.options).some(opt => opt.value === currentVal)) {
+        aspectRatioSelect.value = currentVal;
+    }
+}
+
 // Function to load values from localStorage (excluding model-dependent features for initial setup)
 function loadSettingsFromLocalStorage() {
     // API Key
@@ -122,9 +183,12 @@ function loadSettingsFromLocalStorage() {
         imageCountInput.value = numOutputImages;
     }
 
+    // Populate aspect ratio options first
+    updateAspectRatioOptions();
+
     // Aspect Ratio
     const storedAspectRatio = getLocalStorageItem('aspectRatio');
-    if (storedAspectRatio) {
+    if (storedAspectRatio && Array.from(aspectRatioSelect.options).some(opt => opt.value === storedAspectRatio)) {
         aspectRatioSelect.value = storedAspectRatio;
     }
 
@@ -198,7 +262,7 @@ function toggleModelDependentFeatures() {
         imageSizeSelect.disabled = false;
         imageSizeOptionGroup.classList.remove('feature-disabled-by-model');
         const storedImageSize = getLocalStorageItem('imageSize');
-        if (storedImageSize && imageSizeSelect.options.namedItem(storedImageSize)) {
+        if (storedImageSize && Array.from(imageSizeSelect.options).some(opt => opt.value === storedImageSize)) {
             imageSizeSelect.value = storedImageSize;
         } else {
             imageSizeSelect.value = '1K'; // Default to 1K if no stored value or invalid
@@ -220,6 +284,9 @@ function toggleModelDependentFeatures() {
         useGoogleSearchInput.checked = false; // Force unchecked for 2.5 models
         googleSearchOptionGroup.classList.add('feature-disabled-by-model');
     }
+
+    // Update Aspect Ratio options based on newly selected model/size
+    updateAspectRatioOptions();
 
     // Update explanation note to reflect feature status
     updateExplanationNote();
@@ -257,8 +324,10 @@ function updateImageSize() {
     // Only save if the feature is enabled (i.e., for Gemini 3 Pro)
     if (!imageSizeSelect.disabled) {
         setLocalStorageItem('imageSize', imageSizeSelect.value);
+        updateAspectRatioOptions(); // Update options when size changes
     }
 }
+
 
 function updateUseGoogleSearch() {
     // Only save if the feature is enabled (i.e., for Gemini 3 Pro)
@@ -339,7 +408,7 @@ function saveGeneratedImage(base64Image, prompt) {
 }
 
 // Token and Price Calculation Logic
-function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize, useBatch = false) {
+function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize, selectedAspectRatio, useBatch = false) {
     let inputCost = 0;
     let outputCost = 0;
     let totalInputTokensCalculated = inputTextTokens; // Actual tokens contributing to input cost
@@ -359,27 +428,43 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         if (inputImageCount > 0) {
             inputCost += inputImageCount * modelPricing.input.image_fixed_price;
         }
-            } else if (modelId === 'gemini-2.5-flash-image') {
-                if (inputImageCount > 0) {
-                    totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
-                }
-                inputCost += (totalInputTokensCalculated / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
+    } else if (modelId === 'gemini-2.5-flash-image') {
+        if (inputImageCount > 0) {
+            totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+        }
+        inputCost += (totalInputTokensCalculated / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
+    }
+
+    // --- Output Cost Calculation ---
+    if (outputImageCount > 0) {
+        if (modelId === 'gemini-3-pro-image-preview') {
+            if (imageOutputSize === '4K') {
+                outputCost += outputImageCount * modelPricing.output.image_4K_fixed_price;
+            } else { // '1K' or '2K'
+                outputCost += outputImageCount * modelPricing.output.image_1K_2K_fixed_price;
             }
-    
-        // --- Output Cost Calculation ---
-        if (outputImageCount > 0) {
-            if (modelId === 'gemini-3-pro-image-preview') {
-                if (imageOutputSize === '4K') {
-                    outputCost += outputImageCount * modelPricing.output.image_4K_fixed_price;
-                } else { // '1K' or '2K'
-                    outputCost += outputImageCount * modelPricing.output.image_1K_2K_fixed_price;
-                }
-            } else if (modelId === 'gemini-2.5-flash-image') {
-                // Use fixed per-image price for Flash as per table "equivalent to $0.0195 per image"
-                outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
+            
+            // Update totalOutputTokensCalculated based on data table
+            const data = IMAGE_RESOLUTION_DATA[modelId];
+            const item = data.find(i => i.ratio === selectedAspectRatio);
+            if (item) {
+                totalOutputTokensCalculated = outputImageCount * item.tokens[imageOutputSize];
+            } else {
+                totalOutputTokensCalculated = 0; // Or some default
+            }
+        } else if (modelId === 'gemini-2.5-flash-image') {
+            // Use fixed per-image price for Flash as per table "equivalent to $0.0195 per image"
+            outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
+            
+            const data = IMAGE_RESOLUTION_DATA[modelId];
+            const item = data.find(i => i.ratio === selectedAspectRatio);
+            if (item) {
+                totalOutputTokensCalculated = outputImageCount * item.tokens;
+            } else {
                 totalOutputTokensCalculated = outputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
             }
         }
+    }
     if (useBatch) {
         inputCost *= 0.5;
         outputCost *= 0.5;
@@ -710,7 +795,7 @@ async function generateSingleImage(prompt) {
     const inputTextTokens = Math.ceil(prompt.length / 4); // Estimate based on char count
 
     // Calculate cost for this API call (1 output image expected)
-    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, 1, imageOutputSize, false);
+    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, 1, imageOutputSize, aspectRatioSelect.value, false);
 
     const response = await fetch(imageEndpoint, {
         method: 'POST',
@@ -736,7 +821,7 @@ async function generateSingleImage(prompt) {
     
     // Parse Usage Metadata
     let actualInputTokens = inputTextTokens; // Default to estimate
-    let actualOutputTokens = (selectedModel === GEMINI_3_PRO_MODEL_ID) ? 0 : (successfulOutputImages * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS);
+    let actualOutputTokens = 0;
     let actualThoughtTokens = 0;
 
     if (data.usageMetadata) {
@@ -745,8 +830,12 @@ async function generateSingleImage(prompt) {
         actualThoughtTokens = data.usageMetadata.thoughtsTokenCount || 0;
     }
 
-    // Recalculate cost based on actual successful outputs (Cost calculation logic remains based on image count for G3P as per pricing table)
-    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, false);
+    // Recalculate cost based on actual successful outputs
+    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, aspectRatioSelect.value, false);
+
+    if (actualOutputTokens === 0 && successfulOutputImages > 0) {
+        actualOutputTokens = finalCostResult.outputTokens;
+    }
 
     logApiInteraction(imageEndpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult);
 
@@ -827,6 +916,7 @@ async function generateBatchImages(prompt, numToGenerate) {
         inputImageCount,
         0, // No output images in submission response
         imageOutputSizeForBatch,
+        aspectRatioSelect.value,
         true // useBatch = true
     );
 
@@ -961,10 +1051,6 @@ async function generateBatchImages(prompt, numToGenerate) {
             if (resp.usageMetadata) {
                 batchOutputTokens += resp.usageMetadata.candidatesTokenCount || 0;
                 batchThoughtTokens += resp.usageMetadata.thoughtsTokenCount || 0;
-            } else {
-                 if (selectedModel !== GEMINI_3_PRO_MODEL_ID) {
-                     batchOutputTokens += GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
-                 }
             }
         }
         
@@ -979,8 +1065,14 @@ async function generateBatchImages(prompt, numToGenerate) {
             0, // No input image present for this output-only calculation
             successCount, // Only count successfully generated images for output cost
             imageOutputSizeForBatch,
+            aspectRatioSelect.value,
             true // useBatch = true
         );
+
+        // If usageMetadata didn't provide enough tokens, fallback to calculated ones
+        if (batchOutputTokens === 0 && successCount > 0) {
+            batchOutputTokens = outputImageCostResult.outputTokens;
+        }
 
         // Update the last poll interaction entry with the output cost and tokens
         if (finalPollInteractionIndex !== -1 && allApiInteractions[finalPollInteractionIndex]) {
@@ -1140,10 +1232,6 @@ async function recoverBatch() {
                 if (resp.usageMetadata) {
                     batchOutputTokens += resp.usageMetadata.candidatesTokenCount || 0;
                     batchThoughtTokens += resp.usageMetadata.thoughtsTokenCount || 0;
-                } else {
-                     if (selectedModel !== GEMINI_3_PRO_MODEL_ID) {
-                         batchOutputTokens += GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
-                     }
                 }
             }
             
@@ -1158,8 +1246,14 @@ async function recoverBatch() {
                 0, 
                 successCount, 
                 imageOutputSizeForBatch,
+                aspectRatioSelect.value,
                 true 
             );
+
+            // If usageMetadata didn't provide enough tokens, fallback to calculated ones
+            if (batchOutputTokens === 0 && successCount > 0) {
+                batchOutputTokens = outputImageCostResult.outputTokens;
+            }
 
             // Update log
             if (finalPollInteractionIndex !== -1 && allApiInteractions[finalPollInteractionIndex]) {
