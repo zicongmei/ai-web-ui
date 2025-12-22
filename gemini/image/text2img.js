@@ -19,10 +19,23 @@ let totalEstimatedCost = 0;
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
-    'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image'
+    'gemini-2.0-flash-preview-image-generation': 'Gemini 2.0 Flash Image',
+    'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image',
+    'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
+    'imagen-4.0-generate-001': 'Imagen 4 Standard',
+    'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra',
+    'imagen-3.0-generate-002': 'Imagen 3'
 };
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
+
+const IMAGEN_STANDARD_RATIOS = [
+    { ratio: '1:1', res: '1024x1024', tokens: 1000 },
+    { ratio: '3:4', res: '768x1024', tokens: 1000 },
+    { ratio: '4:3', res: '1024x768', tokens: 1000 },
+    { ratio: '9:16', res: '576x1024', tokens: 1000 },
+    { ratio: '16:9', res: '1024x576', tokens: 1000 }
+];
 
 const IMAGE_RESOLUTION_DATA = {
     'gemini-2.5-flash-image': [
@@ -37,6 +50,13 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '16:9', res: '1344x768', tokens: 1290 },
         { ratio: '21:9', res: '1536x672', tokens: 1290 }
     ],
+    'gemini-2.0-flash-preview-image-generation': [
+        { ratio: '1:1', res: '1024x1024', tokens: 1290 },
+        { ratio: '3:4', res: '864x1184', tokens: 1290 },
+        { ratio: '4:3', res: '1184x864', tokens: 1290 },
+        { ratio: '9:16', res: '768x1344', tokens: 1290 },
+        { ratio: '16:9', res: '1344x768', tokens: 1290 }
+    ],
     'gemini-3-pro-image-preview': [
         { ratio: '1:1', res: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '2:3', res: { '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
@@ -48,7 +68,11 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '9:16', res: { '1K': '768x1376', '2K': '1536x2752', '4K': '3072x5504' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '16:9', res: { '1K': '1376x768', '2K': '2752x1536', '4K': '5504x3072' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '21:9', res: { '1K': '1584x672', '2K': '3168x1344', '4K': '6336x2688' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } }
-    ]
+    ],
+    'imagen-4.0-fast-generate-001': IMAGEN_STANDARD_RATIOS,
+    'imagen-4.0-generate-001': IMAGEN_STANDARD_RATIOS,
+    'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS,
+    'imagen-3.0-generate-002': IMAGEN_STANDARD_RATIOS
 };
 
 // Get DOM elements
@@ -428,11 +452,14 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         if (inputImageCount > 0) {
             inputCost += inputImageCount * modelPricing.input.image_fixed_price;
         }
-    } else if (modelId === 'gemini-2.5-flash-image') {
+    } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash')) {
         if (inputImageCount > 0) {
             totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
         inputCost += (totalInputTokensCalculated / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
+    } else if (modelId.startsWith('imagen-')) {
+        // Imagen models typically don't charge for input tokens in this API tier, or have fixed per-image pricing on output
+        inputCost = 0;
     }
 
     // --- Output Cost Calculation ---
@@ -449,11 +476,8 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             const item = data.find(i => i.ratio === selectedAspectRatio);
             if (item) {
                 totalOutputTokensCalculated = outputImageCount * item.tokens[imageOutputSize];
-            } else {
-                totalOutputTokensCalculated = 0; // Or some default
             }
-        } else if (modelId === 'gemini-2.5-flash-image') {
-            // Use fixed per-image price for Flash as per table "equivalent to $0.0195 per image"
+        } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash')) {
             outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
             
             const data = IMAGE_RESOLUTION_DATA[modelId];
@@ -463,6 +487,11 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             } else {
                 totalOutputTokensCalculated = outputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
             }
+        } else if (modelId.startsWith('imagen-')) {
+            outputCost += outputImageCount * modelPricing.output.image_fixed_price;
+            const data = IMAGE_RESOLUTION_DATA[modelId];
+            const item = data.find(i => i.ratio === selectedAspectRatio);
+            totalOutputTokensCalculated = outputImageCount * (item ? item.tokens : 1000);
         }
     }
     if (useBatch) {
