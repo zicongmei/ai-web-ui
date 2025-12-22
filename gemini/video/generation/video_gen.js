@@ -30,7 +30,11 @@ const videoSeedInput = document.getElementById('seed');
 const videoNegativePromptInput = document.getElementById('negativePrompt');
 const videoPersonGenerationSelect = document.getElementById('personGeneration');
 const videoGenerateAudioSelect = document.getElementById('generateAudio');
-const imageInput = document.getElementById('imageInput'); // Keeping this for manual upload
+const imageInput = document.getElementById('imageInput'); // Manual upload
+const videoCameraInput = document.getElementById('videoCameraInput');
+const videoTakePhotoButton = document.getElementById('videoTakePhotoButton');
+const videoImageUrlInput = document.getElementById('videoImageUrlInput');
+const videoAddUrlButton = document.getElementById('videoAddUrlButton');
 const selectedImagePreview = document.getElementById('selectedImagePreview');
 const inputImageDisplay = document.getElementById('inputImageDisplay');
 const clearInputImageButton = document.getElementById('clearInputImageButton');
@@ -146,6 +150,46 @@ function updateDurationSecondsOptions() {
 }
 
 // --- Image Input Handling ---
+
+async function addVideoImageFromUrl() {
+    const url = videoImageUrlInput.value.trim();
+    if (!url) return;
+
+    videoStatusMessage.textContent = 'Fetching image from URL...';
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        
+        const blob = await response.blob();
+        if (!blob.type.startsWith('image/')) {
+            throw new Error('URL does not point to a valid image.');
+        }
+
+        const base64Data = await blobToBase64(blob);
+        const base64 = base64Data.split(',')[1];
+        displayVideoInputImage(base64);
+        videoImageUrlInput.value = '';
+        videoStatusMessage.textContent = 'Image added from URL.';
+        setTimeout(() => {
+            if (videoStatusMessage.textContent === 'Image added from URL.') {
+                videoStatusMessage.textContent = '';
+            }
+        }, 3000);
+    } catch (error) {
+        console.error('Error adding image from URL:', error);
+        videoStatusMessage.textContent = `Error: ${error.message} (CORS might block some URLs)`;
+    }
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
 
 function displayVideoInputImage(base64) {
     inputImageDisplay.src = `data:image/png;base64,${base64}`;
@@ -576,6 +620,23 @@ clearInputImageButton.addEventListener('click', clearVideoInputImage); // Listen
 
 // Listener for manual file upload
 imageInput.addEventListener('change', (event) => {
+    handleVideoFileSelect(event);
+});
+
+// Listener for camera capture
+videoCameraInput.addEventListener('change', (event) => {
+    handleVideoFileSelect(event);
+});
+
+// Listener for camera button click
+videoTakePhotoButton.addEventListener('click', () => {
+    videoCameraInput.click();
+});
+
+// Listener for Add URL button click
+videoAddUrlButton.addEventListener('click', addVideoImageFromUrl);
+
+function handleVideoFileSelect(event) {
     const file = event.target.files[0];
     if (file) {
         const reader = new FileReader();
@@ -585,7 +646,7 @@ imageInput.addEventListener('change', (event) => {
         };
         reader.readAsDataURL(file);
     }
-});
+}
 
 showVideoApiCallsButton.addEventListener('click', () => {
     videoApiCallsContainer.innerHTML = '';

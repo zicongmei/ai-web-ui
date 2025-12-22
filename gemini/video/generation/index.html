@@ -37,7 +37,20 @@
                 
                 <div class="image-upload-container">
                     <label for="imageInput">Optional Image Input (for Image-to-Video):</label>
-                    <input type="file" id="imageInput" accept="image/*">
+                    
+                    <div class="image-input-options" style="display: flex; flex-direction: column; gap: 10px;">
+                        <div class="file-camera-group" style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" id="imageInput" accept="image/*" style="flex-grow: 1;">
+                            <button id="videoTakePhotoButton" style="background-color: #8ab4f8; color: #202124; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Take Photo</button>
+                            <input type="file" id="videoCameraInput" accept="image/*" capture="environment" style="display: none;">
+                        </div>
+                        
+                        <div class="url-input-group" style="display: flex; gap: 10px;">
+                            <input type="text" id="videoImageUrlInput" placeholder="Enter image URL..." style="flex-grow: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                            <button id="videoAddUrlButton" style="background-color: #34a853; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Add URL</button>
+                        </div>
+                    </div>
+
                     <p style="font-size: 0.9em; color: #666; margin-top: 5px;">
                         Or select an image generated below. (Selected generated image takes priority over file upload)
                     </p>
