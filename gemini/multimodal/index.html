@@ -34,12 +34,21 @@
             <label for="promptInput">Prompt:</label>
             <textarea id="promptInput" placeholder="Describe the images or ask a question..." rows="4"></textarea>
             
-            <label for="imageFileInput">Select Images:</label>
-            <input type="file" id="imageFileInput" accept="image/*" multiple>
+            <div class="input-options">
+                <div class="file-input-group">
+                    <label for="imageFileInput" class="custom-file-upload">
+                        <span>Select Images</span>
+                    </label>
+                    <input type="file" id="imageFileInput" accept="image/*" multiple>
+                    
+                    <button id="takePhotoButton" class="camera-button">Take Photo</button>
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" class="hidden">
+                </div>
 
-            <div class="url-input-group">
-                <input type="text" id="imageUrlInput" placeholder="Enter image URL here...">
-                <button id="addUrlButton">Add URL</button>
+                <div class="url-input-group">
+                    <input type="text" id="imageUrlInput" placeholder="Enter image URL here...">
+                    <button id="addUrlButton">Add URL</button>
+                </div>
             </div>
             
             <div id="imagePreviewContainer" class="image-preview-container"></div>

@@ -16,6 +16,8 @@ const setApiKeyButton = document.getElementById('setApiKeyButton');
 const geminiModelSelect = document.getElementById('geminiModel');
 const promptInput = document.getElementById('promptInput');
 const imageFileInput = document.getElementById('imageFileInput');
+const cameraInput = document.getElementById('cameraInput');
+const takePhotoButton = document.getElementById('takePhotoButton');
 const imageUrlInput = document.getElementById('imageUrlInput');
 const addUrlButton = document.getElementById('addUrlButton');
 const imagePreviewContainer = document.getElementById('imagePreviewContainer');
@@ -70,6 +72,11 @@ function addEventListeners() {
     });
 
     imageFileInput.addEventListener('change', handleImageSelection);
+    cameraInput.addEventListener('change', handleImageSelection);
+
+    takePhotoButton.addEventListener('click', () => {
+        cameraInput.click();
+    });
 
     addUrlButton.addEventListener('click', addImageFromUrl);
 
