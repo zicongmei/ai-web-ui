@@ -642,58 +642,64 @@ function updateExplanationNote() {
 
 // Helper to process and display a single image response
 function processAndDisplayImage(imageData, prompt) {
-    let base64Image = null;
+    let successfulCount = 0;
     
-    // Check for standard inlineData (camelCase or snake_case)
-    if (imageData.candidates && imageData.candidates[0] && imageData.candidates[0].content && imageData.candidates[0].content.parts) {
+    // 1. Handle standard generateContent response (Gemini models)
+    if (imageData.candidates && imageData.candidates[0]?.content?.parts) {
         for (const part of imageData.candidates[0].content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-                base64Image = part.inlineData.data;
-                break;
-            }
-            if (part.inline_data && part.inline_data.data) {
-                base64Image = part.inline_data.data;
-                break;
+            const base64 = part.inlineData?.data || part.inline_data?.data;
+            if (base64) {
+                displaySingleImage(base64, prompt);
+                successfulCount++;
             }
         }
     }
 
-    if (base64Image) {
-        const imgContainer = document.createElement('div');
-        imgContainer.classList.add('image-item');
-        
-        const img = document.createElement('img');
-        img.src = `data:image/png;base64,${base64Image}`;
-        img.alt = prompt;
-        imgContainer.appendChild(img);
-
-        const buttonGroup = document.createElement('div');
-        buttonGroup.classList.add('image-item-buttons'); 
-
-        const useInputBtn = document.createElement('button');
-        useInputBtn.textContent = 'Use as Input';
-        useInputBtn.classList.add('use-input-btn');
-        useInputBtn.onclick = () => {
-            addImageAsInput(base64Image); // Existing functionality
-            
-            // Post message to parent if inside iframe (for video gen integration)
-            if (window.parent !== window) {
-                window.parent.postMessage({ type: 'imageGenerated', base64: base64Image }, '*');
+    // 2. Handle predict response (Imagen models)
+    if (imageData.predictions && Array.isArray(imageData.predictions)) {
+        for (const prediction of imageData.predictions) {
+            const base64 = prediction.bytesBase64Encoded || prediction.data;
+            if (base64) {
+                displaySingleImage(base64, prompt);
+                successfulCount++;
             }
-        };
-        buttonGroup.appendChild(useInputBtn);
-
-        const saveImageBtn = document.createElement('button');
-        saveImageBtn.textContent = 'Save Image';
-        saveImageBtn.classList.add('save-image-btn');
-        saveImageBtn.onclick = () => saveGeneratedImage(base64Image, prompt);
-        buttonGroup.appendChild(saveImageBtn);
-
-        imgContainer.appendChild(buttonGroup); 
-        imageGallery.appendChild(imgContainer); 
-        return true;
+        }
     }
-    return false;
+
+    return successfulCount > 0;
+}
+
+function displaySingleImage(base64Image, prompt) {
+    const imgContainer = document.createElement('div');
+    imgContainer.classList.add('image-item');
+    
+    const img = document.createElement('img');
+    img.src = `data:image/png;base64,${base64Image}`;
+    img.alt = prompt;
+    imgContainer.appendChild(img);
+
+    const buttonGroup = document.createElement('div');
+    buttonGroup.classList.add('image-item-buttons'); 
+
+    const useInputBtn = document.createElement('button');
+    useInputBtn.textContent = 'Use as Input';
+    useInputBtn.classList.add('use-input-btn');
+    useInputBtn.onclick = () => {
+        addImageAsInput(base64Image);
+        if (window.parent !== window) {
+            window.parent.postMessage({ type: 'imageGenerated', base64: base64Image }, '*');
+        }
+    };
+    buttonGroup.appendChild(useInputBtn);
+
+    const saveImageBtn = document.createElement('button');
+    saveImageBtn.textContent = 'Save Image';
+    saveImageBtn.classList.add('save-image-btn');
+    saveImageBtn.onclick = () => saveGeneratedImage(base64Image, prompt);
+    buttonGroup.appendChild(saveImageBtn);
+
+    imgContainer.appendChild(buttonGroup); 
+    imageGallery.appendChild(imgContainer);
 }
 
 // Main generation function dispatcher
@@ -736,7 +742,10 @@ async function generateImage() {
     }
 
     try {
-        if (numToGenerate > 1) {
+        if (selectedModel.startsWith('imagen-')) {
+            // Imagen models support sampleCount in predict, so we don't need a loop
+            await generateSingleImage(prompt, numToGenerate);
+        } else if (numToGenerate > 1) {
             if (useBatchModeInput.checked) {
                 // Use Batch API for multiple images
                 await generateBatchImages(prompt, numToGenerate);
@@ -748,7 +757,7 @@ async function generateImage() {
                      }
                      statusMessage.textContent = `Generating image ${i + 1} of ${numToGenerate}...`;
                      try {
-                         await generateSingleImage(prompt);
+                         await generateSingleImage(prompt, 1);
                      } catch (e) {
                          console.error(`Error generating image ${i+1}:`, e);
                          const errDiv = document.createElement('div');
@@ -765,7 +774,7 @@ async function generateImage() {
             }
         } else {
             // Use standard API for single image
-            await generateSingleImage(prompt);
+            await generateSingleImage(prompt, 1);
         }
     } catch (error) {
         if (error.name === 'AbortError' || abortController.signal.aborted) {
@@ -786,47 +795,72 @@ async function generateImage() {
 }
 
 // Function to generate a single image (Synchronous/Direct)
-async function generateSingleImage(prompt) {
-    statusMessage.textContent = 'Generating image...';
+// Function to generate image(s) (Synchronous/Direct)
+async function generateSingleImage(prompt, count = 1) {
+    statusMessage.textContent = count > 1 ? `Generating ${count} images...` : 'Generating image...';
 
-    const parts = [{ text: prompt }];
     const inputImageCount = selectedInputImages.length;
-    
-    if (inputImageCount > 0) {
-        selectedInputImages.forEach(base64 => {
-            parts.push({
-                inline_data: { mime_type: "image/png", data: base64 }
-            });
-        });
-    }
-
-    const generationConfig = {
-        responseModalities: ["TEXT", "IMAGE"],
-        imageConfig: { aspectRatio: aspectRatioSelect.value }
-    };
     const imageOutputSize = imageSizeSelect.value;
-    if (!imageSizeSelect.disabled) { // Only for Gemini 3 Pro
-        generationConfig.imageConfig.imageSize = imageOutputSize;
-    }
-
-    const requestBody = {
-        contents: [{ parts: parts }],
-        generationConfig: generationConfig
-    };
-
-    if (!useGoogleSearchInput.disabled && useGoogleSearchInput.checked) {
-        requestBody.tools = [{ google_search: {} }];
-    }
+    const selectedAspectRatio = aspectRatioSelect.value;
     
-    const imageEndpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+    let requestBody;
+    let endpoint;
+    const isImagen = selectedModel.startsWith('imagen-');
+
+    if (isImagen) {
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:predict`;
+        requestBody = {
+            instances: [{ prompt: prompt }],
+            parameters: {
+                sampleCount: count,
+                aspectRatio: selectedAspectRatio
+            }
+        };
+        // Add imageSize if not fast model (Standard/Ultra support 1K/2K)
+        if (!selectedModel.includes('fast')) {
+            requestBody.parameters.imageSize = imageOutputSize;
+        }
+        
+        // Handle input images for Imagen (if supported via instances or similar, 
+        // but typically Imagen predict in this API uses simple prompt. 
+        // If images are provided, we might need a different structure, 
+        // but for now following user example structure).
+        if (inputImageCount > 0) {
+            console.warn("Input images might not be supported in Imagen predict method yet.");
+        }
+    } else {
+        endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+        const parts = [{ text: prompt }];
+        if (inputImageCount > 0) {
+            selectedInputImages.forEach(base64 => {
+                parts.push({
+                    inline_data: { mime_type: "image/png", data: base64 }
+                });
+            });
+        }
+        const generationConfig = {
+            responseModalities: ["TEXT", "IMAGE"],
+            imageConfig: { aspectRatio: selectedAspectRatio }
+        };
+        if (!imageSizeSelect.disabled) {
+            generationConfig.imageConfig.imageSize = imageOutputSize;
+        }
+        requestBody = {
+            contents: [{ parts: parts }],
+            generationConfig: generationConfig
+        };
+        if (!useGoogleSearchInput.disabled && useGoogleSearchInput.checked) {
+            requestBody.tools = [{ google_search: {} }];
+        }
+    }
 
     const apiCallStartTime = performance.now();
-    const inputTextTokens = Math.ceil(prompt.length / 4); // Estimate based on char count
+    const inputTextTokens = Math.ceil(prompt.length / 4);
 
-    // Calculate cost for this API call (1 output image expected)
-    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, 1, imageOutputSize, aspectRatioSelect.value, false);
+    // Calculate cost for this API call
+    const costResult = calculateCost(selectedModel, inputTextTokens, inputImageCount, count, imageOutputSize, selectedAspectRatio, false);
 
-    const response = await fetch(imageEndpoint, {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -840,16 +874,25 @@ async function generateSingleImage(prompt) {
     const apiCallEndTime = performance.now();
     const duration = apiCallEndTime - apiCallStartTime;
 
-    let successfulOutputImages = 0;
-    if (processAndDisplayImage(data, prompt)) {
-        successfulOutputImages = 1;
+    if (!response.ok) {
+        throw new Error(data.error?.message || `API Error: ${response.statusText}`);
     }
 
-    // Update total generation time to reflect time until images are shown
+    let successfulOutputImages = 0;
+    
+    // processAndDisplayImage handles both formats
+    if (processAndDisplayImage(data, prompt)) {
+        // For Imagen, it returns multiple in one response
+        if (isImagen && data.predictions) {
+            successfulOutputImages = data.predictions.length;
+        } else {
+            successfulOutputImages = 1;
+        }
+    }
+
     totalGenerationTime = performance.now() - generationStartTime;
     
-    // Parse Usage Metadata
-    let actualInputTokens = inputTextTokens; // Default to estimate
+    let actualInputTokens = inputTextTokens;
     let actualOutputTokens = 0;
     let actualThoughtTokens = 0;
 
@@ -859,23 +902,18 @@ async function generateSingleImage(prompt) {
         actualThoughtTokens = data.usageMetadata.thoughtsTokenCount || 0;
     }
 
-    // Recalculate cost based on actual successful outputs
-    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, aspectRatioSelect.value, false);
+    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, selectedAspectRatio, false);
 
     if (actualOutputTokens === 0 && successfulOutputImages > 0) {
         actualOutputTokens = finalCostResult.outputTokens;
     }
 
-    logApiInteraction(imageEndpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult);
-
-    if (!response.ok) {
-        throw new Error(data.error?.message || `API Error: ${response.statusText}`);
-    }
+    logApiInteraction(endpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult);
 
     if (successfulOutputImages === 0) {
          throw new Error('No valid image data found in response.');
     }
-    statusMessage.textContent = 'Image generated successfully!';
+    statusMessage.textContent = 'Image(s) generated successfully!';
 }
 
 // Function to generate multiple images using Batch API
