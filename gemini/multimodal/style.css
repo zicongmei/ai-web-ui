@@ -81,6 +81,49 @@ button {
     margin-bottom: 10px;
 }
 
+.input-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.file-input-group {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#imageFileInput {
+    display: none;
+}
+
+.custom-file-upload, .camera-button {
+    background-color: #5f6368;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s;
+    display: inline-block;
+    border: none;
+    font-size: 1em;
+}
+
+.camera-button {
+    background-color: #8ab4f8;
+    color: #202124;
+}
+
+.custom-file-upload:hover {
+    background-color: #4f5256;
+}
+
+.camera-button:hover {
+    background-color: #aecbfa;
+}
+
 .url-input-group {
     display: flex;
     gap: 10px;
