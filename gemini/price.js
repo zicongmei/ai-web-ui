@@ -76,6 +76,22 @@ const GEMINI_PRICING_CONFIG = {
 
     // Image Generation Models
     IMAGE_GEN: {
+        'imagen-4.0-fast-generate-001': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.02 }
+        },
+        'imagen-4.0-generate-001': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.04 }
+        },
+        'imagen-4.0-ultra-generate-001': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.06 }
+        },
+        'imagen-3.0-generate-002': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.03 }
+        },
         'gemini-3-pro-image-preview': {
             input: {
                 text_per_m_tokens: 1.00,
@@ -92,6 +108,14 @@ const GEMINI_PRICING_CONFIG = {
             },
             output: {
                 image_1K_fixed_price: 0.039, 
+            },
+        },
+        'gemini-2.0-flash-preview-image-generation': {
+            input: {
+                text_and_image_per_m_tokens: 0.10,
+            },
+            output: {
+                image_1K_fixed_price: 0.039,
             },
         },
     },
