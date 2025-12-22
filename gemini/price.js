@@ -30,6 +30,18 @@ const GEMINI_PRICING_CONFIG = {
                 outputRate: 0.40 / 1_000_000
             })
         },
+        'gemini-2.0-flash': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 0.10 / 1_000_000,
+                outputRate: 0.40 / 1_000_000
+            })
+        },
+        'gemini-2.0-flash-lite': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 0.075 / 1_000_000,
+                outputRate: 0.30 / 1_000_000
+            })
+        },
         'gemini-3-pro-preview': {
             getPricing: (promptTokenCount) => {
                 const PROMPT_THRESHOLD_TOKENS = 200_000;

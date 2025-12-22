@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Multimodal Vision</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="header">Gemini Multimodal Vision</div>
+
+    <div class="container">
+        <!-- API Key Section -->
+        <div class="api-key-section">
+            <label for="geminiApiKey">Gemini API Key:</label>
+            <input type="text" id="geminiApiKey" placeholder="Enter your API Key here">
+            <button id="setApiKeyButton">Set API Key</button>
+        </div>
+
+        <!-- Model Selection -->
+        <div class="model-selection-section">
+            <label for="geminiModel">Model:</label>
+            <select id="geminiModel">
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
+                <option value="gemini-3-pro-preview">Gemini 3.0 Pro Preview</option>
+                <option value="gemini-3-flash-preview">Gemini 3.0 Flash Preview</option>
+            </select>
+        </div>
+
+        <!-- Input Area -->
+        <div class="input-area">
+            <label for="promptInput">Prompt:</label>
+            <textarea id="promptInput" placeholder="Describe the images or ask a question..." rows="4"></textarea>
+            
+            <label for="imageFileInput">Select Images:</label>
+            <input type="file" id="imageFileInput" accept="image/*" multiple>
+
+            <div class="url-input-group">
+                <input type="text" id="imageUrlInput" placeholder="Enter image URL here...">
+                <button id="addUrlButton">Add URL</button>
+            </div>
+            
+            <div id="imagePreviewContainer" class="image-preview-container"></div>
+            
+            <div class="actions">
+                <button id="submitButton">Analyze Images</button>
+                <button id="stopButton" class="hidden">Stop</button>
+            </div>
+        </div>
+
+        <!-- Progress and Messages -->
+        <div id="statusMessage" class="status-message"></div>
+        <div id="errorMessage" class="error-message"></div>
+
+        <!-- Output Area -->
+        <div class="output-area">
+            <label>Response:</label>
+            <div id="textOutput" class="text-output"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-section">
+            <div class="stats-card">
+                <div class="stats-label">Current Request</div>
+                <div id="currentTokenStats">Tokens: In 0, Out 0</div>
+                <div id="currentCostStats">Cost: $0.000000</div>
+            </div>
+            <div class="stats-card">
+                <div class="stats-label">Total Usage</div>
+                <div id="totalTokenStats">Tokens: In 0, Out 0</div>
+                <div id="totalCostStats">Total Cost: $0.000000</div>
+            </div>
+        </div>
+
+        <!-- Debug Area -->
+        <div class="debug-section">
+            <button id="toggleDebugButton">Toggle Debug Info</button>
+            <div id="debugContent" class="hidden">
+                <h4>Last API Request</h4>
+                <pre id="apiRequestBody"></pre>
+                <h4>Last API Response</h4>
+                <pre id="apiResponseBody"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script src="../price.js"></script>
+    <script src="multimodal.js"></script>
+</body>
+</html>
