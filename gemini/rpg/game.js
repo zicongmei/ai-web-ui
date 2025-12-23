@@ -46,9 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
-    const defaultSystemInstruction = `You are a Dungeon Master for a text-based RPG.
+    const defaultSystemInstruction = `You are a Game Master for a text-based RPG.
 Describe the outcomes of the user's actions vividly and maintain a consistent world.
 Keep responses relatively concise but engaging.
+You should only simulate the world, not the player's action. 
+Your resonse should be the consequence of player's action.
+The response should be in the same language as player's input.
 IMPORTANT: You must return your response in the following format:
 STORY: [Your description of what happens next]
 INVENTORY: [A comma-separated list of ALL items the player currently has in their inventory]`
@@ -270,8 +273,10 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
 
         const requestBodyString = JSON.stringify(requestBody);
 
+        const apiUrl = `${GEMINI_API_BASE_URL}${selectedModel}:generateContent?key=${apiKey}`;
+
         try {
-            const response = await fetch(`${GEMINI_API_BASE_URL}${selectedModel}:generateContent?key=${apiKey}`, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: requestBodyString,
@@ -280,12 +285,12 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
 
             if (!response.ok) {
                 const errorData = await response.json();
-                appendDebugLog(requestBodyString, errorData);
+                appendDebugLog(apiUrl, requestBodyString, errorData);
                 throw new Error(errorData.error ? errorData.error.message : response.statusText);
             }
 
             const data = await response.json();
-            appendDebugLog(requestBodyString, data);
+            appendDebugLog(apiUrl, requestBodyString, data);
 
             const responseText = data.candidates[0]?.content?.parts[0]?.text || '';
             
@@ -339,6 +344,7 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
                 showError('Stopped by user.');
             } else {
                 showError(`Error: ${error.message}`);
+                appendDebugLog(apiUrl, requestBodyString, error);
             }
         } finally {
             resetUI();
@@ -365,9 +371,22 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
         localStorage.setItem('geminiRpgAccumulatedCost', totalAccumulatedCost.toString());
     }
 
-    function appendDebugLog(requestBodyString, responseOrError) {
+    function appendDebugLog(url, requestBodyString, responseOrError) {
+        // Mask API Key in URL for logs
+        let maskedUrl = url;
+        try {
+            const urlObj = new URL(url);
+            if (urlObj.searchParams.has('key')) {
+                urlObj.searchParams.set('key', 'REDACTED');
+            }
+            maskedUrl = urlObj.toString();
+        } catch (e) {
+            console.error('Error masking URL:', e);
+        }
+
         geminiLogs.push({
             timestamp: new Date().toLocaleString(),
+            url: maskedUrl,
             request: JSON.parse(requestBodyString),
             response: responseOrError
         });
@@ -380,8 +399,14 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
             const logEntryDiv = document.createElement('div');
             logEntryDiv.classList.add('debug-log-entry');
             logEntryDiv.innerHTML = `
-                <details><summary><strong>Request #${index + 1}</strong> (${log.timestamp})</summary><pre>${JSON.stringify(log.request, null, 2)}</pre></details>
-                <details><summary><strong>Response #${index + 1}</strong></summary><pre>${JSON.stringify(log.response instanceof Error ? {error: log.response.message} : log.response, null, 2)}</pre></details>
+                <details><summary><strong>Request #${index + 1}</strong> (${log.timestamp})</summary>
+                    <p><strong>URL:</strong> <code>${log.url}</code></p>
+                    <strong>Body:</strong>
+                    <pre>${JSON.stringify(log.request, null, 2)}</pre>
+                </details>
+                <details><summary><strong>Response #${index + 1}</strong></summary>
+                    <pre>${JSON.stringify(log.response instanceof Error ? {error: log.response.message} : log.response, null, 2)}</pre>
+                </details>
             `;
             debugLogsContainer.appendChild(logEntryDiv);
         });
