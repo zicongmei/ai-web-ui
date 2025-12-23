@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini AI RPG Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Gemini AI RPG Game</h1>
+
+        <div id="errorDisplay" class="error-message hidden"></div>
+
+        <div class="main-layout">
+            <div class="game-history">
+                <div class="input-group">
+                    <label for="gameHistory">Game History (editable):</label>
+                    <textarea id="gameHistory" rows="20" placeholder="Start your adventure here, or leave blank and provide a prompt for the first scene."></textarea>
+                </div>
+            </div>
+            
+            <div class="game-sidebar">
+                <div class="input-group">
+                    <label for="inventoryDisplay">Inventory:</label>
+                    <textarea id="inventoryDisplay" rows="10" placeholder="Your items will appear here..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="nextMovePrompt">What is your next move?</label>
+            <div class="next-paragraph-input-controls">
+                <textarea id="nextMovePrompt" rows="3" placeholder="e.g., I explore the dark cave to the north."></textarea>
+                <button id="clearNextMovePromptBtn" type="button" class="secondary-btn clear-prompt-btn">Clear</button>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="generateBtn">Submit Move</button>
+            <button id="stopBtn" class="stop-btn hidden">Stop Generation</button>
+        </div>
+        
+        <button id="revertLastMoveBtn" class="secondary-btn" disabled>Remove Last Turn</button>
+        <button id="clearAllBtn" class="secondary-btn">Clear All Contents</button>  
+        <div id="loadingIndicator" class="hidden">Gemini is thinking...</div>
+
+         <div class="input-group">
+            <label for="systemInstruction">System Instruction for Gemini:</label>
+            <textarea id="systemInstruction" rows="4" placeholder="You are a Dungeon Master for a text-based RPG. Describe the outcomes of the user's actions vividly. Maintain a consistent world."></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="apiKey">Gemini API Key:</label>
+            <textarea id="apiKey" rows="1" placeholder="Enter your Gemini API Key"></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="modelSelect">Select Model:</label>
+            <select id="modelSelect">
+                <option value="gemini-2.5-flash-lite">gemini-2.5-flash-lite</option>
+                <option value="gemini-2.5-flash">gemini-2.5-flash</option>
+                <option value="gemini-2.5-pro">gemini-2.5-pro</option>
+                <option value="gemini-3-pro-preview">gemini-3-pro-preview</option>
+                <option value="gemini-3-flash-preview" selected>gemini-3-flash-preview</option>
+            </select>
+        </div>
+
+        <div class="token-display-group">
+            <p><strong>Input tokens for current request:</strong> <span id="currentRequestInputTokens">0</span></p>
+            <p><strong>Output tokens for current request:</strong> <span id="currentRequestOutputTokens">0</span></p>
+            <p><strong>Cost for current request:</strong> <span id="currentRequestCost">$0.000000</span></p>
+            <hr>
+            <p><strong>Accumulated input tokens:</strong> <span id="accumulatedInputTokens">0</span></p>
+            <p><strong>Accumulated output tokens:</strong> <span id="accumulatedOutputTokens">0</span></p>
+            <p><strong>Total accumulated tokens:</strong> <span id="accumulatedTokens">0</span></p> 
+            <p><strong>Total accumulated cost:</strong> <span id="accumulatedCost">$0.000000</span></p>
+        </div>
+    </div>
+
+    <!-- Debug Button and Panel -->
+    <div id="debugContainer">
+        <button id="debugToggleBtn" class="debug-toggle-btn">Debug</button>
+        <div id="debugPanel" class="debug-panel hidden">
+            <div class="debug-header">
+                <h3>Gemini API Logs</h3>
+                <button id="clearDebugLogsBtn" class="secondary-btn debug-clear-btn">Clear Logs</button>
+            </div>
+            <div id="debugLogs" class="debug-logs-content">
+                <!-- Logs will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="../price.js"></script>
+    <script src="./game.js" defer></script>
+</body>
+</html>
