@@ -358,6 +358,8 @@ function addUserMessage() {
     const text = messageInput.value.trim();
     if (!text) return;
     
+    if (document.activeElement) document.activeElement.blur();
+
     chatHistory.push({ speaker: userName, text: text });
     
     messageInput.value = '';
@@ -371,6 +373,8 @@ function addNarratorMessage() {
     const text = narratorMessageInput.value.trim();
     if (!text) return;
 
+    if (document.activeElement) document.activeElement.blur();
+
     chatHistory.push({ speaker: 'Narrator', text: text });
 
     narratorMessageInput.value = '';
@@ -383,29 +387,18 @@ function addNarratorMessage() {
 function renderChatHistory() {
     if (!chatHistoryBox) return;
     
-    // 1. Capture current scroll state *before* content changes
-    const currentScrollTop = chatHistoryBox.scrollTop;
-    const currentScrollHeight = chatHistoryBox.scrollHeight;
-    const currentClientHeight = chatHistoryBox.clientHeight;
-    // We consider it "scrolled to bottom" if the scrollbar is within a few pixels of its max position.
-    const isScrolledToBottom = (currentScrollHeight - currentScrollTop - currentClientHeight) < 5; 
+    // Capture current window scroll position
+    const scrollY = window.scrollY;
 
-    // 2. Update content
+    // Update content
     const text = chatHistory.map(entry => `${entry.speaker}: ${entry.text}`).join('\n\n');
     chatHistoryBox.value = text;
 
-    // 3. Adjust textarea's CSS height (this might change scrollHeight and clientHeight)
+    // Adjust textarea's CSS height
     adjustChatHistoryHeight(); 
 
-    // 4. Restore/adjust scroll position
-    if (isScrolledToBottom) {
-        // If user was at the bottom, scroll to the new bottom
-        chatHistoryBox.scrollTop = chatHistoryBox.scrollHeight;
-    } else {
-        // Otherwise, attempt to restore the previous scroll position
-        // This is robust for content additions/removals at the end or middle
-        chatHistoryBox.scrollTop = currentScrollTop;
-    }
+    // Restore window scroll position to prevent jumps
+    window.scrollTo(0, scrollY);
 }
 
 function removeLastEntry() {
@@ -466,6 +459,8 @@ async function generateResponseForRole(targetRole) {
         errorMessageDiv.textContent = 'Set API Key first.';
         return;
     }
+
+    if (document.activeElement) document.activeElement.blur();
 
     syncChatHistoryFromUI();
 
@@ -593,10 +588,6 @@ async function generateResponseForRole(targetRole) {
             
             renderChatHistory();
             saveChatHistory();
-
-            setTimeout(() => {
-                chatHistoryBox.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }, 100);
         }
 
         errorMessageDiv.textContent = '';
@@ -667,23 +658,13 @@ function loadStats() {
 function adjustTextareaHeight() {
     messageInput.style.height = 'auto';
     messageInput.style.height = (messageInput.scrollHeight) + 'px';
-    if (messageInput.scrollHeight > 150) {
-        messageInput.style.height = '150px';
-        messageInput.style.overflowY = 'auto';
-    } else {
-        messageInput.style.overflowY = 'hidden';
-    }
+    messageInput.style.overflowY = 'hidden';
 }
 
 function adjustNarratorTextareaHeight() {
     narratorMessageInput.style.height = 'auto';
     narratorMessageInput.style.height = (narratorMessageInput.scrollHeight) + 'px';
-    if (narratorMessageInput.scrollHeight > 150) {
-        narratorMessageInput.style.height = '150px';
-        narratorMessageInput.style.overflowY = 'auto';
-    } else {
-        narratorMessageInput.style.overflowY = 'hidden';
-    }
+    narratorMessageInput.style.overflowY = 'hidden';
 }
 
 // --- File I/O ---
@@ -781,6 +762,11 @@ function toggleApiDebug() {
     }
 }
 
+function adjustSystemInstructionHeight() {
+    systemInstructionInput.style.height = 'auto';
+    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
+}
+
 // --- Event Listeners ---
 setApiKeyButton.addEventListener('click', setApiKey);
 geminiModelSelect.addEventListener('change', updateSelectedModel);
@@ -815,6 +801,7 @@ stopMessageButton.addEventListener('click', () => abortController?.abort());
 systemInstructionInput.addEventListener('input', () => {
     systemInstruction = systemInstructionInput.value;
     setLocalStorageItem('systemInstruction', systemInstruction);
+    adjustSystemInstructionHeight();
 });
 clearSystemInstructionButton.addEventListener('click', () => {
     systemInstruction = '';
@@ -858,5 +845,6 @@ window.addEventListener('DOMContentLoaded', () => {
     adjustChatHistoryHeight();
     adjustTextareaHeight(); // Adjust for user message input on load
     adjustNarratorTextareaHeight(); // Adjust for narrator message input on load
+    adjustSystemInstructionHeight(); // Adjust for system instruction on load
     updateUserMessagePlaceholder(); // Ensure placeholder is correct on load
 });
