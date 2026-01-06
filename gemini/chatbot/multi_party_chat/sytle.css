@@ -2,10 +2,15 @@
     box-sizing: border-box;
 }
 
-body {
-    font-family: Arial, sans-serif;
+html, body {
+    overflow-x: hidden;
+    width: 100%;
     margin: 0;
     padding: 0;
+}
+
+body {
+    font-family: Arial, sans-serif;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -133,6 +138,8 @@ body {
     border-radius: 5px;
     cursor: pointer;
     font-weight: bold;
+    white-space: normal;
+    text-align: center;
 }
 .bot-action-button:hover {
     background-color: #00796b;
@@ -231,6 +238,8 @@ body {
     border: none;
     border-radius: 4px;
     cursor: pointer;
+    white-space: normal;
+    text-align: center;
 }
 .chat-actions-section button:hover {
     background-color: #78909c;
