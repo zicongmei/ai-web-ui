@@ -330,6 +330,16 @@ function loadChatFontSizeFromLocalStorage() {
 }
 
 
+function adjustSystemInstructionHeight() {
+    systemInstructionInput.style.height = 'auto';
+    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
+}
+
+function adjustRawHistoryHeight() {
+    rawChatHistoryInput.style.height = 'auto';
+    rawChatHistoryInput.style.height = (rawChatHistoryInput.scrollHeight) + 'px';
+}
+
 // Function to update the raw chat history textarea
 function updateRawHistoryInput() {
     if (rawChatHistoryInput) {
@@ -339,6 +349,7 @@ function updateRawHistoryInput() {
                 chatHistory: chatHistory
             };
             rawChatHistoryInput.value = JSON.stringify(dataToDisplay, null, 2); // Pretty print JSON
+            adjustRawHistoryHeight();
         } catch (e) {
             console.error("Error stringifying chat history for raw input:", e);
             rawChatHistoryInput.value = "Error: Could not display chat history as JSON.";
@@ -389,6 +400,11 @@ function applyRawHistory() {
 
 // Function to render chat history to the UI
 function renderChatHistory() {
+    if (!chatHistoryDiv) return;
+
+    // Capture current window scroll position
+    const scrollY = window.scrollY;
+
     chatHistoryDiv.innerHTML = ''; // Clear existing messages
     chatHistory.forEach((msg) => {
         const messageBubble = document.createElement('div');
@@ -403,10 +419,11 @@ function renderChatHistory() {
 
         chatHistoryDiv.appendChild(messageBubble);
     });
-    // Scroll to the bottom
-    chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
 
     updateRawHistoryInput(); // Ensure raw history input is updated after rendering
+    
+    // Restore window scroll position
+    window.scrollTo(0, scrollY);
 }
 
 // Function to render accumulated token stats
@@ -610,6 +627,9 @@ async function sendMessage() {
     const userMessageText = messageInput.value.trim();
     const activeSystemInstruction = systemInstructionInput.value.trim();
 
+    // Blur active element to prevent mobile auto-scroll
+    if (document.activeElement) document.activeElement.blur();
+
     // Allow sending an empty user message if there's an active system instruction
     if (!userMessageText && !activeSystemInstruction) {
         errorMessageDiv.textContent = 'Please type a message or provide a background instruction.';
@@ -666,12 +686,7 @@ async function sendMessage() {
 function adjustTextareaHeight() {
     messageInput.style.height = 'auto'; // Reset height to recalculate
     messageInput.style.height = messageInput.scrollHeight + 'px';
-    if (messageInput.scrollHeight > 150) { // Max height limit for textarea
-        messageInput.style.height = '150px';
-        messageInput.style.overflowY = 'auto';
-    } else {
-        messageInput.style.overflowY = 'hidden';
-    }
+    messageInput.style.overflowY = 'hidden';
 }
 
 // Function to download chat history as a JSON file
@@ -809,6 +824,8 @@ async function regenerateSystemReply() {
         setTimeout(() => errorMessageDiv.textContent = '', 3000);
         return;
     }
+
+    if (document.activeElement) document.activeElement.blur();
 
     errorMessageDiv.textContent = 'Thinking...';
 
@@ -991,8 +1008,11 @@ showApiDebugButton.addEventListener('click', toggleApiDebugDisplay);
 systemInstructionInput.addEventListener('input', () => {
     systemInstruction = systemInstructionInput.value.trim();
     updateRawHistoryInput();
+    adjustSystemInstructionHeight();
 });
 clearSystemInstructionButton.addEventListener('click', clearSystemInstruction); // New: Clear system instruction button listener
+
+rawChatHistoryInput.addEventListener('input', adjustRawHistoryHeight);
 
 // Thinking Config events
 thinkingBudgetInput.addEventListener('input', () => {
@@ -1058,6 +1078,8 @@ document.addEventListener('DOMContentLoaded', () => {
     
     renderChatHistory(); // Render the initial history (including welcome message) and update raw input
     adjustTextareaHeight(); // Adjust textarea height on page load
+    adjustSystemInstructionHeight();
+    adjustRawHistoryHeight();
 
     // Set the initial selected model based on dropdown and update global variable
     updateSelectedModel(); // This will now also call updateThinkingControlsVisibility()
