@@ -7,8 +7,18 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Gemini Image Generator</h1>
+    <div class="app-layout">
+        <div id="sidebar" class="sidebar">
+            <h2>Generation History</h2>
+            <div id="sidebarHistory" class="sidebar-history">
+                <!-- Images and Videos go here -->
+            </div>
+        </div>
+        <button id="sidebarToggle" class="sidebar-toggle">☰</button>
+
+        <div class="main-content">
+            <div class="container">
+                <h1>Gemini Image Generator</h1>
         <p id="explanationNote" class="explanation-note"></p>
 
         <div class="input-section">
@@ -24,9 +34,14 @@
             </div>
 
             <div class="options-row">
-                <div class="option-group output-count-container">
-                    <label for="imageCountInput">Image Count:</label>
-                    <input type="number" id="imageCountInput" value="1" min="1" max="8">
+                <div class="option-group">
+                    <label for="candidateCountInput">Images per Call:</label>
+                    <input type="number" id="candidateCountInput" value="1" min="1" max="4">
+                </div>
+
+                <div class="option-group">
+                    <label for="apiCallCountInput">Number of API Calls:</label>
+                    <input type="number" id="apiCallCountInput" value="1" min="1" max="10">
                 </div>
 
                 <div class="option-group">
@@ -119,6 +134,8 @@
                 <input type="file" id="imageFileInput" accept="image/png, image/jpeg, image/webp" multiple style="display: none;">
             </div>
             
+    </div>
+    </div>
     </div>
 
     <script src="../price.js"></script>

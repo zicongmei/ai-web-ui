@@ -1,12 +1,26 @@
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    padding: 20px;
+    padding: 0;
     background-color: #f4f7f6;
     color: #333;
     display: flex;
-    justify-content: center;
     min-height: 100vh;
+}
+
+.app-layout {
+    display: flex;
+    width: 100%;
+    min-height: 100vh;
+    position: relative;
+}
+
+.main-content {
+    flex-grow: 1;
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    transition: margin-left 0.3s ease;
 }
 
 .container {
@@ -18,11 +32,109 @@ body {
     max-width: 900px;
 }
 
+/* Sidebar Styles */
+.sidebar {
+    width: 300px;
+    background-color: #fff;
+    border-right: 1px solid #dee2e6;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease, width 0.3s ease;
+    z-index: 1000;
+}
+
+.sidebar h2 {
+    padding: 20px;
+    margin: 0;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 1.2em;
+    background-color: #f8f9fa;
+}
+
+.sidebar-history {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.history-item {
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #fcfcfc;
+    position: relative;
+}
+
+.history-item img {
+    width: 100%;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.history-item img:hover {
+    opacity: 0.8;
+}
+
+.history-item video {
+    width: 100%;
+    border-radius: 4px;
+}
+
+.history-item-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 8px;
+}
+
+.history-item-actions button, .history-item-actions a {
+    flex: 1;
+    padding: 5px;
+    font-size: 0.8em;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 0;
+    width: auto;
+}
+
+.btn-use-input { background-color: #6f42c1; color: white; border: none; }
+.btn-download { background-color: #28a745; color: white; border: none; }
+.btn-remove { background-color: #dc3545; color: white; border: none; }
+
+.btn-use-input:hover { background-color: #59359a; }
+.btn-download:hover { background-color: #218838; }
+.btn-remove:hover { background-color: #bd2130; }
+
+.sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    font-size: 20px;
+    z-index: 1100;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
 h1 {
     text-align: center;
     color: #007bff;
     margin-bottom: 20px;
 }
+
 
 .explanation-note {
     background-color: #e0f7fa;
@@ -565,6 +677,27 @@ button:disabled {
     margin-bottom: 3px;
 }
 
+
+@media (max-width: 992px) {
+    .sidebar {
+        position: fixed;
+        left: 0;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    .sidebar.active {
+        transform: translateX(0);
+    }
+
+    .sidebar-toggle {
+        display: block;
+    }
+    
+    .main-content {
+        padding: 10px;
+    }
+}
 
 @media (max-width: 768px) {
     .container {

@@ -10,11 +10,14 @@ let videoTotalTime = 0;
 let videoTotalCost = 0;
 
 const GEMINI_VIDEO_MODELS = {
-    'veo-2.0-generate-001': 'Veo 2',
-    'veo-3.0-generate-001': 'Veo 3',
+    'veo-2.0-generate-001': 'Veo 2 Standard',
+    'veo-2': 'Veo 2 (Alias)',
+    'veo-3.0-generate-001': 'Veo 3 Standard',
     'veo-3.0-fast-generate-001': 'Veo 3 Fast',
-    'veo-3.1-generate-preview': 'Veo 3.1',
-    'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast'
+    'veo-3': 'Veo 3 (Alias)',
+    'veo-3.1-generate-preview': 'Veo 3.1 Standard',
+    'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast',
+    'veo-3.1': 'Veo 3.1 (Alias)'
 };
 
 // DOM Elements
@@ -511,6 +514,17 @@ async function displayGeneratedVideo(uri) {
             </div>
         `;
         videoStatusMessage.textContent = 'Video ready!';
+
+        // Add to history
+        if (typeof addToHistory === 'function') {
+            addToHistory({
+                type: 'video',
+                url: videoUrl,
+                videoUri: uri,
+                filename: filename,
+                timestamp: new Date().toISOString()
+            });
+        }
     } catch (e) {
         console.error(e);
         videoTextOutput.textContent += `\nError downloading video: ${e.message}`;

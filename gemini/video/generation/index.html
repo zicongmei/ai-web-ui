@@ -8,13 +8,23 @@
     <link rel="stylesheet" href="../../image/style.css">
 </head>
 <body>
-    <div class="container">
-        <h1>Gemini Video Generation</h1>
+    <div class="app-layout">
+        <div id="sidebar" class="sidebar">
+            <h2>Generation History</h2>
+            <div id="sidebarHistory" class="sidebar-history">
+                <!-- Images and Videos go here -->
+            </div>
+        </div>
+        <button id="sidebarToggle" class="sidebar-toggle">☰</button>
+
+        <div class="main-content">
+            <div class="container">
+                <h1>Gemini Video Generation</h1>
         <p id="videoExplanationNote" class="explanation-note">
             <strong>Instructions:</strong>
             Enter your Gemini API Key. Enter a text prompt.
             The system will call the Veo model using <code>predictLongRunning</code> and poll for the video result.
-            <br><small>Based on: <a href="https://ai.google.dev/gemini-api/docs/video" target="_blank">Gemini API Video Docs</a></small>
+            <br><small>To use an image as input, select it from the <strong>Generation History</strong> sidebar or upload one.</small>
         </p>
 
         <div class="input-section">
@@ -158,9 +168,14 @@
                             </div>
 
                             <div class="options-row">
-                                <div class="option-group output-count-container">
-                                    <label for="imageCountInput">Image Count:</label>
-                                    <input type="number" id="imageCountInput" value="1" min="1" max="8">
+                                <div class="option-group">
+                                    <label for="candidateCountInput">Images per Call:</label>
+                                    <input type="number" id="candidateCountInput" value="1" min="1" max="4">
+                                </div>
+
+                                <div class="option-group">
+                                    <label for="apiCallCountInput">Number of API Calls:</label>
+                                    <input type="number" id="apiCallCountInput" value="1" min="1" max="10">
                                 </div>
 
                                 <div class="option-group">
@@ -293,6 +308,8 @@
             <div id="videoTextOutput" class="text-output-box"></div>
         </div>
             
+    </div>
+    </div>
     </div>
 
     <script src="../../price.js"></script>

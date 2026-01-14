@@ -68,10 +68,13 @@ const GEMINI_PRICING_CONFIG = {
     // Video Generation Models (Veo)
     VIDEO_GEN: {
         'veo-2.0-generate-001': { input: 0, output_per_second_per_sample: 0.35 }, 
+        'veo-2': { input: 0, output_per_second_per_sample: 0.35 }, 
         'veo-3.0-generate-001': { input: 0, output_per_second_per_sample: 0.40 },
         'veo-3.0-fast-generate-001': { input: 0, output_per_second_per_sample: 0.15 },
+        'veo-3': { input: 0, output_per_second_per_sample: 0.40 },
         'veo-3.1-generate-preview': { input: 0, output_per_second_per_sample: 0.40 },
-        'veo-3.1-fast-generate-preview': { input: 0, output_per_second_per_sample: 0.15 }
+        'veo-3.1-fast-generate-preview': { input: 0, output_per_second_per_sample: 0.15 },
+        'veo-3.1': { input: 0, output_per_second_per_sample: 0.40 }
     },
 
     // Image Generation Models
@@ -88,7 +91,15 @@ const GEMINI_PRICING_CONFIG = {
             input: { text_per_m_tokens: 0, image_fixed_price: 0 },
             output: { image_fixed_price: 0.06 }
         },
+        'imagen-4': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.04 }
+        },
         'imagen-3.0-generate-002': {
+            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
+            output: { image_fixed_price: 0.03 }
+        },
+        'imagen-3': {
             input: { text_per_m_tokens: 0, image_fixed_price: 0 },
             output: { image_fixed_price: 0.03 }
         },
@@ -108,14 +119,6 @@ const GEMINI_PRICING_CONFIG = {
             },
             output: {
                 image_1K_fixed_price: 0.039, 
-            },
-        },
-        'gemini-2.0-flash-preview-image-generation': {
-            input: {
-                text_and_image_per_m_tokens: 0.10,
-            },
-            output: {
-                image_1K_fixed_price: 0.039,
             },
         },
     },

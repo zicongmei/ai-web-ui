@@ -19,12 +19,13 @@ let totalEstimatedCost = 0;
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
-    'gemini-2.0-flash-preview-image-generation': 'Gemini 2.0 Flash Image',
     'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image',
     'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
     'imagen-4.0-generate-001': 'Imagen 4 Standard',
     'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra',
-    'imagen-3.0-generate-002': 'Imagen 3'
+    'imagen-4': 'Imagen 4 (Alias)',
+    'imagen-3.0-generate-002': 'Imagen 3 Standard',
+    'imagen-3': 'Imagen 3 (Alias)'
 };
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
@@ -50,13 +51,6 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '16:9', res: '1344x768', tokens: 1290 },
         { ratio: '21:9', res: '1536x672', tokens: 1290 }
     ],
-    'gemini-2.0-flash-preview-image-generation': [
-        { ratio: '1:1', res: '1024x1024', tokens: 1290 },
-        { ratio: '3:4', res: '864x1184', tokens: 1290 },
-        { ratio: '4:3', res: '1184x864', tokens: 1290 },
-        { ratio: '9:16', res: '768x1344', tokens: 1290 },
-        { ratio: '16:9', res: '1344x768', tokens: 1290 }
-    ],
     'gemini-3-pro-image-preview': [
         { ratio: '1:1', res: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '2:3', res: { '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
@@ -72,14 +66,17 @@ const IMAGE_RESOLUTION_DATA = {
     'imagen-4.0-fast-generate-001': IMAGEN_STANDARD_RATIOS,
     'imagen-4.0-generate-001': IMAGEN_STANDARD_RATIOS,
     'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-3.0-generate-002': IMAGEN_STANDARD_RATIOS
+    'imagen-4': IMAGEN_STANDARD_RATIOS,
+    'imagen-3.0-generate-002': IMAGEN_STANDARD_RATIOS,
+    'imagen-3': IMAGEN_STANDARD_RATIOS
 };
 
 // Get DOM elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
 const geminiModelSelect = document.getElementById('geminiModel');
-const imageCountInput = document.getElementById('imageCountInput');
+const candidateCountInput = document.getElementById('candidateCountInput');
+const apiCallCountInput = document.getElementById('apiCallCountInput');
 const promptInput = document.getElementById('promptInput');
 const generateImageButton = document.getElementById('generateImageButton');
 const stopGenerationButton = document.getElementById('stopGenerationButton'); // New stop button
@@ -197,14 +194,16 @@ function loadSettingsFromLocalStorage() {
         setTimeout(() => statusMessage.textContent = '', 3000);
     }
 
-    // Number of Images
-    const storedNumImages = getLocalStorageItem('numOutputImages');
-    if (storedNumImages !== null) {
-        numOutputImages = parseInt(storedNumImages, 10);
-        if (isNaN(numOutputImages) || numOutputImages < 1) { 
-            numOutputImages = 1;
-        }
-        imageCountInput.value = numOutputImages;
+    // Number of Images per call
+    const storedCandidateCount = getLocalStorageItem('candidateCount');
+    if (storedCandidateCount !== null) {
+        candidateCountInput.value = storedCandidateCount;
+    }
+
+    // Number of API calls
+    const storedApiCallCount = getLocalStorageItem('apiCallCount');
+    if (storedApiCallCount !== null) {
+        apiCallCountInput.value = storedApiCallCount;
     }
 
     // Populate aspect ratio options first
@@ -324,20 +323,10 @@ function updateSelectedModel() {
     toggleModelDependentFeatures(); // Update feature availability based on new model
 }
 
-// Function to update the number of output images
-function updateNumOutputImages() {
-    let value = parseInt(imageCountInput.value, 10);
-    if (isNaN(value) || value < 1) {
-        value = 1;
-    }
-    // Cap at the max value defined in HTML (e.g., 8)
-    const maxValue = parseInt(imageCountInput.max, 10);
-    if (!isNaN(maxValue) && value > maxValue) {
-        value = maxValue;
-        imageCountInput.value = maxValue;
-    }
-    numOutputImages = value; // Update global variable
-    setLocalStorageItem('numOutputImages', numOutputImages);
+// Function to update the counts
+function updateCounts() {
+    setLocalStorageItem('candidateCount', candidateCountInput.value);
+    setLocalStorageItem('apiCallCount', apiCallCountInput.value);
 }
 
 function updateAspectRatio() {
@@ -629,7 +618,7 @@ function updateExplanationNote() {
     let noteText = `
         <strong>Instructions:</strong>
         Enter your Gemini API Key. Select options (Model, Aspect Ratio), type a prompt, and click "Generate". 
-        <br><small>To use an image as input, click "Use as Input" on a generated result. You can also "Load Image as Input" from your device.</small>
+        <br><small>To use an image as input, select it from the <strong>Generation History</strong> sidebar. You can also "Load Image as Input" from your device.</small>
     `;
 
     if (isGemini3Pro) {
@@ -645,12 +634,16 @@ function processAndDisplayImage(imageData, prompt) {
     let successfulCount = 0;
     
     // 1. Handle standard generateContent response (Gemini models)
-    if (imageData.candidates && imageData.candidates[0]?.content?.parts) {
-        for (const part of imageData.candidates[0].content.parts) {
-            const base64 = part.inlineData?.data || part.inline_data?.data;
-            if (base64) {
-                displaySingleImage(base64, prompt);
-                successfulCount++;
+    if (imageData.candidates && Array.isArray(imageData.candidates)) {
+        for (const candidate of imageData.candidates) {
+            if (candidate.content && candidate.content.parts) {
+                for (const part of candidate.content.parts) {
+                    const base64 = part.inlineData?.data || part.inline_data?.data;
+                    if (base64) {
+                        displaySingleImage(base64, prompt);
+                        successfulCount++;
+                    }
+                }
             }
         }
     }
@@ -669,6 +662,111 @@ function processAndDisplayImage(imageData, prompt) {
     return successfulCount > 0;
 }
 
+// Sidebar elements
+const sidebar = document.getElementById('sidebar');
+const sidebarHistory = document.getElementById('sidebarHistory');
+const sidebarToggle = document.getElementById('sidebarToggle');
+
+let generationHistory = [];
+
+// Function to load history from localStorage
+function loadHistory() {
+    const storedHistory = getLocalStorageItem('geminiGenerationHistory');
+    if (storedHistory) {
+        try {
+            generationHistory = JSON.parse(storedHistory);
+            renderHistory();
+        } catch (e) {
+            console.error("Failed to parse history:", e);
+            generationHistory = [];
+        }
+    }
+}
+
+// Function to save history to localStorage
+function saveHistory() {
+    setLocalStorageItem('geminiGenerationHistory', JSON.stringify(generationHistory));
+}
+
+// Function to add an item to history
+function addToHistory(item) {
+    generationHistory.unshift(item); // Add to the beginning
+    saveHistory();
+    renderHistory();
+}
+
+// Function to remove an item from history
+function removeFromHistory(index) {
+    generationHistory.splice(index, 1);
+    saveHistory();
+    renderHistory();
+}
+
+// Function to render the history sidebar
+function renderHistory() {
+    if (!sidebarHistory) return;
+    sidebarHistory.innerHTML = '';
+    
+    generationHistory.forEach((item, index) => {
+        const historyItem = document.createElement('div');
+        historyItem.className = 'history-item';
+        
+        if (item.type === 'image') {
+            const img = document.createElement('img');
+            img.src = `data:image/png;base64,${item.data}`;
+            img.alt = item.prompt || 'Generated Image';
+            img.title = item.prompt || 'Click to use as input';
+            img.onclick = () => {
+                addImageAsInput(item.data);
+                if (window.innerWidth <= 992) sidebar.classList.remove('active');
+            };
+            historyItem.appendChild(img);
+        } else if (item.type === 'video') {
+            const video = document.createElement('video');
+            video.src = item.url;
+            video.controls = true;
+            historyItem.appendChild(video);
+        }
+        
+        const actions = document.createElement('div');
+        actions.className = 'history-item-actions';
+        
+        if (item.type === 'image') {
+            const useBtn = document.createElement('button');
+            useBtn.textContent = 'Input';
+            useBtn.className = 'btn-use-input';
+            useBtn.onclick = () => {
+                addImageAsInput(item.data);
+                if (window.innerWidth <= 992) sidebar.classList.remove('active');
+            };
+            actions.appendChild(useBtn);
+        } else if (item.type === 'video') {
+            const downloadLink = document.createElement('a');
+            downloadLink.href = item.url;
+            downloadLink.download = item.filename || 'video.mp4';
+            downloadLink.textContent = 'Save';
+            downloadLink.className = 'btn-download';
+            actions.appendChild(downloadLink);
+        }
+        
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Delete';
+        removeBtn.className = 'btn-remove';
+        removeBtn.onclick = () => removeFromHistory(index);
+        actions.appendChild(removeBtn);
+        
+        historyItem.appendChild(actions);
+        sidebarHistory.appendChild(historyItem);
+    });
+}
+
+// Sidebar toggle logic
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('active');
+    });
+}
+
 function displaySingleImage(base64Image, prompt) {
     const imgContainer = document.createElement('div');
     imgContainer.classList.add('image-item');
@@ -681,17 +779,8 @@ function displaySingleImage(base64Image, prompt) {
     const buttonGroup = document.createElement('div');
     buttonGroup.classList.add('image-item-buttons'); 
 
-    const useInputBtn = document.createElement('button');
-    useInputBtn.textContent = 'Use as Input';
-    useInputBtn.classList.add('use-input-btn');
-    useInputBtn.onclick = () => {
-        addImageAsInput(base64Image);
-        if (window.parent !== window) {
-            window.parent.postMessage({ type: 'imageGenerated', base64: base64Image }, '*');
-        }
-    };
-    buttonGroup.appendChild(useInputBtn);
-
+    // Removed Use as Input button from gallery as per requirement
+    
     const saveImageBtn = document.createElement('button');
     saveImageBtn.textContent = 'Save Image';
     saveImageBtn.classList.add('save-image-btn');
@@ -700,6 +789,14 @@ function displaySingleImage(base64Image, prompt) {
 
     imgContainer.appendChild(buttonGroup); 
     imageGallery.appendChild(imgContainer);
+
+    // Add to history
+    addToHistory({
+        type: 'image',
+        data: base64Image,
+        prompt: prompt,
+        timestamp: new Date().toISOString()
+    });
 }
 
 // Main generation function dispatcher
@@ -733,48 +830,30 @@ async function generateImage() {
     generateImageButton.disabled = true;
     stopGenerationButton.style.display = 'inline-block';
 
-    const numToGenerate = parseInt(imageCountInput.value, 10);
-    // Validation is already handled by updateNumOutputImages mostly, but safe to check here
-    if (isNaN(numToGenerate) || numToGenerate < 1) {
-        statusMessage.textContent = 'Invalid number of images.';
-        generateImageButton.disabled = false;
-        return;
-    }
+    const candidatesPerCall = parseInt(candidateCountInput.value, 10) || 1;
+    const numApiCalls = parseInt(apiCallCountInput.value, 10) || 1;
 
     try {
-        if (selectedModel.startsWith('imagen-')) {
-            // Imagen models support sampleCount in predict, so we don't need a loop
-            await generateSingleImage(prompt, numToGenerate);
-        } else if (numToGenerate > 1) {
-            if (useBatchModeInput.checked) {
-                // Use Batch API for multiple images
-                await generateBatchImages(prompt, numToGenerate);
-            } else {
-                 // Sequential generation
-                 for (let i = 0; i < numToGenerate; i++) {
-                     if (abortController.signal.aborted) {
-                         throw new Error('Generation cancelled by user.');
-                     }
-                     statusMessage.textContent = `Generating image ${i + 1} of ${numToGenerate}...`;
-                     try {
-                         await generateSingleImage(prompt, 1);
-                     } catch (e) {
-                         console.error(`Error generating image ${i+1}:`, e);
-                         const errDiv = document.createElement('div');
-                         errDiv.classList.add('image-error');
-                         errDiv.textContent = `Image ${i+1} failed: ${e.message}`;
-                         imageGallery.appendChild(errDiv);
-                     }
-                 }
-                 if (abortController.signal.aborted) {
-                     statusMessage.textContent = 'Generation cancelled.';
-                 } else {
-                     statusMessage.textContent = `Finished generating ${numToGenerate} images.`;
-                 }
+        for (let i = 0; i < numApiCalls; i++) {
+            if (abortController.signal.aborted) {
+                throw new Error('Generation cancelled by user.');
             }
-        } else {
-            // Use standard API for single image
-            await generateSingleImage(prompt, 1);
+            
+            if (numApiCalls > 1) {
+                statusMessage.textContent = `API Call ${i + 1} of ${numApiCalls}...`;
+            }
+
+            if (candidatesPerCall > 1 && useBatchModeInput.checked) {
+                // Use Batch API for multiple images
+                await generateBatchImages(prompt, candidatesPerCall);
+            } else {
+                // Use standard API (supports multiple candidates/samples natively)
+                await generateSingleImage(prompt, candidatesPerCall);
+            }
+        }
+        
+        if (numApiCalls > 1) {
+            statusMessage.textContent = `Finished ${numApiCalls} API calls.`;
         }
     } catch (error) {
         if (error.name === 'AbortError' || abortController.signal.aborted) {
@@ -840,7 +919,8 @@ async function generateSingleImage(prompt, count = 1) {
         }
         const generationConfig = {
             responseModalities: ["TEXT", "IMAGE"],
-            imageConfig: { aspectRatio: selectedAspectRatio }
+            imageConfig: { aspectRatio: selectedAspectRatio },
+            candidateCount: count
         };
         if (!imageSizeSelect.disabled) {
             generationConfig.imageConfig.imageSize = imageOutputSize;
@@ -1382,8 +1462,10 @@ function stopGeneration() {
 // Event Listeners
 setApiKeyButton.addEventListener('click', setApiKey);
 geminiModelSelect.addEventListener('change', updateSelectedModel);
-imageCountInput.addEventListener('change', updateNumOutputImages); 
-imageCountInput.addEventListener('input', updateNumOutputImages);
+candidateCountInput.addEventListener('change', updateCounts); 
+candidateCountInput.addEventListener('input', updateCounts);
+apiCallCountInput.addEventListener('change', updateCounts);
+apiCallCountInput.addEventListener('input', updateCounts);
 aspectRatioSelect.addEventListener('change', updateAspectRatio);
 imageSizeSelect.addEventListener('change', updateImageSize);
 useGoogleSearchInput.addEventListener('change', updateUseGoogleSearch);
@@ -1444,6 +1526,7 @@ closeDebugButton.addEventListener('click', hideDebugModal);
 document.addEventListener('DOMContentLoaded', () => {
     populateModelSelect();
     loadSettingsFromLocalStorage(); 
+    loadHistory();
     
     // Now toggle features based on the loaded (or default) model
     toggleModelDependentFeatures();
