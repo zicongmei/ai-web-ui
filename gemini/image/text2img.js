@@ -834,6 +834,12 @@ function renderHistory() {
                 if (window.innerWidth <= 992) sidebar.classList.remove('active');
             };
             actions.appendChild(useBtn);
+
+            const saveBtn = document.createElement('button');
+            saveBtn.textContent = 'Save';
+            saveBtn.className = 'btn-download'; // Reuse the green styling from video save
+            saveBtn.onclick = () => saveGeneratedImage(item.data, item.prompt || '');
+            actions.appendChild(saveBtn);
         } else if (item.type === 'video') {
             const downloadLink = document.createElement('a');
             if (item.data instanceof Blob) {
