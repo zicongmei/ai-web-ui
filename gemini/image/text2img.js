@@ -16,6 +16,60 @@ let totalOutputTokens = 0;
 let totalThoughtTokens = 0; // New global for thought tokens
 let totalEstimatedCost = 0;
 
+// --- IndexedDB for Persistent History (bypassing localStorage 5MB limit) ---
+const DB_NAME = 'GeminiImageHistoryDB';
+const DB_VERSION = 1;
+const HISTORY_STORE = 'history';
+const SETTINGS_STORE = 'settings';
+
+async function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(HISTORY_STORE)) {
+                db.createObjectStore(HISTORY_STORE);
+            }
+            if (!db.objectStoreNames.contains(SETTINGS_STORE)) {
+                db.createObjectStore(SETTINGS_STORE);
+            }
+        };
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
+async function saveToDB(storeName, key, value) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(value, key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error saving to IndexedDB [${storeName}:${key}]:`, e);
+    }
+}
+
+async function getFromDB(storeName, key) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error reading from IndexedDB [${storeName}:${key}]:`, e);
+        return null;
+    }
+}
+
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
@@ -184,7 +238,7 @@ function updateAspectRatioOptions() {
 }
 
 // Function to load values from localStorage (excluding model-dependent features for initial setup)
-function loadSettingsFromLocalStorage() {
+async function loadSettingsFromLocalStorage() {
     // API Key
     const apiKey = getLocalStorageItem('geminiApiKey');
     if (apiKey) {
@@ -229,8 +283,8 @@ function loadSettingsFromLocalStorage() {
         useBatchModeInput.checked = true; // Default to true
     }
 
-    // Load Selected Input Images
-    const storedInputImages = getLocalStorageItem('selectedInputImages');
+    // Load Selected Input Images from IndexedDB
+    const storedInputImages = await getFromDB(SETTINGS_STORE, 'selectedInputImages');
     if (storedInputImages) {
         try {
             selectedInputImages = JSON.parse(storedInputImages);
@@ -239,12 +293,24 @@ function loadSettingsFromLocalStorage() {
             selectedInputImages = [];
         }
     } else {
-        // Fallback for backward compatibility with single image
-        const oldSingleImage = getLocalStorageItem('selectedInputImageBase64');
-        if (oldSingleImage) {
-            selectedInputImages = [oldSingleImage];
-            // Remove old key
-            localStorage.removeItem('selectedInputImageBase64');
+        // Fallback for backward compatibility with localStorage
+        const oldStoredInputImages = getLocalStorageItem('selectedInputImages');
+        if (oldStoredInputImages) {
+            try {
+                selectedInputImages = JSON.parse(oldStoredInputImages);
+                // Migrate to DB
+                await saveToDB(SETTINGS_STORE, 'selectedInputImages', oldStoredInputImages);
+                // localStorage.removeItem('selectedInputImages'); // Keep for now just in case
+            } catch (e) {
+                console.error("Failed to migrate stored images:", e);
+            }
+        } else {
+            // Further fallback
+            const oldSingleImage = getLocalStorageItem('selectedInputImageBase64');
+            if (oldSingleImage) {
+                selectedInputImages = [oldSingleImage];
+                localStorage.removeItem('selectedInputImageBase64');
+            }
         }
     }
     renderSelectedImages();
@@ -359,6 +425,7 @@ function renderSelectedImages() {
     
     if (selectedInputImages.length === 0) {
         selectedImageContainer.style.display = 'none';
+        saveToDB(SETTINGS_STORE, 'selectedInputImages', JSON.stringify([]));
         return;
     }
 
@@ -383,8 +450,8 @@ function renderSelectedImages() {
         selectedImagesList.appendChild(wrapper);
     });
 
-    // Update localStorage whenever render is called
-    setLocalStorageItem('selectedInputImages', JSON.stringify(selectedInputImages));
+    // Update IndexedDB whenever render is called
+    saveToDB(SETTINGS_STORE, 'selectedInputImages', JSON.stringify(selectedInputImages));
 }
 
 function addImageAsInput(base64) {
@@ -669,36 +736,58 @@ const sidebarToggle = document.getElementById('sidebarToggle');
 
 let generationHistory = [];
 
-// Function to load history from localStorage
-function loadHistory() {
-    const storedHistory = getLocalStorageItem('geminiGenerationHistory');
+// Function to load history from IndexedDB
+async function loadHistory() {
+    const storedHistory = await getFromDB(HISTORY_STORE, 'geminiGenerationHistory');
     if (storedHistory) {
-        try {
-            generationHistory = JSON.parse(storedHistory);
-            renderHistory();
-        } catch (e) {
-            console.error("Failed to parse history:", e);
-            generationHistory = [];
+        if (typeof storedHistory === 'string') {
+            try {
+                generationHistory = JSON.parse(storedHistory);
+                // Migrate to raw object storage
+                await saveHistory();
+            } catch (e) {
+                console.error("Failed to parse history from DB:", e);
+                generationHistory = [];
+            }
+        } else {
+            generationHistory = storedHistory;
+        }
+        renderHistory();
+    } else {
+        // Fallback for migration from localStorage
+        const oldHistory = getLocalStorageItem('geminiGenerationHistory');
+        if (oldHistory) {
+            try {
+                generationHistory = JSON.parse(oldHistory);
+                await saveHistory(); // Save to DB
+                renderHistory();
+            } catch (e) {
+                console.error("Failed to migrate history from localStorage:", e);
+            }
         }
     }
 }
 
-// Function to save history to localStorage
-function saveHistory() {
-    setLocalStorageItem('geminiGenerationHistory', JSON.stringify(generationHistory));
+// Function to save history to IndexedDB
+async function saveHistory() {
+    // Store the raw array (IndexedDB handles Blobs and other complex objects)
+    await saveToDB(HISTORY_STORE, 'geminiGenerationHistory', generationHistory);
 }
 
 // Function to add an item to history
-function addToHistory(item) {
+async function addToHistory(item) {
     generationHistory.unshift(item); // Add to the beginning
-    saveHistory();
+    await saveHistory();
     renderHistory();
 }
 
 // Function to remove an item from history
-function removeFromHistory(index) {
+async function removeFromHistory(index) {
+    const item = generationHistory[index];
+    // If it's a video, we might want to revoke the URL if we created one
+    // But since we recreate them on render, we just need to manage memory
     generationHistory.splice(index, 1);
-    saveHistory();
+    await saveHistory();
     renderHistory();
 }
 
@@ -723,7 +812,12 @@ function renderHistory() {
             historyItem.appendChild(img);
         } else if (item.type === 'video') {
             const video = document.createElement('video');
-            video.src = item.url;
+            // Recreate object URL from Blob if it exists, otherwise use original URL
+            if (item.data instanceof Blob) {
+                video.src = URL.createObjectURL(item.data);
+            } else {
+                video.src = item.url;
+            }
             video.controls = true;
             historyItem.appendChild(video);
         }
@@ -742,7 +836,11 @@ function renderHistory() {
             actions.appendChild(useBtn);
         } else if (item.type === 'video') {
             const downloadLink = document.createElement('a');
-            downloadLink.href = item.url;
+            if (item.data instanceof Blob) {
+                downloadLink.href = URL.createObjectURL(item.data);
+            } else {
+                downloadLink.href = item.url;
+            }
             downloadLink.download = item.filename || 'video.mp4';
             downloadLink.textContent = 'Save';
             downloadLink.className = 'btn-download';
@@ -1523,10 +1621,10 @@ showApiCallsButton.addEventListener('click', showApiCallsModal); // Use renamed 
 closeDebugButton.addEventListener('click', hideDebugModal);
 
 // Initial setup on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     populateModelSelect();
-    loadSettingsFromLocalStorage(); 
-    loadHistory();
+    await loadSettingsFromLocalStorage(); 
+    await loadHistory();
     
     // Now toggle features based on the loaded (or default) model
     toggleModelDependentFeatures();

@@ -520,6 +520,7 @@ async function displayGeneratedVideo(uri) {
             addToHistory({
                 type: 'video',
                 url: videoUrl,
+                data: blob, // Store the actual Blob for IndexedDB persistence
                 videoUri: uri,
                 filename: filename,
                 timestamp: new Date().toISOString()
