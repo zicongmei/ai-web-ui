@@ -787,6 +787,18 @@ async function removeFromHistory(index) {
     renderHistory();
 }
 
+// Lightbox Elements
+const imageLightbox = document.getElementById('imageLightbox');
+const lightboxImage = document.getElementById('lightboxImage');
+const lightboxCaption = document.getElementById('lightboxCaption');
+const lightboxClose = document.querySelector('.lightbox-close');
+
+function openLightbox(base64, caption = '') {
+    lightboxImage.src = `data:image/png;base64,${base64}`;
+    lightboxCaption.textContent = caption;
+    imageLightbox.style.display = 'block';
+}
+
 // Function to render the history sidebar
 function renderHistory() {
     if (!sidebarHistory) return;
@@ -800,10 +812,9 @@ function renderHistory() {
             const img = document.createElement('img');
             img.src = `data:image/png;base64,${item.data}`;
             img.alt = item.prompt || 'Generated Image';
-            img.title = item.prompt || 'Click to use as input';
+            img.title = item.prompt || 'Click to view full size';
             img.onclick = () => {
-                addImageAsInput(item.data);
-                if (window.innerWidth <= 992) sidebar.classList.remove('active');
+                openLightbox(item.data, item.prompt);
             };
             historyItem.appendChild(img);
         } else if (item.type === 'video') {
@@ -1624,6 +1635,17 @@ promptInput.addEventListener('keydown', (event) => {
 });
 showApiCallsButton.addEventListener('click', showApiCallsModal); // Use renamed button and modal function
 closeDebugButton.addEventListener('click', hideDebugModal);
+
+// Lightbox closing event listeners
+lightboxClose.addEventListener('click', () => {
+    imageLightbox.style.display = 'none';
+});
+
+imageLightbox.addEventListener('click', (event) => {
+    if (event.target === imageLightbox) {
+        imageLightbox.style.display = 'none';
+    }
+});
 
 // Initial setup on page load
 document.addEventListener('DOMContentLoaded', async () => {
