@@ -205,7 +205,7 @@ function addAssignedImage(base64, mimeType = 'image/png') {
         role = 'lastFrame';
     }
 
-    assignedImages.push({ base64, mimeType, role });
+    assignedImages.push({ base64, mimeType, role, referenceType: 'style' });
     renderAssignedImages();
     videoStatusMessage.textContent = 'Image added and assigned.';
     updateDurationSecondsOptions();
@@ -229,8 +229,8 @@ function renderAssignedImages() {
         preview.style.cssText = 'width: 100%; height: 100px; object-fit: cover; border-radius: 2px;';
         wrapper.appendChild(preview);
 
-        const select = document.createElement('select');
-        select.style.cssText = 'width: 100%; margin-top: 5px; font-size: 0.8em;';
+        const roleSelect = document.createElement('select');
+        roleSelect.style.cssText = 'width: 100%; margin-top: 5px; font-size: 0.8em;';
         const roles = [
             { val: 'image', label: 'First Image (Start)' },
             { val: 'lastFrame', label: 'Last Image (End)' },
@@ -241,13 +241,36 @@ function renderAssignedImages() {
             opt.value = r.val;
             opt.textContent = r.label;
             if (img.role === r.val) opt.selected = true;
-            select.appendChild(opt);
+            roleSelect.appendChild(opt);
         });
-        select.onchange = (e) => {
+        
+        const refTypeSelect = document.createElement('select');
+        refTypeSelect.style.cssText = 'width: 100%; margin-top: 2px; font-size: 0.8em;';
+        refTypeSelect.style.display = img.role === 'referenceImage' ? 'block' : 'none';
+        const refTypes = [
+            { val: 'style', label: 'Style Ref' },
+            { val: 'asset', label: 'Asset Ref' }
+        ];
+        refTypes.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.val;
+            opt.textContent = t.label;
+            if (img.referenceType === t.val) opt.selected = true;
+            refTypeSelect.appendChild(opt);
+        });
+
+        roleSelect.onchange = (e) => {
             img.role = e.target.value;
+            refTypeSelect.style.display = img.role === 'referenceImage' ? 'block' : 'none';
             updateDurationSecondsOptions();
         };
-        wrapper.appendChild(select);
+
+        refTypeSelect.onchange = (e) => {
+            img.referenceType = e.target.value;
+        };
+
+        wrapper.appendChild(roleSelect);
+        wrapper.appendChild(refTypeSelect);
 
         const removeBtn = document.createElement('button');
         removeBtn.innerHTML = '&times;';
@@ -327,11 +350,26 @@ async function generateVideoContent() {
 
         if (firstFrameImg) {
             instance.image = {
-                inlineData: {
-                    data: firstFrameImg.base64,
-                    mimeType: firstFrameImg.mimeType || 'image/png'
-                }
+                bytesBase64Encoded: firstFrameImg.base64,
+                mimeType: firstFrameImg.mimeType || 'image/png'
             };
+        }
+
+        if (lastFrameImg) {
+            instance.lastFrame = {
+                bytesBase64Encoded: lastFrameImg.base64,
+                mimeType: lastFrameImg.mimeType || 'image/png'
+            };
+        }
+
+        if (refImages.length > 0) {
+            instance.referenceImages = refImages.map(img => ({
+                image: {
+                    bytesBase64Encoded: img.base64,
+                    mimeType: img.mimeType || 'image/png'
+                },
+                referenceType: img.referenceType || 'style'
+            }));
         }
 
         // Retrieve video generation parameters
@@ -351,24 +389,6 @@ async function generateVideoContent() {
             parameters.durationSeconds = 8;
         } else if (durationSecondsValue) {
             parameters.durationSeconds = parseInt(durationSecondsValue, 10);
-        }
-
-        if (lastFrameImg) {
-            parameters.lastFrame = {
-                inlineData: {
-                    data: lastFrameImg.base64,
-                    mimeType: lastFrameImg.mimeType || 'image/png'
-                }
-            };
-        }
-
-        if (refImages.length > 0) {
-            parameters.referenceImages = refImages.map(img => ({
-                inlineData: {
-                    data: img.base64,
-                    mimeType: img.mimeType || 'image/png'
-                }
-            }));
         }
 
         if (aspectRatio) parameters.aspectRatio = aspectRatio;
