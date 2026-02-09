@@ -60,6 +60,56 @@ const videoTotalCostSpan = document.getElementById('videoTotalEstimatedCost');
 
 // --- Initialization ---
 
+// Constants for DB (matching text2img.js for compatibility if needed, or separate)
+const VIDEO_DB_NAME = 'GeminiVideoHistoryDB';
+const VIDEO_DB_VERSION = 1;
+const VIDEO_SETTINGS_STORE = 'settings';
+
+async function initVideoDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(VIDEO_DB_NAME, VIDEO_DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(VIDEO_SETTINGS_STORE)) {
+                db.createObjectStore(VIDEO_SETTINGS_STORE);
+            }
+        };
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
+async function saveToVideoDB(key, value) {
+    try {
+        const db = await initVideoDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(VIDEO_SETTINGS_STORE, 'readwrite');
+            const store = transaction.objectStore(VIDEO_SETTINGS_STORE);
+            const request = store.put(value, key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error saving to Video DB [${key}]:`, e);
+    }
+}
+
+async function getFromVideoDB(key) {
+    try {
+        const db = await initVideoDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(VIDEO_SETTINGS_STORE, 'readonly');
+            const store = transaction.objectStore(VIDEO_SETTINGS_STORE);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error reading from Video DB [${key}]:`, e);
+        return null;
+    }
+}
+
 function setLocalStorageItem(name, value) {
     try { localStorage.setItem(name, value); } catch (e) { console.error(e); }
 }
@@ -81,7 +131,7 @@ function setVideoApiKey() {
     return true;
 }
 
-function loadVideoSettings() {
+async function loadVideoSettings() {
     const apiKey = getLocalStorageItem('geminiVideoApiKey');
     if (apiKey) {
         videoApiKeyInput.value = apiKey;
@@ -91,6 +141,39 @@ function loadVideoSettings() {
     if (storedModel && GEMINI_VIDEO_MODELS[storedModel]) {
         selectedVideoModel = storedModel;
         videoModelSelect.value = storedModel;
+    }
+
+    // Load prompt
+    const storedPrompt = getLocalStorageItem('videoPromptInput');
+    if (storedPrompt) {
+        videoPromptInput.value = storedPrompt;
+    }
+
+    // Load options
+    const options = [
+        { el: videoDurationSecondsSelect, key: 'videoDurationSeconds' },
+        { el: videoAspectRatioSelect, key: 'videoAspectRatio' },
+        { el: videoResolutionSelect, key: 'videoResolution' },
+        { el: videoSampleCountInput, key: 'videoSampleCount' },
+        { el: videoSeedInput, key: 'videoSeed' },
+        { el: videoNegativePromptInput, key: 'videoNegativePrompt' },
+        { el: videoPersonGenerationSelect, key: 'videoPersonGeneration' },
+        { el: videoGenerateAudioSelect, key: 'videoGenerateAudio' }
+    ];
+    options.forEach(opt => {
+        const val = getLocalStorageItem(opt.key);
+        if (val !== null) opt.el.value = val;
+    });
+
+    // Load assigned images from IndexedDB
+    const storedAssignedImages = await getFromVideoDB('assignedImages');
+    if (storedAssignedImages) {
+        try {
+            assignedImages = JSON.parse(storedAssignedImages);
+            renderAssignedImages();
+        } catch (e) {
+            console.error("Failed to parse stored assigned images:", e);
+        }
     }
 
     // Check for recoverable operation
@@ -215,6 +298,7 @@ function renderAssignedImages() {
     assignedImagesList.innerHTML = '';
     if (assignedImages.length === 0) {
         assignedImagesContainer.style.display = 'none';
+        saveToVideoDB('assignedImages', JSON.stringify([]));
         return;
     }
     assignedImagesContainer.style.display = 'block';
@@ -262,11 +346,13 @@ function renderAssignedImages() {
         roleSelect.onchange = (e) => {
             img.role = e.target.value;
             refTypeSelect.style.display = img.role === 'referenceImage' ? 'block' : 'none';
+            saveToVideoDB('assignedImages', JSON.stringify(assignedImages));
             updateDurationSecondsOptions();
         };
 
         refTypeSelect.onchange = (e) => {
             img.referenceType = e.target.value;
+            saveToVideoDB('assignedImages', JSON.stringify(assignedImages));
         };
 
         wrapper.appendChild(roleSelect);
@@ -284,6 +370,8 @@ function renderAssignedImages() {
 
         assignedImagesList.appendChild(wrapper);
     });
+
+    saveToVideoDB('assignedImages', JSON.stringify(assignedImages));
 }
 
 function clearAllAssignedImages() {
@@ -291,6 +379,7 @@ function clearAllAssignedImages() {
     renderAssignedImages();
     imageInput.value = '';
     videoStatusMessage.textContent = 'All assigned images cleared.';
+    saveToVideoDB('assignedImages', JSON.stringify([]));
     updateDurationSecondsOptions();
 }
 
@@ -739,6 +828,34 @@ videoTakePhotoButton.addEventListener('click', () => {
 
 // Listener for Add URL button click
 videoAddUrlButton.addEventListener('click', addVideoImageFromUrl);
+
+// Persistence Listeners
+videoPromptInput.addEventListener('input', () => {
+    setLocalStorageItem('videoPromptInput', videoPromptInput.value);
+});
+
+const persistOptions = [
+    { el: videoDurationSecondsSelect, key: 'videoDurationSeconds' },
+    { el: videoAspectRatioSelect, key: 'videoAspectRatio' },
+    { el: videoResolutionSelect, key: 'videoResolution' },
+    { el: videoSampleCountInput, key: 'videoSampleCount' },
+    { el: videoSeedInput, key: 'videoSeed' },
+    { el: videoNegativePromptInput, key: 'videoNegativePrompt' },
+    { el: videoPersonGenerationSelect, key: 'videoPersonGeneration' },
+    { el: videoGenerateAudioSelect, key: 'videoGenerateAudio' }
+];
+
+persistOptions.forEach(opt => {
+    opt.el.addEventListener('change', () => {
+        setLocalStorageItem(opt.key, opt.el.value);
+    });
+    // For inputs like number or text, also listen to input
+    if (opt.el.tagName === 'INPUT' || opt.el.tagName === 'TEXTAREA') {
+        opt.el.addEventListener('input', () => {
+            setLocalStorageItem(opt.key, opt.el.value);
+        });
+    }
+});
 
 function handleVideoFileSelect(event) {
     const file = event.target.files[0];
