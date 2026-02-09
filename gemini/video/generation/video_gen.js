@@ -6,7 +6,6 @@ let videoAbortController = null;
 let videoApiInteractions = [];
 
 let assignedImages = []; // List of { base64, mimeType, role }
-let assignedVideo = null; // { base64, url, mimeType }
 
 // Global totals
 let videoTotalTime = 0;
@@ -177,17 +176,6 @@ async function loadVideoSettings() {
         }
     }
 
-    // Load assigned video from IndexedDB
-    const storedAssignedVideo = await getFromVideoDB('assignedVideo');
-    if (storedAssignedVideo) {
-        try {
-            assignedVideo = JSON.parse(storedAssignedVideo);
-            renderAssignedImages();
-        } catch (e) {
-            console.error("Failed to parse stored assigned video:", e);
-        }
-    }
-
     // Check for recoverable operation
     const lastOp = getLocalStorageItem('geminiLastVideoOperationName');
     if (lastOp) {
@@ -213,15 +201,14 @@ function updateDurationSecondsOptions() {
     const isVeo2 = model.includes('veo-2');
     const isVeo3 = model.includes('veo-3');
     const hasFirstOrLastFrame = assignedImages.some(img => img.role === 'image' || img.role === 'lastFrame');
-    const hasVideo = !!assignedVideo;
 
     const currentVal = videoDurationSecondsSelect.value;
     videoDurationSecondsSelect.innerHTML = '<option value="" selected>Not Set (Default: 8)</option>';
 
-    if (hasFirstOrLastFrame || hasVideo) {
+    if (hasFirstOrLastFrame) {
         const option = document.createElement('option');
         option.value = "8";
-        option.textContent = "8 (Fixed for Image/Video-to-Video)";
+        option.textContent = "8 (Fixed for Image-to-Video)";
         videoDurationSecondsSelect.appendChild(option);
         videoDurationSecondsSelect.value = "8";
         videoDurationSecondsSelect.disabled = true;
@@ -307,67 +294,14 @@ function addAssignedImage(base64, mimeType = 'image/png') {
     updateDurationSecondsOptions();
 }
 
-async function addAssignedVideo(blob, url) {
-    let base64 = '';
-    if (blob instanceof Blob) {
-        const base64Data = await blobToBase64(blob);
-        base64 = base64Data.split(',')[1];
-    } else if (typeof blob === 'string') {
-        base64 = blob; // Assume it's already base64 if it's a string from history migration? 
-        // Actually history stores it as Blob in newer versions
-    }
-    
-    assignedVideo = {
-        base64: base64,
-        url: url,
-        mimeType: (blob instanceof Blob) ? blob.type : 'video/mp4'
-    };
-    renderAssignedImages();
-    videoStatusMessage.textContent = 'Base video assigned.';
-    saveToVideoDB('assignedVideo', JSON.stringify(assignedVideo));
-    updateDurationSecondsOptions();
-}
-
 function renderAssignedImages() {
     assignedImagesList.innerHTML = '';
-    if (assignedImages.length === 0 && !assignedVideo) {
+    if (assignedImages.length === 0) {
         assignedImagesContainer.style.display = 'none';
         saveToVideoDB('assignedImages', JSON.stringify([]));
         return;
     }
     assignedImagesContainer.style.display = 'block';
-
-    // Render Video first if it exists
-    if (assignedVideo) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'assigned-image-item';
-        wrapper.style.cssText = 'position: relative; border: 1px solid #007bff; padding: 5px; border-radius: 4px; background: #e7f3ff; width: 150px;';
-
-        const preview = document.createElement('video');
-        preview.src = assignedVideo.url || `data:${assignedVideo.mimeType};base64,${assignedVideo.base64}`;
-        preview.style.cssText = 'width: 100%; height: 100px; object-fit: cover; border-radius: 2px;';
-        preview.muted = true;
-        preview.autoplay = true;
-        preview.loop = true;
-        wrapper.appendChild(preview);
-
-        const label = document.createElement('div');
-        label.textContent = 'Base Video';
-        label.style.cssText = 'text-align: center; font-size: 0.8em; font-weight: bold; margin-top: 5px; color: #007bff;';
-        wrapper.appendChild(label);
-
-        const removeBtn = document.createElement('button');
-        removeBtn.innerHTML = '&times;';
-        removeBtn.style.cssText = 'position: absolute; top: -10px; right: -10px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;';
-        removeBtn.onclick = () => {
-            assignedVideo = null;
-            renderAssignedImages();
-            saveToVideoDB('assignedVideo', null);
-            updateDurationSecondsOptions();
-        };
-        wrapper.appendChild(removeBtn);
-        assignedImagesList.appendChild(wrapper);
-    }
 
     assignedImages.forEach((img, index) => {
         const wrapper = document.createElement('div');
@@ -442,12 +376,10 @@ function renderAssignedImages() {
 
 function clearAllAssignedImages() {
     assignedImages = [];
-    assignedVideo = null;
     renderAssignedImages();
     imageInput.value = '';
-    videoStatusMessage.textContent = 'All assigned assets cleared.';
+    videoStatusMessage.textContent = 'All assigned images cleared.';
     saveToVideoDB('assignedImages', JSON.stringify([]));
-    saveToVideoDB('assignedVideo', null);
     updateDurationSecondsOptions();
 }
 
@@ -512,13 +444,6 @@ async function generateVideoContent() {
             };
         }
 
-        if (assignedVideo) {
-            instance.video = {
-                bytesBase64Encoded: assignedVideo.base64,
-                mimeType: assignedVideo.mimeType || 'video/mp4'
-            };
-        }
-
         if (lastFrameImg) {
             instance.lastFrame = {
                 bytesBase64Encoded: lastFrameImg.base64,
@@ -548,8 +473,8 @@ async function generateVideoContent() {
 
         const parameters = {};
         
-        // Requirement: When using referenceImages or frames or video: 8.
-        if (firstFrameImg || lastFrameImg || refImages.length > 0 || assignedVideo) {
+        // Requirement: When using referenceImages or frames: 8.
+        if (firstFrameImg || lastFrameImg || refImages.length > 0) {
             parameters.durationSeconds = 8;
         } else if (durationSecondsValue) {
             parameters.durationSeconds = parseInt(durationSecondsValue, 10);

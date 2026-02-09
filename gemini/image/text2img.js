@@ -882,21 +882,6 @@ function renderHistory() {
             saveBtn.onclick = () => saveGeneratedImage(item.data, item.prompt || '');
             actions.appendChild(saveBtn);
         } else if (item.type === 'video') {
-            if (isVideoPage) {
-                const baseBtn = document.createElement('button');
-                baseBtn.textContent = 'Base';
-                baseBtn.className = 'btn-use-input';
-                baseBtn.style.fontSize = '0.7em';
-                baseBtn.style.padding = '3px';
-                baseBtn.onclick = () => {
-                    if (typeof addAssignedVideo === 'function') {
-                        addAssignedVideo(item.data, item.url);
-                    }
-                    if (window.innerWidth <= 992) sidebar.classList.remove('active');
-                };
-                actions.appendChild(baseBtn);
-            }
-
             const downloadLink = document.createElement('a');
             if (item.data instanceof Blob) {
                 downloadLink.href = URL.createObjectURL(item.data);
