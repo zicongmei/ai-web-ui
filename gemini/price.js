@@ -95,14 +95,6 @@ const GEMINI_PRICING_CONFIG = {
             input: { text_per_m_tokens: 0, image_fixed_price: 0 },
             output: { image_fixed_price: 0.04 }
         },
-        'imagen-3.0-generate-002': {
-            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
-            output: { image_fixed_price: 0.03 }
-        },
-        'imagen-3': {
-            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
-            output: { image_fixed_price: 0.03 }
-        },
         'gemini-3-pro-image-preview': {
             input: {
                 text_per_m_tokens: 1.00,

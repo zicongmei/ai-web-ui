@@ -428,7 +428,7 @@ button:disabled {
 .image-action-buttons button {
     width: auto; /* Override 100% width for general buttons */
     padding: 10px 20px;
-    background-color: #007bff;
+    background-color: #6f42c1;
     color: white;
     border: none;
     border-radius: 4px; /* Use smaller radius for these action buttons */
@@ -438,7 +438,7 @@ button:disabled {
 }
 
 .image-action-buttons button:hover:not(:disabled) {
-    background-color: #0056b3;
+    background-color: #59359a;
 }
 
 

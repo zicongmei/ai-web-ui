@@ -77,9 +77,7 @@ const GEMINI_IMAGE_MODELS = {
     'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
     'imagen-4.0-generate-001': 'Imagen 4 Standard',
     'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra',
-    'imagen-4': 'Imagen 4 (Alias)',
-    'imagen-3.0-generate-002': 'Imagen 3 Standard',
-    'imagen-3': 'Imagen 3 (Alias)'
+    'imagen-4': 'Imagen 4 (Alias)'
 };
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
@@ -120,9 +118,7 @@ const IMAGE_RESOLUTION_DATA = {
     'imagen-4.0-fast-generate-001': IMAGEN_STANDARD_RATIOS,
     'imagen-4.0-generate-001': IMAGEN_STANDARD_RATIOS,
     'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-4': IMAGEN_STANDARD_RATIOS,
-    'imagen-3.0-generate-002': IMAGEN_STANDARD_RATIOS,
-    'imagen-3': IMAGEN_STANDARD_RATIOS
+    'imagen-4': IMAGEN_STANDARD_RATIOS
 };
 
 // Get DOM elements
