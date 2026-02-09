@@ -399,3 +399,18 @@ button:disabled {
         width: 100%;
     }
 }
+
+/* Assigned Image Item Styles */
+.assigned-image-item {
+    transition: transform 0.2s;
+}
+
+.assigned-image-item:hover {
+    transform: scale(1.05);
+}
+
+.assigned-image-item select {
+    padding: 2px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+}

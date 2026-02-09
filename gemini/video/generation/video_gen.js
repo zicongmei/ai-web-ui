@@ -5,6 +5,8 @@ let selectedVideoModel = 'veo-3.1-fast-generate-preview';
 let videoAbortController = null;
 let videoApiInteractions = [];
 
+let assignedImages = []; // List of { base64, mimeType, role }
+
 // Global totals
 let videoTotalTime = 0;
 let videoTotalCost = 0;
@@ -38,9 +40,9 @@ const videoCameraInput = document.getElementById('videoCameraInput');
 const videoTakePhotoButton = document.getElementById('videoTakePhotoButton');
 const videoImageUrlInput = document.getElementById('videoImageUrlInput');
 const videoAddUrlButton = document.getElementById('videoAddUrlButton');
-const selectedImagePreview = document.getElementById('selectedImagePreview');
-const inputImageDisplay = document.getElementById('inputImageDisplay');
-const clearInputImageButton = document.getElementById('clearInputImageButton');
+const assignedImagesContainer = document.getElementById('assignedImagesContainer');
+const assignedImagesList = document.getElementById('assignedImagesList');
+const clearAllAssignedImagesButton = document.getElementById('clearAllAssignedImagesButton');
 const generateVideoButton = document.getElementById('generateVideoButton');
 const stopVideoGenerationButton = document.getElementById('stopVideoGenerationButton');
 const recoverVideoButton = document.getElementById('recoverVideoButton');
@@ -115,12 +117,12 @@ function updateDurationSecondsOptions() {
     const model = videoModelSelect.value;
     const isVeo2 = model.includes('veo-2');
     const isVeo3 = model.includes('veo-3');
-    const hasImage = (selectedImagePreview.style.display !== 'none' && inputImageDisplay.src);
+    const hasFirstOrLastFrame = assignedImages.some(img => img.role === 'image' || img.role === 'lastFrame');
 
     const currentVal = videoDurationSecondsSelect.value;
     videoDurationSecondsSelect.innerHTML = '<option value="" selected>Not Set (Default: 8)</option>';
 
-    if (hasImage) {
+    if (hasFirstOrLastFrame) {
         const option = document.createElement('option');
         option.value = "8";
         option.textContent = "8 (Fixed for Image-to-Video)";
@@ -171,7 +173,7 @@ async function addVideoImageFromUrl() {
 
         const base64Data = await blobToBase64(blob);
         const base64 = base64Data.split(',')[1];
-        displayVideoInputImage(base64);
+        addAssignedImage(base64, blob.type);
         videoImageUrlInput.value = '';
         videoStatusMessage.textContent = 'Image added from URL.';
         setTimeout(() => {
@@ -194,35 +196,89 @@ function blobToBase64(blob) {
     });
 }
 
-function displayVideoInputImage(base64) {
-    inputImageDisplay.src = `data:image/png;base64,${base64}`;
-    selectedImagePreview.style.display = 'block';
-    videoStatusMessage.textContent = 'Video input image updated.';
+function addAssignedImage(base64, mimeType = 'image/png') {
+    // Default role based on what's already assigned
+    let role = 'referenceImage';
+    if (!assignedImages.some(img => img.role === 'image')) {
+        role = 'image';
+    } else if (!assignedImages.some(img => img.role === 'lastFrame')) {
+        role = 'lastFrame';
+    }
+
+    assignedImages.push({ base64, mimeType, role });
+    renderAssignedImages();
+    videoStatusMessage.textContent = 'Image added and assigned.';
     updateDurationSecondsOptions();
 }
 
-function clearVideoInputImage() {
-    inputImageDisplay.src = '';
-    selectedImagePreview.style.display = 'none';
-    imageInput.value = ''; // Clear file input
-    // Clear global selection from text2img if it matches
-    if (typeof selectedInputImages !== 'undefined') {
-        // We don't necessarily want to clear the *text2img* inputs, just the video input.
-        // But for consistency, let's assume this clear button is for the video context.
+function renderAssignedImages() {
+    assignedImagesList.innerHTML = '';
+    if (assignedImages.length === 0) {
+        assignedImagesContainer.style.display = 'none';
+        return;
     }
-    videoStatusMessage.textContent = 'Video input image cleared.';
+    assignedImagesContainer.style.display = 'block';
+
+    assignedImages.forEach((img, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'assigned-image-item';
+        wrapper.style.cssText = 'position: relative; border: 1px solid #ccc; padding: 5px; border-radius: 4px; background: white; width: 150px;';
+
+        const preview = document.createElement('img');
+        preview.src = `data:${img.mimeType};base64,${img.base64}`;
+        preview.style.cssText = 'width: 100%; height: 100px; object-fit: cover; border-radius: 2px;';
+        wrapper.appendChild(preview);
+
+        const select = document.createElement('select');
+        select.style.cssText = 'width: 100%; margin-top: 5px; font-size: 0.8em;';
+        const roles = [
+            { val: 'image', label: 'First Image (Start)' },
+            { val: 'lastFrame', label: 'Last Image (End)' },
+            { val: 'referenceImage', label: 'Reference Image' }
+        ];
+        roles.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = r.val;
+            opt.textContent = r.label;
+            if (img.role === r.val) opt.selected = true;
+            select.appendChild(opt);
+        });
+        select.onchange = (e) => {
+            img.role = e.target.value;
+            updateDurationSecondsOptions();
+        };
+        wrapper.appendChild(select);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.innerHTML = '&times;';
+        removeBtn.style.cssText = 'position: absolute; top: -10px; right: -10px; background: red; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px;';
+        removeBtn.onclick = () => {
+            assignedImages.splice(index, 1);
+            renderAssignedImages();
+            updateDurationSecondsOptions();
+        };
+        wrapper.appendChild(removeBtn);
+
+        assignedImagesList.appendChild(wrapper);
+    });
+}
+
+function clearAllAssignedImages() {
+    assignedImages = [];
+    renderAssignedImages();
+    imageInput.value = '';
+    videoStatusMessage.textContent = 'All assigned images cleared.';
     updateDurationSecondsOptions();
 }
 
 // Hook into text2img.js addImageAsInput to update video preview
-// This assumes text2img.js is loaded and defines addImageAsInput
 if (typeof addImageAsInput === 'function') {
     const originalAddImageAsInput = addImageAsInput;
     addImageAsInput = function(base64) {
         originalAddImageAsInput(base64); // Call original to update text2img UI
-        displayVideoInputImage(base64);  // Update video UI
+        addAssignedImage(base64);  // Add to video assigned images
         // Scroll to video input section
-        selectedImagePreview.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        assignedImagesContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
     };
 }
 
@@ -259,27 +315,22 @@ async function generateVideoContent() {
         // Video generation uses predictLongRunning
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning?key=${currentVideoApiKey}`;
         
-        let imageBase64 = null;
-        let imageMimeType = null;
-
-        // Use the displayed image as the source of truth
-        if (selectedImagePreview.style.display !== 'none' && inputImageDisplay.src) {
-            const src = inputImageDisplay.src;
-            if (src.startsWith('data:image/')) {
-                imageBase64 = src.split(',')[1];
-                imageMimeType = src.substring(5, src.indexOf(';'));
-            }
-        }
+        // Find assigned images by role
+        const firstFrameImg = assignedImages.find(img => img.role === 'image');
+        const lastFrameImg = assignedImages.find(img => img.role === 'lastFrame');
+        const refImages = assignedImages.filter(img => img.role === 'referenceImage').slice(0, 3);
 
         // Structure for Veo video generation prompt.
         const instance = {
             prompt: prompt
         };
 
-        if (imageBase64) {
+        if (firstFrameImg) {
             instance.image = {
-                bytesBase64Encoded: imageBase64,
-                mimeType: imageMimeType || 'image/png'
+                inlineData: {
+                    data: firstFrameImg.base64,
+                    mimeType: firstFrameImg.mimeType || 'image/png'
+                }
             };
         }
 
@@ -295,11 +346,29 @@ async function generateVideoContent() {
 
         const parameters = {};
         
-        // Requirement: When using referenceImages: 8.
-        if (imageBase64) {
+        // Requirement: When using referenceImages or frames: 8.
+        if (firstFrameImg || lastFrameImg || refImages.length > 0) {
             parameters.durationSeconds = 8;
         } else if (durationSecondsValue) {
             parameters.durationSeconds = parseInt(durationSecondsValue, 10);
+        }
+
+        if (lastFrameImg) {
+            parameters.lastFrame = {
+                inlineData: {
+                    data: lastFrameImg.base64,
+                    mimeType: lastFrameImg.mimeType || 'image/png'
+                }
+            };
+        }
+
+        if (refImages.length > 0) {
+            parameters.referenceImages = refImages.map(img => ({
+                inlineData: {
+                    data: img.base64,
+                    mimeType: img.mimeType || 'image/png'
+                }
+            }));
         }
 
         if (aspectRatio) parameters.aspectRatio = aspectRatio;
@@ -631,7 +700,7 @@ videoModelSelect.addEventListener('change', () => {
 generateVideoButton.addEventListener('click', generateVideoContent);
 recoverVideoButton.addEventListener('click', recoverVideoOperation);
 stopVideoGenerationButton.addEventListener('click', stopVideoGeneration);
-clearInputImageButton.addEventListener('click', clearVideoInputImage); // Listener for clear button
+clearAllAssignedImagesButton.addEventListener('click', clearAllAssignedImages);
 
 // Listener for manual file upload
 imageInput.addEventListener('change', (event) => {
@@ -657,7 +726,7 @@ function handleVideoFileSelect(event) {
         const reader = new FileReader();
         reader.onload = (e) => {
             const base64 = e.target.result.split(',')[1];
-            displayVideoInputImage(base64);
+            addAssignedImage(base64, file.type);
         };
         reader.readAsDataURL(file);
     }
