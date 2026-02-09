@@ -947,11 +947,11 @@ async function generateImage() {
                 statusMessage.textContent = `API Call ${i + 1} of ${numApiCalls}...`;
             }
 
-            if (candidatesPerCall > 1 && useBatchModeInput.checked) {
-                // Use Batch API for multiple images
+            if (candidatesPerCall > 1 && useBatchModeInput.checked && !selectedModel.startsWith('imagen-')) {
+                // Use Batch API for multiple images (Gemini only)
                 await generateBatchImages(prompt, candidatesPerCall);
             } else {
-                // Use standard API (supports multiple candidates/samples natively)
+                // Use standard API (supports multiple candidates/samples natively, including Imagen :predict)
                 await generateSingleImage(prompt, candidatesPerCall);
             }
         }
@@ -1003,14 +1003,6 @@ async function generateSingleImage(prompt, count = 1) {
         if (!selectedModel.includes('fast')) {
             requestBody.parameters.imageSize = imageOutputSize;
         }
-        
-        // Handle input images for Imagen (if supported via instances or similar, 
-        // but typically Imagen predict in this API uses simple prompt. 
-        // If images are provided, we might need a different structure, 
-        // but for now following user example structure).
-        if (inputImageCount > 0) {
-            console.warn("Input images might not be supported in Imagen predict method yet.");
-        }
     } else {
         endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
         const parts = [{ text: prompt }];
@@ -1023,12 +1015,17 @@ async function generateSingleImage(prompt, count = 1) {
         }
         const generationConfig = {
             responseModalities: ["TEXT", "IMAGE"],
-            imageConfig: { aspectRatio: selectedAspectRatio },
-            candidateCount: count
+            imageConfig: { aspectRatio: selectedAspectRatio }
         };
         if (!imageSizeSelect.disabled) {
             generationConfig.imageConfig.imageSize = imageOutputSize;
         }
+        // candidateCount might not be supported for image modalities in all versions, 
+        // but can be included if user wants multiple candidates.
+        if (count > 1) {
+            generationConfig.candidateCount = count;
+        }
+
         requestBody = {
             contents: [{ parts: parts }],
             generationConfig: generationConfig
@@ -1066,11 +1063,17 @@ async function generateSingleImage(prompt, count = 1) {
     
     // processAndDisplayImage handles both formats
     if (processAndDisplayImage(data, prompt)) {
-        // For Imagen, it returns multiple in one response
+        // Count images from response
         if (isImagen && data.predictions) {
             successfulOutputImages = data.predictions.length;
-        } else {
-            successfulOutputImages = 1;
+        } else if (data.candidates) {
+            data.candidates.forEach(c => {
+                if (c.content && c.content.parts) {
+                    c.content.parts.forEach(p => {
+                        if (p.inlineData || p.inline_data) successfulOutputImages++;
+                    });
+                }
+            });
         }
     }
 
