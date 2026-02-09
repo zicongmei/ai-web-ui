@@ -304,8 +304,13 @@
 
         <div class="output-section">
             <label>Generated Output:</label>
-            <div id="videoOutputContainer" class="video-output-container"></div>
-            <div id="videoTextOutput" class="text-output-box"></div>
+            <div id="videoOutputContainer" class="video-output-container" style="display: flex;"></div>
+            <details id="videoTextDetails">
+                <summary style="cursor: pointer; padding: 10px; background: #eee; border-radius: 4px; margin-top: 10px; font-weight: bold; user-select: none;">
+                    View Raw API Output
+                </summary>
+                <div id="videoTextOutput" class="text-output-box"></div>
+            </details>
         </div>
             
     </div>
