@@ -794,8 +794,9 @@ const lightboxCaption = document.getElementById('lightboxCaption');
 const lightboxClose = document.querySelector('.lightbox-close');
 
 function openLightbox(base64, caption = '') {
+    if (!imageLightbox || !lightboxImage) return;
     lightboxImage.src = `data:image/png;base64,${base64}`;
-    lightboxCaption.textContent = caption;
+    if (lightboxCaption) lightboxCaption.textContent = caption;
     imageLightbox.style.display = 'block';
 }
 
@@ -804,6 +805,9 @@ function renderHistory() {
     if (!sidebarHistory) return;
     sidebarHistory.innerHTML = '';
     
+    // Check if we are on the video page (via existence of assignedImagesContainer)
+    const isVideoPage = !!document.getElementById('assignedImagesContainer');
+
     generationHistory.forEach((item, index) => {
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
@@ -831,20 +835,50 @@ function renderHistory() {
         
         const actions = document.createElement('div');
         actions.className = 'history-item-actions';
+        actions.style.flexWrap = 'wrap'; // Allow buttons to wrap
         
         if (item.type === 'image') {
-            const useBtn = document.createElement('button');
-            useBtn.textContent = 'Input';
-            useBtn.className = 'btn-use-input';
-            useBtn.onclick = () => {
-                addImageAsInput(item.data);
-                if (window.innerWidth <= 992) sidebar.classList.remove('active');
-            };
-            actions.appendChild(useBtn);
+            if (isVideoPage) {
+                // Add specific video role buttons
+                const btnConfigs = [
+                    { label: 'Start', role: 'image' },
+                    { label: 'End', role: 'lastFrame' },
+                    { label: 'Ref', role: 'referenceImage' }
+                ];
+                
+                btnConfigs.forEach(cfg => {
+                    const btn = document.createElement('button');
+                    btn.textContent = cfg.label;
+                    btn.className = 'btn-use-input';
+                    btn.style.fontSize = '0.7em';
+                    btn.style.padding = '3px';
+                    btn.onclick = () => {
+                        if (typeof addAssignedImage === 'function') {
+                            addAssignedImage(item.data, 'image/png');
+                            // Specifically set the role if addAssignedImage supports it or manually
+                            if (assignedImages.length > 0) {
+                                assignedImages[assignedImages.length - 1].role = cfg.role;
+                                if (typeof renderAssignedImages === 'function') renderAssignedImages();
+                            }
+                        }
+                        if (window.innerWidth <= 992) sidebar.classList.remove('active');
+                    };
+                    actions.appendChild(btn);
+                });
+            } else {
+                const useBtn = document.createElement('button');
+                useBtn.textContent = 'Input';
+                useBtn.className = 'btn-use-input';
+                useBtn.onclick = () => {
+                    addImageAsInput(item.data);
+                    if (window.innerWidth <= 992) sidebar.classList.remove('active');
+                };
+                actions.appendChild(useBtn);
+            }
 
             const saveBtn = document.createElement('button');
             saveBtn.textContent = 'Save';
-            saveBtn.className = 'btn-download'; // Reuse the green styling from video save
+            saveBtn.className = 'btn-download'; 
             saveBtn.onclick = () => saveGeneratedImage(item.data, item.prompt || '');
             actions.appendChild(saveBtn);
         } else if (item.type === 'video') {
@@ -1637,15 +1671,19 @@ showApiCallsButton.addEventListener('click', showApiCallsModal); // Use renamed 
 closeDebugButton.addEventListener('click', hideDebugModal);
 
 // Lightbox closing event listeners
-lightboxClose.addEventListener('click', () => {
-    imageLightbox.style.display = 'none';
-});
-
-imageLightbox.addEventListener('click', (event) => {
-    if (event.target === imageLightbox) {
+if (lightboxClose) {
+    lightboxClose.addEventListener('click', () => {
         imageLightbox.style.display = 'none';
-    }
-});
+    });
+}
+
+if (imageLightbox) {
+    imageLightbox.addEventListener('click', (event) => {
+        if (event.target === imageLightbox) {
+            imageLightbox.style.display = 'none';
+        }
+    });
+}
 
 // Initial setup on page load
 document.addEventListener('DOMContentLoaded', async () => {
