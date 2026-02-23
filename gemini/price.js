@@ -57,6 +57,21 @@ const GEMINI_PRICING_CONFIG = {
                 return { inputRate, outputRate };
             }
         },
+        'gemini-3.1-pro-preview': {
+            getPricing: (promptTokenCount) => {
+                const PROMPT_THRESHOLD_TOKENS = 200_000;
+                let inputRate, outputRate;
+
+                if (promptTokenCount <= PROMPT_THRESHOLD_TOKENS) {
+                    inputRate = 2.00 / 1_000_000;
+                    outputRate = 12.00 / 1_000_000;
+                } else {
+                    inputRate = 4.00 / 1_000_000;
+                    outputRate = 18.00 / 1_000_000;
+                }
+                return { inputRate, outputRate };
+            }
+        },
         'gemini-3-flash-preview': {
             getPricing: (promptTokenCount) => ({
                 inputRate: 0.50 / 1_000_000,

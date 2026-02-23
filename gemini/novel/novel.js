@@ -6,7 +6,7 @@ const STORAGE_PREFIX = 'novel_';
 
 // State
 let currentApiKey = '';
-let selectedModel = 'gemini-3-pro-preview';
+let selectedModel = 'gemini-3.1-pro-preview';
 let history = []; // Array of abstract objects
 let currentAbstractId = null;
 let abortController = null;
@@ -500,7 +500,7 @@ function loadAbstract(id) {
         }
 
         if (item.storyParams) {
-            storyModelSelect.value = item.storyParams.model || 'gemini-3-pro-preview';
+            storyModelSelect.value = item.storyParams.model || 'gemini-3.1-pro-preview';
             wordsPerChapterInput.value = item.storyParams.words || 5000;
             storyAdditionalPromptInput.value = item.storyParams.prompt || '';
             useThoughtSignatureCheckbox.checked = !!item.storyParams.useThought;
