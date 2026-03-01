@@ -128,6 +128,17 @@ const GEMINI_PRICING_CONFIG = {
                 image_1K_fixed_price: 0.039, 
             },
         },
+        'gemini-3.1-flash-image-preview': {
+            input: {
+                text_and_image_per_m_tokens: 0.25,
+            },
+            output: {
+                image_0_5K_fixed_price: 0.045,
+                image_1K_fixed_price: 0.067,
+                image_2K_fixed_price: 0.101,
+                image_4K_fixed_price: 0.151,
+            },
+        },
     },
 
     // Token Equivalents

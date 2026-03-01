@@ -73,6 +73,7 @@ async function getFromDB(storeName, key) {
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
+    'gemini-3.1-flash-image-preview': 'Gemini 3.1 Flash Image Preview',
     'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image',
     'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
     'imagen-4.0-generate-001': 'Imagen 4 Standard',
@@ -102,6 +103,18 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '9:16', res: '768x1344', tokens: 1290 },
         { ratio: '16:9', res: '1344x768', tokens: 1290 },
         { ratio: '21:9', res: '1536x672', tokens: 1290 }
+    ],
+    'gemini-3.1-flash-image-preview': [
+        { ratio: '1:1', res: { '0.5K': '512x512', '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '2:3', res: { '0.5K': '424x632', '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '3:2', res: { '0.5K': '632x424', '1K': '1264x848', '2K': '2528x1696', '4K': '5056x3392' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '3:4', res: { '0.5K': '448x600', '1K': '896x1200', '2K': '1792x2400', '4K': '3584x4800' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '4:3', res: { '0.5K': '600x448', '1K': '1200x896', '2K': '2400x1792', '4K': '4800x3584' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '4:5', res: { '0.5K': '464x576', '1K': '928x1152', '2K': '1856x2304', '4K': '3712x4608' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '5:4', res: { '0.5K': '576x464', '1K': '1152x928', '2K': '2304x1856', '4K': '4608x3712' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '9:16', res: { '0.5K': '384x688', '1K': '768x1376', '2K': '1536x2752', '4K': '3072x5504' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '16:9', res: { '0.5K': '688x384', '1K': '1376x768', '2K': '2752x1536', '4K': '5504x3072' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
+        { ratio: '21:9', res: { '0.5K': '792x336', '1K': '1584x672', '2K': '3168x1344', '4K': '6336x2688' }, tokens: { '0.5K': 500, '1K': 1120, '2K': 1120, '4K': 2000 } }
     ],
     'gemini-3-pro-image-preview': [
         { ratio: '1:1', res: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
@@ -215,7 +228,7 @@ function updateAspectRatioOptions() {
         option.value = item.ratio;
         
         let resolution, tokens;
-        if (model === GEMINI_3_PRO_MODEL_ID) {
+        if (model.startsWith('gemini-3')) {
             resolution = item.res[size];
             tokens = item.tokens[size];
         } else {
@@ -340,10 +353,10 @@ function populateModelSelect() {
 
 // Function to toggle model-dependent features (Image Size, Google Search)
 function toggleModelDependentFeatures() {
-    const isGemini3Pro = (selectedModel === GEMINI_3_PRO_MODEL_ID);
+    const isGemini3 = selectedModel.startsWith('gemini-3');
 
     // Toggle Image Size
-    if (isGemini3Pro) {
+    if (isGemini3) {
         imageSizeSelect.disabled = false;
         imageSizeOptionGroup.classList.remove('feature-disabled-by-model');
         const storedImageSize = getLocalStorageItem('imageSize');
@@ -359,7 +372,7 @@ function toggleModelDependentFeatures() {
     }
 
     // Toggle Google Search Tool
-    if (isGemini3Pro) {
+    if (isGemini3) {
         useGoogleSearchInput.disabled = false;
         googleSearchOptionGroup.classList.remove('feature-disabled-by-model');
         const storedUseSearch = getLocalStorageItem('useGoogleSearch');
@@ -504,7 +517,7 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         if (inputImageCount > 0) {
             inputCost += inputImageCount * modelPricing.input.image_fixed_price;
         }
-    } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash')) {
+    } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash') || modelId === 'gemini-3.1-flash-image-preview') {
         if (inputImageCount > 0) {
             totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
@@ -524,6 +537,22 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             }
             
             // Update totalOutputTokensCalculated based on data table
+            const data = IMAGE_RESOLUTION_DATA[modelId];
+            const item = data.find(i => i.ratio === selectedAspectRatio);
+            if (item) {
+                totalOutputTokensCalculated = outputImageCount * item.tokens[imageOutputSize];
+            }
+        } else if (modelId === 'gemini-3.1-flash-image-preview') {
+            if (imageOutputSize === '4K') {
+                outputCost += outputImageCount * modelPricing.output.image_4K_fixed_price;
+            } else if (imageOutputSize === '2K') {
+                outputCost += outputImageCount * modelPricing.output.image_2K_fixed_price;
+            } else if (imageOutputSize === '1K') {
+                outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
+            } else if (imageOutputSize === '0.5K') {
+                outputCost += outputImageCount * modelPricing.output.image_0_5K_fixed_price;
+            }
+            
             const data = IMAGE_RESOLUTION_DATA[modelId];
             const item = data.find(i => i.ratio === selectedAspectRatio);
             if (item) {
@@ -677,17 +706,17 @@ function hideDebugModal() {
 }
 
 function updateExplanationNote() {
-    const isGemini3Pro = (selectedModel === GEMINI_3_PRO_MODEL_ID);
+    const isGemini3 = selectedModel.startsWith('gemini-3');
     let noteText = `
         <strong>Instructions:</strong>
         Enter your Gemini API Key. Select options (Model, Aspect Ratio), type a prompt, and click "Generate". 
         <br><small>To use an image as input, select it from the <strong>Generation History</strong> sidebar. You can also "Load Image as Input" from your device.</small>
     `;
 
-    if (isGemini3Pro) {
-        noteText += `<br><small><strong>Gemini 3 Pro Preview</strong> selected: Image Size and Google Search Tool are available.</small>`;
+    if (isGemini3) {
+        noteText += `<br><small><strong>Gemini 3 models</strong> selected: Image Size and Google Search Tool are available.</small>`;
     } else {
-        noteText += `<br><small><strong>Gemini 2.5 models</strong> selected: Image Size and Google Search Tool are disabled as they are only supported by Gemini 3 Pro Preview.</small>`;
+        noteText += `<br><small><strong>Gemini 2.5 models</strong> selected: Image Size and Google Search Tool are disabled as they are only supported by Gemini 3 models.</small>`;
     }
     explanationNote.innerHTML = noteText;
 }
