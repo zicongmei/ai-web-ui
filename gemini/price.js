@@ -3,6 +3,12 @@
 const GEMINI_PRICING_CONFIG = {
     // Text and Multimodal Generation Models
     TEXT: {
+        'gemini-3.1-flash-lite-preview': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 0.25 / 1_000_000,
+                outputRate: 1.50 / 1_000_000
+            })
+        },
         'gemini-2.5-flash': {
             getPricing: (promptTokenCount) => ({
                 inputRate: 0.30 / 1_000_000,
