@@ -1917,20 +1917,22 @@ function blobToBase64(blob) {
     });
 }
 
-addUrlButton.addEventListener('click', addImageFromUrl);
+if (addUrlButton) addUrlButton.addEventListener('click', addImageFromUrl);
 
 
-generateImageButton.addEventListener('click', generateImage);
-stopGenerationButton.addEventListener('click', stopGeneration); // New event listener for stop button
-recoverBatchButton.addEventListener('click', recoverBatch); // Added listener
-promptInput.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault(); 
-        generateImage();
-    }
-});
-showApiCallsButton.addEventListener('click', showApiCallsModal); // Use renamed button and modal function
-closeDebugButton.addEventListener('click', hideDebugModal);
+if (generateImageButton) generateImageButton.addEventListener('click', generateImage);
+if (stopGenerationButton) stopGenerationButton.addEventListener('click', stopGeneration);
+if (recoverBatchButton) recoverBatchButton.addEventListener('click', recoverBatch);
+if (promptInput) {
+    promptInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault(); 
+            generateImage();
+        }
+    });
+}
+if (showApiCallsButton) showApiCallsButton.addEventListener('click', showApiCallsModal);
+if (closeDebugButton) closeDebugButton.addEventListener('click', hideDebugModal);
 
 // Lightbox closing event listeners
 if (lightboxClose) {

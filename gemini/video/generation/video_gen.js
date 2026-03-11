@@ -180,44 +180,43 @@ function setVideoApiKey() {
         return false;
     }
     currentVideoApiKey = apiKey;
-    setLocalStorageItem('geminiVideoApiKey', apiKey);
+    setLocalStorageItem('geminiVideoApiKey_v1', apiKey);
     videoStatusMessage.textContent = 'API Key set successfully!';
     setTimeout(() => videoStatusMessage.textContent = '', 3000);
     return true;
 }
 
 async function loadVideoSettings() {
-    const apiKey = getLocalStorageItem('geminiVideoApiKey');
+    const apiKey = getLocalStorageItem('geminiVideoApiKey_v1');
     if (apiKey) {
         videoApiKeyInput.value = apiKey;
         currentVideoApiKey = apiKey;
     }
-    const storedModel = getLocalStorageItem('selectedVideoModel');
+    const storedModel = getLocalStorageItem('selectedVideoModel_v1');
     if (storedModel && GEMINI_VIDEO_MODELS[storedModel]) {
         selectedVideoModel = storedModel;
-        videoModelSelect.value = storedModel;
     }
 
     // Load prompt
-    const storedPrompt = getLocalStorageItem('videoPromptInput');
+    const storedPrompt = getLocalStorageItem('videoPromptInput_v1');
     if (storedPrompt) {
         videoPromptInput.value = storedPrompt;
     }
 
     // Load options
     const options = [
-        { el: videoDurationSecondsSelect, key: 'videoDurationSeconds' },
-        { el: videoAspectRatioSelect, key: 'videoAspectRatio' },
-        { el: videoResolutionSelect, key: 'videoResolution' },
-        { el: videoSampleCountInput, key: 'videoSampleCount' },
-        { el: videoSeedInput, key: 'videoSeed' },
-        { el: videoNegativePromptInput, key: 'videoNegativePrompt' },
-        { el: videoPersonGenerationSelect, key: 'videoPersonGeneration' },
-        { el: videoGenerateAudioSelect, key: 'videoGenerateAudio' }
+        { el: videoDurationSecondsSelect, key: 'videoDurationSeconds_v1' },
+        { el: videoAspectRatioSelect, key: 'videoAspectRatio_v1' },
+        { el: videoResolutionSelect, key: 'videoResolution_v1' },
+        { el: videoSampleCountInput, key: 'videoSampleCount_v1' },
+        { el: videoSeedInput, key: 'videoSeed_v1' },
+        { el: videoNegativePromptInput, key: 'videoNegativePrompt_v1' },
+        { el: videoPersonGenerationSelect, key: 'videoPersonGeneration_v1' },
+        { el: videoGenerateAudioSelect, key: 'videoGenerateAudio_v1' }
     ];
     options.forEach(opt => {
         const val = getLocalStorageItem(opt.key);
-        if (val !== null) opt.el.value = val;
+        if (val !== null && opt.el) opt.el.value = val;
     });
 
     // Load assigned images from IndexedDB
@@ -243,7 +242,10 @@ function populateVideoModelSelect() {
         option.textContent = GEMINI_VIDEO_MODELS[modelId];
         videoModelSelect.appendChild(option);
     }
-    videoModelSelect.value = selectedVideoModel;
+    // Ensure the select reflects the loaded state
+    if (selectedVideoModel) {
+        videoModelSelect.value = selectedVideoModel;
+    }
     updateDurationSecondsOptions();
 }
 
@@ -898,7 +900,7 @@ function appendVideoApiCallEntry(interaction, index) {
 setVideoApiKeyButton.addEventListener('click', setVideoApiKey);
 videoModelSelect.addEventListener('change', () => {
     selectedVideoModel = videoModelSelect.value;
-    setLocalStorageItem('selectedVideoModel', selectedVideoModel);
+    setLocalStorageItem('selectedVideoModel_v1', selectedVideoModel);
     updateDurationSecondsOptions();
 });
 generateVideoButton.addEventListener('click', generateVideoContent);
@@ -925,25 +927,19 @@ videoTakePhotoButton.addEventListener('click', () => {
 videoAddUrlButton.addEventListener('click', addVideoImageFromUrl);
 
 // persistence Listeners
-const saveAllHistoryButton = document.getElementById('saveAllHistoryButton');
-const clearAllHistoryButton = document.getElementById('clearAllHistoryButton');
-
-if (saveAllHistoryButton) saveAllHistoryButton.addEventListener('click', saveAllHistory);
-if (clearAllHistoryButton) clearAllHistoryButton.addEventListener('click', clearAllHistory);
-
 videoPromptInput.addEventListener('input', () => {
-    setLocalStorageItem('videoPromptInput', videoPromptInput.value);
+    setLocalStorageItem('videoPromptInput_v1', videoPromptInput.value);
 });
 
 const persistOptions = [
-    { el: videoDurationSecondsSelect, key: 'videoDurationSeconds' },
-    { el: videoAspectRatioSelect, key: 'videoAspectRatio' },
-    { el: videoResolutionSelect, key: 'videoResolution' },
-    { el: videoSampleCountInput, key: 'videoSampleCount' },
-    { el: videoSeedInput, key: 'videoSeed' },
-    { el: videoNegativePromptInput, key: 'videoNegativePrompt' },
-    { el: videoPersonGenerationSelect, key: 'videoPersonGeneration' },
-    { el: videoGenerateAudioSelect, key: 'videoGenerateAudio' }
+    { el: videoDurationSecondsSelect, key: 'videoDurationSeconds_v1' },
+    { el: videoAspectRatioSelect, key: 'videoAspectRatio_v1' },
+    { el: videoResolutionSelect, key: 'videoResolution_v1' },
+    { el: videoSampleCountInput, key: 'videoSampleCount_v1' },
+    { el: videoSeedInput, key: 'videoSeed_v1' },
+    { el: videoNegativePromptInput, key: 'videoNegativePrompt_v1' },
+    { el: videoPersonGenerationSelect, key: 'videoPersonGeneration_v1' },
+    { el: videoGenerateAudioSelect, key: 'videoGenerateAudio_v1' }
 ];
 
 persistOptions.forEach(opt => {
