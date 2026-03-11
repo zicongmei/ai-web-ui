@@ -43,6 +43,8 @@ const videoAddUrlButton = document.getElementById('videoAddUrlButton');
 const assignedImagesContainer = document.getElementById('assignedImagesContainer');
 const assignedImagesList = document.getElementById('assignedImagesList');
 const clearAllAssignedImagesButton = document.getElementById('clearAllAssignedImagesButton');
+const videoRecoveryContainer = document.getElementById('videoRecoveryContainer');
+const videoOperationSelect = document.getElementById('videoOperationSelect');
 const generateVideoButton = document.getElementById('generateVideoButton');
 const stopVideoGenerationButton = document.getElementById('stopVideoGenerationButton');
 const recoverVideoButton = document.getElementById('recoverVideoButton');
@@ -64,6 +66,59 @@ const videoTotalCostSpan = document.getElementById('videoTotalEstimatedCost');
 const VIDEO_DB_NAME = 'GeminiVideoHistoryDB';
 const VIDEO_DB_VERSION = 1;
 const VIDEO_SETTINGS_STORE = 'settings';
+
+// Video Operation History
+let videoOperationHistory = [];
+
+async function saveOperationToHistory(opName, prompt) {
+    const opItem = {
+        name: opName,
+        prompt: prompt,
+        timestamp: new Date().toISOString()
+    };
+    videoOperationHistory.unshift(opItem);
+    if (videoOperationHistory.length > 20) videoOperationHistory = videoOperationHistory.slice(0, 20);
+    await saveToVideoDB('geminiVideoOperationHistory', JSON.stringify(videoOperationHistory));
+    renderOperationSelect();
+}
+
+async function loadVideoOperationHistory() {
+    const stored = await getFromVideoDB('geminiVideoOperationHistory');
+    if (stored) {
+        try {
+            videoOperationHistory = JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse video operation history:", e);
+            videoOperationHistory = [];
+        }
+    } else {
+        const lastOp = getLocalStorageItem('geminiLastVideoOperationName');
+        if (lastOp) {
+            videoOperationHistory = [{ name: lastOp, prompt: 'Recovered Operation', timestamp: new Date().toISOString() }];
+            localStorage.removeItem('geminiLastVideoOperationName');
+            await saveToVideoDB('geminiVideoOperationHistory', JSON.stringify(videoOperationHistory));
+        }
+    }
+    renderOperationSelect();
+}
+
+function renderOperationSelect() {
+    if (!videoOperationSelect || !videoRecoveryContainer) return;
+    if (videoOperationHistory.length === 0) {
+        videoRecoveryContainer.style.display = 'none';
+        return;
+    }
+    videoRecoveryContainer.style.display = 'block';
+    videoOperationSelect.innerHTML = '';
+    videoOperationHistory.forEach(op => {
+        const option = document.createElement('option');
+        option.value = op.name;
+        const words = op.prompt.split(/\s+/).slice(0, 10).join(' ');
+        const truncatedPrompt = words.length < op.prompt.length ? words + '...' : words;
+        option.textContent = `${truncatedPrompt} (Length: ${op.prompt.length})`;
+        videoOperationSelect.appendChild(option);
+    });
+}
 
 async function initVideoDB() {
     return new Promise((resolve, reject) => {
@@ -176,12 +231,8 @@ async function loadVideoSettings() {
         }
     }
 
-    // Check for recoverable operation
-    const lastOp = getLocalStorageItem('geminiLastVideoOperationName');
-    if (lastOp) {
-        recoverVideoButton.style.display = 'inline-block';
-        recoverVideoButton.title = `Recover: ${lastOp}`;
-    }
+    // Check for recoverable operations
+    await loadVideoOperationHistory();
 }
 
 function populateVideoModelSelect() {
@@ -521,10 +572,8 @@ async function generateVideoContent() {
             throw new Error("API did not return an operation name.");
         }
         
-        // Save for recovery
-        setLocalStorageItem('geminiLastVideoOperationName', operationName);
-        recoverVideoButton.style.display = 'inline-block';
-        recoverVideoButton.title = `Recover: ${operationName}`;
+        // Save to history
+        await saveOperationToHistory(operationName, prompt);
 
         videoTextOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
         videoStatusMessage.textContent = 'Generating video... (this takes time)';
@@ -572,9 +621,9 @@ async function generateVideoContent() {
 }
 
 async function recoverVideoOperation() {
-    const operationName = getLocalStorageItem('geminiLastVideoOperationName');
+    const operationName = videoOperationSelect.value;
     if (!operationName) {
-        videoStatusMessage.textContent = 'No operation to recover.';
+        videoStatusMessage.textContent = 'No operation selected.';
         return;
     }
     
@@ -829,7 +878,13 @@ videoTakePhotoButton.addEventListener('click', () => {
 // Listener for Add URL button click
 videoAddUrlButton.addEventListener('click', addVideoImageFromUrl);
 
-// Persistence Listeners
+// persistence Listeners
+const saveAllHistoryButton = document.getElementById('saveAllHistoryButton');
+const clearAllHistoryButton = document.getElementById('clearAllHistoryButton');
+
+if (saveAllHistoryButton) saveAllHistoryButton.addEventListener('click', saveAllHistory);
+if (clearAllHistoryButton) clearAllHistoryButton.addEventListener('click', clearAllHistory);
+
 videoPromptInput.addEventListener('input', () => {
     setLocalStorageItem('videoPromptInput', videoPromptInput.value);
 });

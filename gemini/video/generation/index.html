@@ -11,6 +11,10 @@
     <div class="app-layout">
         <div id="sidebar" class="sidebar">
             <h2>Generation History</h2>
+            <div class="sidebar-actions" style="display: flex; gap: 5px; margin-bottom: 10px;">
+                <button id="saveAllHistoryButton" class="btn-download" style="flex: 1; font-size: 0.8em; padding: 5px;">Save All</button>
+                <button id="clearAllHistoryButton" class="btn-remove" style="flex: 1; font-size: 0.8em; padding: 5px;">Clear All</button>
+            </div>
             <div id="sidebarHistory" class="sidebar-history">
                 <!-- Images and Videos go here -->
             </div>
@@ -277,7 +281,10 @@
                 <div class="generation-buttons">
                     <button id="generateVideoButton">Generate Video</button>
                     <button id="stopVideoGenerationButton" style="display: none;">Stop</button>
-                    <button id="recoverVideoButton" style="display: none;" class="secondary-button">Recover Last Video</button>
+                    <div id="videoRecoveryContainer" style="display: none; margin-top: 10px; width: 100%;">
+                        <select id="videoOperationSelect" style="width: 100%; margin-bottom: 5px; padding: 8px; border-radius: 4px; border: 1px solid #ddd;"></select>
+                        <button id="recoverVideoButton" class="secondary-button" style="width: 100%;">Recover Selected Video</button>
+                    </div>
                 </div>
                 <button id="showVideoApiCallsButton" style="display:none;">Show API Calls</button>
             </div>

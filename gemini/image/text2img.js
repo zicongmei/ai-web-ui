@@ -155,6 +155,8 @@ const imageSizeOptionGroup = document.getElementById('imageSizeOptionGroup'); //
 const useGoogleSearchInput = document.getElementById('useGoogleSearch');
 const googleSearchOptionGroup = document.getElementById('googleSearchOptionGroup'); // Get parent div
 const useBatchModeInput = document.getElementById('useBatchMode'); // Get Batch Mode checkbox
+const batchRecoveryContainer = document.getElementById('batchRecoveryContainer');
+const batchSelect = document.getElementById('batchSelect');
 
 // Selected Image Elements
 const selectedImageContainer = document.getElementById('selectedImageContainer');
@@ -198,6 +200,64 @@ function getLocalStorageItem(name) {
         return null;
     }
 }
+
+// Batch History Management
+let batchHistory = [];
+
+async function saveBatchToHistory(batchName, prompt) {
+    const batchItem = {
+        name: batchName,
+        prompt: prompt,
+        timestamp: new Date().toISOString()
+    };
+    batchHistory.unshift(batchItem);
+    // Keep only last 20 batches
+    if (batchHistory.length > 20) batchHistory = batchHistory.slice(0, 20);
+    await saveToDB(SETTINGS_STORE, 'geminiBatchHistory', JSON.stringify(batchHistory));
+    renderBatchSelect();
+}
+
+async function loadBatchHistory() {
+    const stored = await getFromDB(SETTINGS_STORE, 'geminiBatchHistory');
+    if (stored) {
+        try {
+            batchHistory = JSON.parse(stored);
+        } catch (e) {
+            console.error("Failed to parse batch history:", e);
+            batchHistory = [];
+        }
+    } else {
+        // Fallback to old single last batch if available
+        const lastBatch = getLocalStorageItem('geminiLastBatchName');
+        if (lastBatch) {
+            batchHistory = [{ name: lastBatch, prompt: 'Recovered Last Batch', timestamp: new Date().toISOString() }];
+            localStorage.removeItem('geminiLastBatchName');
+            await saveToDB(SETTINGS_STORE, 'geminiBatchHistory', JSON.stringify(batchHistory));
+        }
+    }
+    renderBatchSelect();
+}
+
+function renderBatchSelect() {
+    if (!batchSelect || !batchRecoveryContainer) return;
+    
+    if (batchHistory.length === 0) {
+        batchRecoveryContainer.style.display = 'none';
+        return;
+    }
+
+    batchRecoveryContainer.style.display = 'block';
+    batchSelect.innerHTML = '';
+    batchHistory.forEach(batch => {
+        const option = document.createElement('option');
+        option.value = batch.name;
+        const words = batch.prompt.split(/\s+/).slice(0, 10).join(' ');
+        const truncatedPrompt = words.length < batch.prompt.length ? words + '...' : words;
+        option.textContent = `${truncatedPrompt} (Length: ${batch.prompt.length})`;
+        batchSelect.appendChild(option);
+    });
+}
+
 
 // Function to validate and store the API key
 function setApiKey() {
@@ -327,11 +387,7 @@ async function loadSettingsFromLocalStorage() {
     renderSelectedImages();
 
     // Check for recoverable batch job
-    const lastBatch = getLocalStorageItem('geminiLastBatchName');
-    if (lastBatch) {
-        recoverBatchButton.style.display = 'inline-block';
-        recoverBatchButton.title = `Recover: ${lastBatch}`;
-    }
+    await loadBatchHistory();
 }
 
 // Function to populate model dropdown and load selected model
@@ -943,6 +999,49 @@ if (sidebarToggle) {
     });
 }
 
+async function clearAllHistory() {
+    if (confirm('Are you sure you want to clear all generation history? This cannot be undone.')) {
+        generationHistory = [];
+        await saveHistory();
+        renderHistory();
+    }
+}
+
+async function saveAllHistory() {
+    if (generationHistory.length === 0) {
+        statusMessage.textContent = 'No history to save.';
+        return;
+    }
+    
+    statusMessage.textContent = `Saving ${generationHistory.length} items...`;
+    
+    for (const item of generationHistory) {
+        if (item.type === 'image') {
+            saveGeneratedImage(item.data, item.prompt || '');
+        } else if (item.type === 'video') {
+            const link = document.createElement('a');
+            if (item.data instanceof Blob) {
+                link.href = URL.createObjectURL(item.data);
+            } else {
+                link.href = item.url;
+            }
+            link.download = item.filename || 'video.mp4';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        // Small delay to prevent browser from blocking multiple downloads
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    statusMessage.textContent = 'All items saved.';
+}
+
+const saveAllHistoryButton = document.getElementById('saveAllHistoryButton');
+const clearAllHistoryButton = document.getElementById('clearAllHistoryButton');
+
+if (saveAllHistoryButton) saveAllHistoryButton.addEventListener('click', saveAllHistory);
+if (clearAllHistoryButton) clearAllHistoryButton.addEventListener('click', clearAllHistory);
+
 function displaySingleImage(base64Image, prompt) {
     const imgContainer = document.createElement('div');
     imgContainer.classList.add('image-item');
@@ -1276,10 +1375,8 @@ async function generateBatchImages(prompt, numToGenerate) {
     }
 
     const batchName = data.name;
-    // Save for recovery
-    setLocalStorageItem('geminiLastBatchName', batchName);
-    recoverBatchButton.style.display = 'inline-block';
-    recoverBatchButton.title = `Recover: ${batchName}`;
+    // Save to history
+    await saveBatchToHistory(batchName, prompt);
 
     statusMessage.textContent = `Batch job submitted. Waiting for results...`;
 
@@ -1447,9 +1544,9 @@ async function generateBatchImages(prompt, numToGenerate) {
 }
 
 async function recoverBatch() {
-    const batchName = getLocalStorageItem('geminiLastBatchName');
+    const batchName = batchSelect.value;
     if (!batchName) {
-        statusMessage.textContent = 'No batch job to recover.';
+        statusMessage.textContent = 'No batch job selected.';
         return;
     }
     
