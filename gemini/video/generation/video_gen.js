@@ -575,6 +575,17 @@ async function generateVideoContent() {
         // Save to history
         await saveOperationToHistory(operationName, prompt);
 
+        // Add to sidebar history
+        if (typeof addToHistory === 'function') {
+            addToHistory({
+                type: 'operation',
+                name: operationName,
+                prompt: prompt,
+                model: model,
+                timestamp: new Date().toISOString()
+            });
+        }
+
         videoTextOutput.textContent = `Operation started: ${operationName}\nPolling for completion...`;
         videoStatusMessage.textContent = 'Generating video... (this takes time)';
 
@@ -619,6 +630,41 @@ async function generateVideoContent() {
         videoAbortController = null;
     }
 }
+
+// Function to recover a video operation by name (ID)
+async function recoverVideoOperationByName(name) {
+    const isVideoPage = !!document.getElementById('videoPromptInput');
+    if (!isVideoPage) {
+        alert('Please go to the Video Generation page to retrieve this video.');
+        return;
+    }
+
+    if (!currentVideoApiKey) {
+        alert('Please set your Video API Key first.');
+        return;
+    }
+
+    let found = false;
+    for (let i = 0; i < videoOperationSelect.options.length; i++) {
+        if (videoOperationSelect.options[i].value === name) {
+            videoOperationSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = `Sidebar Retrieval: ${name}`;
+        videoOperationSelect.appendChild(option);
+        videoOperationSelect.value = name;
+    }
+
+    recoverVideoOperation();
+}
+
+window.recoverVideoOperationByName = recoverVideoOperationByName;
 
 async function recoverVideoOperation() {
     const operationName = videoOperationSelect.value;

@@ -898,6 +898,11 @@ function renderHistory() {
     generationHistory.forEach((item, index) => {
         const historyItem = document.createElement('div');
         historyItem.className = 'history-item';
+        historyItem.style.border = '1px solid #ddd';
+        historyItem.style.padding = '8px';
+        historyItem.style.marginBottom = '10px';
+        historyItem.style.borderRadius = '4px';
+        historyItem.style.backgroundColor = '#fefefe';
         
         if (item.type === 'image') {
             const img = document.createElement('img');
@@ -910,7 +915,6 @@ function renderHistory() {
             historyItem.appendChild(img);
         } else if (item.type === 'video') {
             const video = document.createElement('video');
-            // Recreate object URL from Blob if it exists, otherwise use original URL
             if (item.data instanceof Blob) {
                 video.src = URL.createObjectURL(item.data);
             } else {
@@ -918,15 +922,48 @@ function renderHistory() {
             }
             video.controls = true;
             historyItem.appendChild(video);
+        } else if (item.type === 'batch' || item.type === 'operation') {
+            const info = document.createElement('div');
+            info.style.fontSize = '0.85em';
+            info.innerHTML = `
+                <div style="font-weight:bold; color:#d93025; margin-bottom:5px;">Pending ${item.type === 'batch' ? 'Batch' : 'Video'}</div>
+                <div style="margin-bottom:3px;"><strong>Model:</strong> ${item.model || 'Unknown'}</div>
+                <div style="display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; text-overflow:ellipsis;" title="${item.prompt}"><strong>Prompt:</strong> ${item.prompt}</div>
+                <div style="font-size:0.75em; color:#666; margin-top:5px;">ID: ${item.name}</div>
+            `;
+            historyItem.appendChild(info);
+            
+            const retrieveBtn = document.createElement('button');
+            retrieveBtn.textContent = 'Retrieve Results';
+            retrieveBtn.className = 'btn-use-input';
+            retrieveBtn.style.width = '100%';
+            retrieveBtn.style.marginTop = '8px';
+            retrieveBtn.onclick = () => {
+                if (item.type === 'batch') {
+                    if (typeof recoverBatchByName === 'function') {
+                        recoverBatchByName(item.name, item.prompt);
+                    } else {
+                        // Fallback if the named function isn't globally available or defined yet
+                        alert('Retrieval logic not initialized.');
+                    }
+                } else if (item.type === 'operation') {
+                    if (typeof recoverVideoOperationByName === 'function') {
+                        recoverVideoOperationByName(item.name);
+                    } else {
+                        alert('Video retrieval logic not initialized.');
+                    }
+                }
+            };
+            historyItem.appendChild(retrieveBtn);
         }
         
         const actions = document.createElement('div');
         actions.className = 'history-item-actions';
-        actions.style.flexWrap = 'wrap'; // Allow buttons to wrap
+        actions.style.flexWrap = 'wrap'; 
+        actions.style.marginTop = '5px';
         
         if (item.type === 'image') {
             if (isVideoPage) {
-                // Add specific video role buttons
                 const btnConfigs = [
                     { label: 'Start', role: 'image' },
                     { label: 'End', role: 'lastFrame' },
@@ -942,7 +979,6 @@ function renderHistory() {
                     btn.onclick = () => {
                         if (typeof addAssignedImage === 'function') {
                             addAssignedImage(item.data, 'image/png');
-                            // Specifically set the role if addAssignedImage supports it or manually
                             if (assignedImages.length > 0) {
                                 assignedImages[assignedImages.length - 1].role = cfg.role;
                                 if (typeof renderAssignedImages === 'function') renderAssignedImages();
@@ -1377,6 +1413,15 @@ async function generateBatchImages(prompt, numToGenerate) {
     const batchName = data.name;
     // Save to history
     await saveBatchToHistory(batchName, prompt);
+    
+    // Add to history sidebar
+    addToHistory({
+        type: 'batch',
+        name: batchName,
+        prompt: prompt,
+        model: selectedModel,
+        timestamp: new Date().toISOString()
+    });
 
     statusMessage.textContent = `Batch job submitted. Waiting for results...`;
 
@@ -1542,6 +1587,53 @@ async function generateBatchImages(prompt, numToGenerate) {
         throw new Error(`Batch job ended with state: ${jobState}`);
     }
 }
+
+// Function to recover a batch by its name (ID)
+async function recoverBatchByName(name, originalPrompt) {
+    // We can't easily populate the dropdown from here without more state, 
+    // but we can set the input and trigger the recovery logic directly.
+    
+    // Check if we are on the image page (via existence of promptInput)
+    const isImagePage = !!document.getElementById('promptInput');
+    if (!isImagePage) {
+        alert('Please go to the Image Generation page to retrieve this batch.');
+        return;
+    }
+
+    if (!currentApiKey) {
+        alert('Please set your Gemini API Key first.');
+        return;
+    }
+
+    // Set the prompt if available
+    if (originalPrompt) promptInput.value = originalPrompt;
+    
+    // We'll temporarily override the dropdown value or just call the logic with the name
+    // Since recoverBatch uses batchSelect.value, we'll try to find it or inject it
+    let found = false;
+    for (let i = 0; i < batchSelect.options.length; i++) {
+        if (batchSelect.options[i].value === name) {
+            batchSelect.selectedIndex = i;
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found) {
+        // Inject a temporary option if not in the dropdown
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = `Sidebar Retrieval: ${name}`;
+        batchSelect.appendChild(option);
+        batchSelect.value = name;
+    }
+
+    // Trigger recovery
+    recoverBatch();
+}
+
+// Make it global for sidebar buttons
+window.recoverBatchByName = recoverBatchByName;
 
 async function recoverBatch() {
     const batchName = batchSelect.value;
