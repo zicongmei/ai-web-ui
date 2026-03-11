@@ -164,6 +164,8 @@ const clearAllImagesButton = document.getElementById('clearAllImagesButton');
 // New elements for Load Image
 const loadImageButton = document.getElementById('loadImageButton');
 const imageFileInput = document.getElementById('imageFileInput');
+const imageUrlInput = document.getElementById('imageUrlInput');
+const addUrlButton = document.getElementById('addUrlButton');
 
 // Debug Elements (modified to show all API calls)
 const showApiCallsButton = document.getElementById('showApiCallsButton'); // Renamed debug button
@@ -1685,6 +1687,48 @@ imageFileInput.addEventListener('change', (event) => {
     // Clear the input so same files can be loaded again if needed (though UI allows duplicate additions)
     imageFileInput.value = '';
 });
+
+async function addImageFromUrl() {
+    const url = imageUrlInput.value.trim();
+    if (!url) return;
+
+    statusMessage.textContent = 'Fetching image from URL...';
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch image: ${response.statusText}`);
+        
+        const blob = await response.blob();
+        if (!blob.type.startsWith('image/')) {
+            throw new Error('URL does not point to a valid image.');
+        }
+
+        const base64Data = await blobToBase64(blob);
+        const base64 = base64Data.split(',')[1];
+        addImageAsInput(base64);
+        imageUrlInput.value = '';
+        statusMessage.textContent = 'Image added from URL.';
+        setTimeout(() => {
+            if (statusMessage.textContent === 'Image added from URL.') {
+                statusMessage.textContent = '';
+            }
+        }, 3000);
+    } catch (error) {
+        console.error('Error adding image from URL:', error);
+        statusMessage.textContent = `Error: ${error.message} (CORS might block some URLs)`;
+    }
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+addUrlButton.addEventListener('click', addImageFromUrl);
 
 
 generateImageButton.addEventListener('click', generateImage);
