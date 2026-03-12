@@ -10,6 +10,56 @@ let abortController = null;
 let totalTokensCount = 0;
 let totalEstimatedCostValue = 0;
 
+// IndexedDB Constants
+const DB_NAME = 'GeminiFaceExtractionDB';
+const DB_VERSION = 1;
+const IMAGES_STORE = 'uploadedImages';
+
+async function initDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains(IMAGES_STORE)) {
+                db.createObjectStore(IMAGES_STORE);
+            }
+        };
+        request.onsuccess = (event) => resolve(event.target.result);
+        request.onerror = (event) => reject(event.target.error);
+    });
+}
+
+async function saveToDB(storeName, key, value) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readwrite');
+            const store = transaction.objectStore(storeName);
+            const request = store.put(value, key);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error saving to IndexedDB [${storeName}:${key}]:`, e);
+    }
+}
+
+async function getFromDB(storeName, key) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve, reject) => {
+            const transaction = db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            const request = store.get(key);
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+        });
+    } catch (e) {
+        console.error(`Error loading from IndexedDB [${storeName}:${key}]:`, e);
+        return null;
+    }
+}
+
 // DOM Elements
 const geminiApiKeyInput = document.getElementById('geminiApiKey');
 const setApiKeyButton = document.getElementById('setApiKeyButton');
@@ -40,7 +90,7 @@ function init() {
     addEventListeners();
 }
 
-function loadSettings() {
+async function loadSettings() {
     const apiKey = localStorage.getItem('geminiApiKey');
     if (apiKey) {
         currentApiKey = apiKey;
@@ -55,6 +105,25 @@ function loadSettings() {
     if (storedSize) {
         targetFaceSizeInput.value = storedSize;
     }
+
+    // Load persisted images
+    const storedImagesStr = await getFromDB(IMAGES_STORE, 'selectedImages');
+    if (storedImagesStr) {
+        try {
+            const storedImages = JSON.parse(storedImagesStr);
+            if (Array.isArray(storedImages)) {
+                selectedImages = storedImages;
+                imagePreviewContainer.innerHTML = '';
+                selectedImages.forEach(img => renderPreview(img));
+            }
+        } catch (e) {
+            console.error("Failed to parse stored images:", e);
+        }
+    }
+}
+
+async function saveImagesToDB() {
+    await saveToDB(IMAGES_STORE, 'selectedImages', JSON.stringify(selectedImages));
 }
 
 function addEventListeners() {
@@ -80,10 +149,11 @@ function addEventListeners() {
     imageFileInput.addEventListener('change', handleImageSelection);
     addUrlButton.addEventListener('click', addImageFromUrl);
 
-    clearImagesButton.addEventListener('click', () => {
+    clearImagesButton.addEventListener('click', async () => {
         selectedImages = [];
         imagePreviewContainer.innerHTML = '';
         imageFileInput.value = '';
+        await saveImagesToDB();
     });
 
     extractButton.addEventListener('click', startExtraction);
@@ -135,6 +205,8 @@ async function addImageFromUrl() {
         };
         selectedImages.push(imageInfo);
         renderPreview(imageInfo);
+        await saveImagesToDB();
+        
         imageUrlInput.value = '';
         statusMessage.textContent = 'Image added from URL.';
         setTimeout(() => {
@@ -183,6 +255,7 @@ async function handleImageSelection(event) {
         }
     }
     imageFileInput.value = '';
+    await saveImagesToDB();
 }
 
 function fileToDataUrl(file) {
@@ -214,9 +287,10 @@ function renderPreview(imageInfo) {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'remove-btn';
     removeBtn.textContent = '×';
-    removeBtn.onclick = () => {
+    removeBtn.onclick = async () => {
         selectedImages = selectedImages.filter(img => img.id !== imageInfo.id);
         div.remove();
+        await saveImagesToDB();
     };
     
     div.appendChild(img);
