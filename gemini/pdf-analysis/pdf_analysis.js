@@ -1,7 +1,7 @@
 // pdf_analysis.js
 
 let currentApiKey = '';
-let selectedModel = 'gemini-2.0-flash';
+let selectedModel = 'gemini-3.1-flash-lite-preview';
 let selectedPdfs = []; // Array of { id, base64, mimeType, name }
 let abortController = null;
 

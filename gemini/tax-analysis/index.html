@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini PDF Analysis</title>
+    <title>Gemini Tax Form Analysis</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,12 +12,12 @@
             <div class="container">
                 <div class="header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <button onclick="window.location.href='../../index.html'" class="secondary-button">← Back to Home</button>
-                    <h1>Gemini Document Analysis</h1>
+                    <h1>Gemini Tax Form Analysis</h1>
                     <div style="width: 100px;"></div> <!-- Spacer -->
                 </div>
 
                 <p class="explanation-note">
-                    Upload documents (PDFs, text files, code, etc.) and ask Gemini to analyze, summarize, or extract information from them.
+                    Upload tax forms (PDFs or Images like W-2, 1099, etc.). Gemini will analyze each form, identify its type, extract numerical fields, group identical forms, and calculate totals.
                 </p>
 
                 <div class="summary-display" id="summaryDisplay" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; display: none;">
@@ -49,27 +49,17 @@
                         </select>
                     </div>
 
-                    <div class="pdf-upload-container">
+                    <div class="file-upload-container">
                         <div class="upload-buttons">
-                            <button id="uploadButton" onclick="document.getElementById('pdfFileInput').click()">Upload Files</button>
-                            <input type="file" id="pdfFileInput" multiple style="display: none;">
-                            <button id="clearPdfsButton" class="secondary-button">Clear All Inputs</button>
+                            <button id="uploadButton" onclick="document.getElementById('fileInput').click()">Upload Tax Forms</button>
+                            <input type="file" id="fileInput" accept="application/pdf, image/jpeg, image/png, image/webp" multiple style="display: none;">
+                            <button id="clearFilesButton" class="secondary-button">Clear Files</button>
                         </div>
-                        <div class="url-input-group" style="display: flex; gap: 10px; margin-top: 10px;">
-                            <input type="text" id="fileUrlInput" placeholder="Enter document URL..." style="flex-grow: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
-                            <button id="addUrlButton" class="primary-button" style="padding: 8px 15px;">Add URL</button>
-                            <button id="clearUrlButton" class="secondary-button" style="padding: 8px 15px;">Clear URL</button>
-                        </div>
-                        <div id="pdfPreviewContainer" class="pdf-preview-container"></div>
-                    </div>
-
-                    <div class="prompt-container">
-                        <label for="promptInput">Prompt:</label>
-                        <textarea id="promptInput" placeholder="What would you like to know about these documents?"></textarea>
+                        <div id="filePreviewContainer" class="file-preview-container"></div>
                     </div>
 
                     <div class="action-buttons">
-                        <button id="analyzeButton" class="primary-button">Analyze Documents</button>
+                        <button id="analyzeButton" class="primary-button">Analyze Tax Forms</button>
                         <button id="stopButton" class="secondary-button hidden">Stop</button>
                     </div>
                 </div>
@@ -77,17 +67,17 @@
                 <div id="statusMessage" class="status-message"></div>
                 <div id="errorMessage" class="error-message"></div>
 
-                <div class="results-section">
-                    <h2>Analysis Result</h2>
-                    <div id="textOutput" class="text-output"></div>
+                <div class="results-section" id="resultsSection" style="display: none;">
+                    <h2>Extracted Tax Data</h2>
+                    <div id="tablesContainer" class="tables-container">
+                        <!-- Tables will be dynamically inserted here -->
+                    </div>
                 </div>
 
                 <!-- Debug Section -->
                 <details class="debug-section">
                     <summary>Debug Info</summary>
                     <div id="debugContent">
-                        <h3>Last API Request</h3>
-                        <pre id="apiRequestBody"></pre>
                         <h3>Last API Response</h3>
                         <pre id="apiResponseBody"></pre>
                     </div>
@@ -97,6 +87,6 @@
     </div>
 
     <script src="../price.js"></script>
-    <script src="pdf_analysis.js"></script>
+    <script src="tax_analysis.js"></script>
 </body>
 </html>
