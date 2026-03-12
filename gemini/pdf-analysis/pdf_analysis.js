@@ -15,6 +15,9 @@ const setApiKeyButton = document.getElementById('setApiKeyButton');
 const geminiModelSelect = document.getElementById('geminiModel');
 const promptInput = document.getElementById('promptInput');
 const pdfFileInput = document.getElementById('pdfFileInput');
+const fileUrlInput = document.getElementById('fileUrlInput');
+const addUrlButton = document.getElementById('addUrlButton');
+const clearUrlButton = document.getElementById('clearUrlButton');
 const pdfPreviewContainer = document.getElementById('pdfPreviewContainer');
 const clearPdfsButton = document.getElementById('clearPdfsButton');
 const analyzeButton = document.getElementById('analyzeButton');
@@ -65,6 +68,10 @@ function addEventListeners() {
     });
 
     pdfFileInput.addEventListener('change', handlePdfSelection);
+    addUrlButton.addEventListener('click', addFileFromUrl);
+    clearUrlButton.addEventListener('click', () => {
+        fileUrlInput.value = '';
+    });
 
     clearPdfsButton.addEventListener('click', () => {
         selectedPdfs = [];
@@ -84,6 +91,60 @@ function addEventListeners() {
 }
 
 // --- File Handling ---
+
+async function addFileFromUrl() {
+    const url = fileUrlInput.value.trim();
+    if (!url) return;
+
+    statusMessage.textContent = 'Fetching file from URL...';
+    errorMessage.textContent = '';
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Failed to fetch file: ${response.statusText}`);
+        
+        const blob = await response.blob();
+        
+        // Try to infer filename from URL, fallback to 'document_from_url'
+        let filename = url.split('/').pop().split('?')[0] || 'document_from_url';
+        
+        // Manually map extension if missing from blob type but present in URL
+        let mimeType = blob.type;
+        if (!mimeType || mimeType === 'application/octet-stream') {
+            mimeType = getMimeType({ name: filename, type: '' });
+        }
+
+        const dataUrl = await blobToBase64(blob);
+        const fileInfo = {
+            id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+            base64: dataUrl.split(',')[1],
+            mimeType: mimeType,
+            name: filename
+        };
+        selectedPdfs.push(fileInfo);
+        renderPreview(fileInfo);
+        
+        statusMessage.textContent = 'File added from URL.';
+        setTimeout(() => {
+            if (statusMessage.textContent === 'File added from URL.') {
+                statusMessage.textContent = '';
+            }
+        }, 3000);
+    } catch (error) {
+        console.error('Error adding file from URL:', error);
+        errorMessage.textContent = `Error: ${error.message} (CORS might block some URLs)`;
+        statusMessage.textContent = '';
+    }
+}
+
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
 
 function getMimeType(file) {
     if (file.type) return file.type;
