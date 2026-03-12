@@ -256,6 +256,8 @@ async function startExtraction() {
                 for (const face of faces) {
                     await extractFaceImage(imageInfo, face);
                 }
+                // Render faces progressively after each image is processed
+                renderFaces();
             }
         }
         statusMessage.textContent = 'Extraction complete.';
@@ -268,6 +270,7 @@ async function startExtraction() {
         }
     } finally {
         resetUIState();
+        // Final render to ensure everything is up to date
         renderFaces();
     }
 }
