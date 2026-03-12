@@ -21,9 +21,12 @@
                 </p>
 
                 <div class="summary-display" id="summaryDisplay" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; display: none;">
-                    <div style="display: flex; gap: 20px; justify-content: center; font-size: 0.9em;">
+                    <div style="display: flex; gap: 20px; justify-content: center; font-size: 0.9em; flex-wrap: wrap;">
+                        <span><strong>Input Tokens:</strong> <span id="inputTokens">0</span></span>
+                        <span><strong>Output Tokens:</strong> <span id="outputTokens">0</span></span>
                         <span><strong>Total Tokens:</strong> <span id="totalTokens">0</span></span>
                         <span><strong>Estimated Cost:</strong> <span id="totalCost">$0.000000</span></span>
+                        <span><strong>Call Time:</strong> <span id="callTime">0ms</span></span>
                     </div>
                 </div>
 
@@ -86,10 +89,8 @@
                 <details class="debug-section">
                     <summary>Debug Info</summary>
                     <div id="debugContent">
-                        <h3>Last API Request</h3>
-                        <pre id="apiRequestBody"></pre>
-                        <h3>Last API Response</h3>
-                        <pre id="apiResponseBody"></pre>
+                        <h3>API History</h3>
+                        <div id="apiHistoryContainer" style="display: flex; flex-direction: column-reverse; gap: 20px;"></div>
                     </div>
                 </details>
             </div>

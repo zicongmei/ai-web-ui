@@ -25,11 +25,13 @@ const stopButton = document.getElementById('stopButton');
 const statusMessage = document.getElementById('statusMessage');
 const errorMessage = document.getElementById('errorMessage');
 const textOutput = document.getElementById('textOutput');
-const apiRequestBody = document.getElementById('apiRequestBody');
-const apiResponseBody = document.getElementById('apiResponseBody');
+const apiHistoryContainer = document.getElementById('apiHistoryContainer');
 const summaryDisplay = document.getElementById('summaryDisplay');
+const inputTokensSpan = document.getElementById('inputTokens');
+const outputTokensSpan = document.getElementById('outputTokens');
 const totalTokensSpan = document.getElementById('totalTokens');
 const totalCostSpan = document.getElementById('totalCost');
+const callTimeSpan = document.getElementById('callTime');
 
 // --- Initialization ---
 
@@ -258,6 +260,7 @@ async function startAnalysis() {
     errorMessage.textContent = '';
     statusMessage.textContent = 'Analyzing PDFs...';
     textOutput.textContent = '';
+    apiHistoryContainer.innerHTML = '';
     analyzeButton.disabled = true;
     stopButton.classList.remove('hidden');
 
@@ -284,8 +287,7 @@ async function startAnalysis() {
             contents: [{ role: 'user', parts: parts }]
         };
 
-        apiRequestBody.textContent = JSON.stringify(requestBody, null, 2);
-
+        const startTime = Date.now();
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
             headers: {
@@ -296,19 +298,21 @@ async function startAnalysis() {
             signal: abortController.signal
         });
 
+        const callTime = Date.now() - startTime;
+
         if (!response.ok) {
             const errorData = await response.json();
-            apiResponseBody.textContent = JSON.stringify(errorData, null, 2);
+            logApiInteraction(`Analyze Error`, requestBody, errorData);
             throw new Error(errorData.error?.message || response.statusText);
         }
 
         const data = await response.json();
-        apiResponseBody.textContent = JSON.stringify(data, null, 2);
+        logApiInteraction(`Analyze Documents`, requestBody, data);
 
         if (data.candidates && data.candidates[0].content) {
             const text = data.candidates[0].content.parts[0].text;
             textOutput.textContent = text;
-            updateStats(data);
+            updateStats(data, callTime);
         } else {
             textOutput.textContent = 'No response received from the model.';
         }
@@ -333,25 +337,57 @@ function resetUIState() {
     abortController = null;
 }
 
-function updateStats(data) {
+function logApiInteraction(title, request, response) {
+    const item = document.createElement('div');
+    item.className = 'api-interaction-item';
+    item.style.border = '1px solid #ddd';
+    item.style.padding = '10px';
+    item.style.marginBottom = '10px';
+    item.style.borderRadius = '4px';
+    item.style.background = '#fefefe';
+    
+    const timestamp = new Date().toLocaleTimeString();
+    
+    item.innerHTML = `
+        <h4 style="margin-top: 0;">${timestamp} - ${title}</h4>
+        <details>
+            <summary>View Request</summary>
+            <pre style="font-size: 0.8em; overflow: auto; max-height: 300px;">${JSON.stringify(request, null, 2)}</pre>
+        </details>
+        <details style="margin-top: 5px;">
+            <summary>View Response</summary>
+            <pre style="font-size: 0.8em; overflow: auto; max-height: 300px;">${JSON.stringify(response, null, 2)}</pre>
+        </details>
+    `;
+    
+    apiHistoryContainer.appendChild(item);
+}
+
+function updateStats(data, callTime) {
     if (data.usageMetadata) {
         const inputTokens = data.usageMetadata.promptTokenCount || 0;
         const outputTokens = data.usageMetadata.candidatesTokenCount || 0;
         const total = inputTokens + outputTokens;
         totalTokensCount += total;
         
+        let currentEstimatedCost = 0;
         if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
             const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
             if (pricing && pricing.getPricing) {
                 const { inputRate, outputRate } = pricing.getPricing(inputTokens);
-                const currentCost = (inputTokens * inputRate) + (outputTokens * outputRate);
-                totalEstimatedCostValue += currentCost;
+                currentEstimatedCost = (inputTokens * inputRate) + (outputTokens * outputRate);
+                totalEstimatedCostValue += currentEstimatedCost;
             }
         }
         
         summaryDisplay.style.display = 'block';
+        inputTokensSpan.textContent = inputTokens;
+        outputTokensSpan.textContent = outputTokens;
         totalTokensSpan.textContent = totalTokensCount;
         totalCostSpan.textContent = `$${totalEstimatedCostValue.toFixed(6)}`;
+        if (callTime !== undefined) {
+            callTimeSpan.textContent = `${callTime}ms`;
+        }
     }
 }
 
