@@ -76,8 +76,28 @@ button {
     background-color: #7f8c8d;
 }
 
-.hidden {
-    display: none;
+.prompt-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+textarea#promptInput {
+    width: 100%;
+    min-height: 120px;
+    resize: vertical;
+    font-size: 1em;
+    line-height: 1.5;
+    padding: 12px;
+    border: 1.5px solid #ddd;
+    box-sizing: border-box; /* ensure padding doesn't affect width */
+}
+
+textarea#promptInput:focus {
+    border-color: #3498db;
+    outline: none;
+    box-shadow: 0 0 5px rgba(52, 152, 219, 0.3);
 }
 
 .pdf-preview-container {
