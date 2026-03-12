@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini PDF Analysis</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-layout">
+        <div class="main-content">
+            <div class="container">
+                <div class="header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <button onclick="window.location.href='../../index.html'" class="secondary-button">← Back to Home</button>
+                    <h1>Gemini Document Analysis</h1>
+                    <div style="width: 100px;"></div> <!-- Spacer -->
+                </div>
+
+                <p class="explanation-note">
+                    Upload documents (PDFs, text files, code, etc.) and ask Gemini to analyze, summarize, or extract information from them.
+                </p>
+
+                <div class="summary-display" id="summaryDisplay" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 8px; border: 1px solid #eee; display: none;">
+                    <div style="display: flex; gap: 20px; justify-content: center; font-size: 0.9em;">
+                        <span><strong>Total Tokens:</strong> <span id="totalTokens">0</span></span>
+                        <span><strong>Estimated Cost:</strong> <span id="totalCost">$0.000000</span></span>
+                    </div>
+                </div>
+
+                <div class="input-section">
+                    <div class="api-key-container">
+                        <label for="geminiApiKey">Gemini API Key:</label>
+                        <input type="text" id="geminiApiKey" placeholder="Enter your Gemini API Key">
+                        <button id="setApiKeyButton">Set Key</button>
+                    </div>
+
+                    <div class="model-select-container">
+                        <label for="geminiModel">Select Model:</label>
+                        <select id="geminiModel">
+                            <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                            <option value="gemini-2.0-flash-lite-preview-02-05">Gemini 2.0 Flash-Lite Preview</option>
+                            <option value="gemini-2.0-pro-exp-02-05">Gemini 2.0 Pro Experimental</option>
+                            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                            <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                        </select>
+                    </div>
+
+                    <div class="pdf-upload-container">
+                        <div class="upload-buttons">
+                            <button id="uploadButton" onclick="document.getElementById('pdfFileInput').click()">Upload Files</button>
+                            <input type="file" id="pdfFileInput" multiple style="display: none;">
+                            <button id="clearPdfsButton" class="secondary-button">Clear All Inputs</button>
+                        </div>
+                        <div id="pdfPreviewContainer" class="pdf-preview-container"></div>
+                    </div>
+
+                    <div class="prompt-container">
+                        <label for="promptInput">Prompt:</label>
+                        <textarea id="promptInput" rows="4" placeholder="What would you like to know about these documents?"></textarea>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button id="analyzeButton" class="primary-button">Analyze Documents</button>
+                        <button id="stopButton" class="secondary-button hidden">Stop</button>
+                    </div>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+                <div id="errorMessage" class="error-message"></div>
+
+                <div class="results-section">
+                    <h2>Analysis Result</h2>
+                    <div id="textOutput" class="text-output"></div>
+                </div>
+
+                <!-- Debug Section -->
+                <details class="debug-section">
+                    <summary>Debug Info</summary>
+                    <div id="debugContent">
+                        <h3>Last API Request</h3>
+                        <pre id="apiRequestBody"></pre>
+                        <h3>Last API Response</h3>
+                        <pre id="apiResponseBody"></pre>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <script src="../price.js"></script>
+    <script src="pdf_analysis.js"></script>
+</body>
+</html>

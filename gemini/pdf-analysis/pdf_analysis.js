@@ -1,0 +1,297 @@
+// pdf_analysis.js
+
+let currentApiKey = '';
+let selectedModel = 'gemini-2.0-flash';
+let selectedPdfs = []; // Array of { id, base64, mimeType, name }
+let abortController = null;
+
+// Global Stats
+let totalTokensCount = 0;
+let totalEstimatedCostValue = 0;
+
+// DOM Elements
+const geminiApiKeyInput = document.getElementById('geminiApiKey');
+const setApiKeyButton = document.getElementById('setApiKeyButton');
+const geminiModelSelect = document.getElementById('geminiModel');
+const promptInput = document.getElementById('promptInput');
+const pdfFileInput = document.getElementById('pdfFileInput');
+const pdfPreviewContainer = document.getElementById('pdfPreviewContainer');
+const clearPdfsButton = document.getElementById('clearPdfsButton');
+const analyzeButton = document.getElementById('analyzeButton');
+const stopButton = document.getElementById('stopButton');
+const statusMessage = document.getElementById('statusMessage');
+const errorMessage = document.getElementById('errorMessage');
+const textOutput = document.getElementById('textOutput');
+const apiRequestBody = document.getElementById('apiRequestBody');
+const apiResponseBody = document.getElementById('apiResponseBody');
+const summaryDisplay = document.getElementById('summaryDisplay');
+const totalTokensSpan = document.getElementById('totalTokens');
+const totalCostSpan = document.getElementById('totalCost');
+
+// --- Initialization ---
+
+function init() {
+    loadSettings();
+    addEventListeners();
+}
+
+function loadSettings() {
+    const apiKey = localStorage.getItem('geminiApiKey');
+    if (apiKey) {
+        currentApiKey = apiKey;
+        geminiApiKeyInput.value = apiKey;
+    }
+    const storedModel = localStorage.getItem('selectedPdfModel_v1');
+    if (storedModel) {
+        selectedModel = storedModel;
+        geminiModelSelect.value = storedModel;
+    }
+}
+
+function addEventListeners() {
+    setApiKeyButton.addEventListener('click', () => {
+        const apiKey = geminiApiKeyInput.value.trim();
+        if (apiKey) {
+            currentApiKey = apiKey;
+            localStorage.setItem('geminiApiKey', apiKey);
+            statusMessage.textContent = 'API Key set successfully!';
+            setTimeout(() => statusMessage.textContent = '', 3000);
+        }
+    });
+
+    geminiModelSelect.addEventListener('change', () => {
+        selectedModel = geminiModelSelect.value;
+        localStorage.setItem('selectedPdfModel_v1', selectedModel);
+    });
+
+    pdfFileInput.addEventListener('change', handlePdfSelection);
+
+    clearPdfsButton.addEventListener('click', () => {
+        selectedPdfs = [];
+        pdfPreviewContainer.innerHTML = '';
+        pdfFileInput.value = '';
+    });
+
+    analyzeButton.addEventListener('click', startAnalysis);
+
+    stopButton.addEventListener('click', () => {
+        if (abortController) {
+            abortController.abort();
+            statusMessage.textContent = 'Analysis stopped.';
+            resetUIState();
+        }
+    });
+}
+
+// --- File Handling ---
+
+function getMimeType(file) {
+    if (file.type) return file.type;
+
+    const extension = file.name.split('.').pop().toLowerCase();
+    const mimeTypes = {
+        // Documents
+        'pdf': 'application/pdf',
+        'txt': 'text/plain',
+        'md': 'text/markdown',
+        'csv': 'text/csv',
+        'json': 'application/json',
+        'xml': 'application/json',
+        'html': 'text/html',
+        
+        // Images
+        'png': 'image/png',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'webp': 'image/webp',
+        'heic': 'image/heic',
+        'heif': 'image/heif',
+        
+        // Video
+        'mp4': 'video/mp4',
+        'mpeg': 'video/mpeg',
+        'mov': 'video/mpeg',
+        'avi': 'video/x-msvideo',
+        'wmv': 'video/x-ms-wmv',
+        'mpg': 'video/mpeg',
+        'webm': 'video/webm',
+        
+        // Audio
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'aac': 'audio/aac',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac'
+    };
+
+    return mimeTypes[extension] || 'text/plain';
+}
+
+async function handlePdfSelection(event) {
+    const files = Array.from(event.target.files);
+    for (const file of files) {
+        
+        const resolvedMimeType = getMimeType(file);
+
+        try {
+            const base64Data = await fileToBase64(file);
+            const pdfInfo = {
+                id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                base64: base64Data.split(',')[1],
+                mimeType: resolvedMimeType,
+                name: file.name
+            };
+            selectedPdfs.push(pdfInfo);
+            renderPreview(pdfInfo);
+        } catch (error) {
+            console.error('Error processing file:', error);
+            errorMessage.textContent = 'Error processing some files.';
+        }
+    }
+    pdfFileInput.value = '';
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+function renderPreview(pdfInfo) {
+    const div = document.createElement('div');
+    div.className = 'preview-item';
+    div.dataset.id = pdfInfo.id;
+    
+    div.innerHTML = `
+        <span class="file-icon">📄</span>
+        <div style="word-break: break-all;">${pdfInfo.name}</div>
+        <button class="remove-btn">×</button>
+    `;
+    
+    const removeBtn = div.querySelector('.remove-btn');
+    removeBtn.onclick = () => {
+        selectedPdfs = selectedPdfs.filter(p => p.id !== pdfInfo.id);
+        div.remove();
+    };
+    
+    pdfPreviewContainer.appendChild(div);
+}
+
+// --- API Request ---
+
+async function startAnalysis() {
+    const prompt = promptInput.value.trim();
+    if (!prompt && selectedPdfs.length === 0) {
+        errorMessage.textContent = 'Please upload at least one PDF or provide a prompt.';
+        return;
+    }
+
+    if (!currentApiKey) {
+        errorMessage.textContent = 'Please set your Gemini API Key first.';
+        return;
+    }
+
+    errorMessage.textContent = '';
+    statusMessage.textContent = 'Analyzing PDFs...';
+    textOutput.textContent = '';
+    analyzeButton.disabled = true;
+    stopButton.classList.remove('hidden');
+
+    abortController = new AbortController();
+
+    try {
+        const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
+
+        // Construct parts
+        const parts = [];
+        if (prompt) {
+            parts.push({ text: prompt });
+        }
+        for (const pdf of selectedPdfs) {
+            parts.push({
+                inlineData: {
+                    mimeType: pdf.mimeType,
+                    data: pdf.base64
+                }
+            });
+        }
+
+        const requestBody = {
+            contents: [{ role: 'user', parts: parts }]
+        };
+
+        apiRequestBody.textContent = JSON.stringify(requestBody, null, 2);
+
+        const response = await fetch(API_ENDPOINT, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': currentApiKey
+            },
+            body: JSON.stringify(requestBody),
+            signal: abortController.signal
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            apiResponseBody.textContent = JSON.stringify(errorData, null, 2);
+            throw new Error(errorData.error?.message || response.statusText);
+        }
+
+        const data = await response.json();
+        apiResponseBody.textContent = JSON.stringify(data, null, 2);
+
+        if (data.candidates && data.candidates[0].content) {
+            const text = data.candidates[0].content.parts[0].text;
+            textOutput.textContent = text;
+            updateStats(data);
+        } else {
+            textOutput.textContent = 'No response received from the model.';
+        }
+
+        statusMessage.textContent = 'Analysis complete.';
+
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            console.log('Analysis aborted');
+        } else {
+            console.error('API Error:', error);
+            errorMessage.textContent = `Error: ${error.message}`;
+        }
+    } finally {
+        resetUIState();
+    }
+}
+
+function resetUIState() {
+    analyzeButton.disabled = false;
+    stopButton.classList.add('hidden');
+    abortController = null;
+}
+
+function updateStats(data) {
+    if (data.usageMetadata) {
+        const inputTokens = data.usageMetadata.promptTokenCount || 0;
+        const outputTokens = data.usageMetadata.candidatesTokenCount || 0;
+        const total = inputTokens + outputTokens;
+        totalTokensCount += total;
+        
+        if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
+            const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
+            if (pricing && pricing.getPricing) {
+                const { inputRate, outputRate } = pricing.getPricing(inputTokens);
+                const currentCost = (inputTokens * inputRate) + (outputTokens * outputRate);
+                totalEstimatedCostValue += currentCost;
+            }
+        }
+        
+        summaryDisplay.style.display = 'block';
+        totalTokensSpan.textContent = totalTokensCount;
+        totalCostSpan.textContent = `$${totalEstimatedCostValue.toFixed(6)}`;
+    }
+}
+
+init();
