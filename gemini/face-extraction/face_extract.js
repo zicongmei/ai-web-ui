@@ -444,7 +444,13 @@ async function downloadAllAsZip() {
     const content = await zip.generateAsync({ type: "blob" });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(content);
-    link.download = "extracted_faces.zip";
+    
+    // Format date and time: YYYYMMDD_HHMMSS
+    const now = new Date();
+    const pad = (n) => n.toString().padStart(2, '0');
+    const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    
+    link.download = `extracted_faces_${timestamp}.zip`;
     link.click();
     statusMessage.textContent = 'ZIP download started.';
     setTimeout(() => statusMessage.textContent = '', 3000);
