@@ -73,7 +73,7 @@ const statusMessage = document.getElementById('statusMessage');
 const errorMessage = document.getElementById('errorMessage');
 const resultsSection = document.getElementById('resultsSection');
 const tablesContainer = document.getElementById('tablesContainer');
-const apiResponseBody = document.getElementById('apiResponseBody');
+const apiHistoryContainer = document.getElementById('apiHistoryContainer');
 const summaryDisplay = document.getElementById('summaryDisplay');
 const totalTokensSpan = document.getElementById('totalTokens');
 const totalCostSpan = document.getElementById('totalCost');
@@ -243,6 +243,7 @@ async function startAnalysis() {
     errorMessage.textContent = '';
     extractedData = []; // Reset extracted data
     tablesContainer.innerHTML = '';
+    apiHistoryContainer.innerHTML = '';
     resultsSection.style.display = 'none';
     analyzeButton.disabled = true;
     stopButton.classList.remove('hidden');
@@ -344,6 +345,8 @@ The JSON object must have this structure:
     }
 
     const data = await response.json();
+    logApiInteraction(`Identify Form: ${fileInfo.name}`, requestBody, data);
+    
     if (data.candidates && data.candidates[0].content) {
         updateStats(data);
         try {
@@ -429,7 +432,7 @@ async function extractDataFromForm(fileInfo, formType) {
     }
 
     const data = await response.json();
-    apiResponseBody.textContent = JSON.stringify(data, null, 2);
+    logApiInteraction(`Extract Data (${formType}): ${fileInfo.name}`, requestBody, data);
 
     if (data.candidates && data.candidates[0].content) {
         updateStats(data);
@@ -575,6 +578,32 @@ function resetUIState() {
     analyzeButton.disabled = false;
     stopButton.classList.add('hidden');
     abortController = null;
+}
+
+function logApiInteraction(title, request, response) {
+    const item = document.createElement('div');
+    item.className = 'api-interaction-item';
+    item.style.border = '1px solid #ddd';
+    item.style.padding = '10px';
+    item.style.marginBottom = '10px';
+    item.style.borderRadius = '4px';
+    item.style.background = '#fefefe';
+    
+    const timestamp = new Date().toLocaleTimeString();
+    
+    item.innerHTML = `
+        <h4 style="margin-top: 0;">${timestamp} - ${title}</h4>
+        <details>
+            <summary>View Request</summary>
+            <pre style="font-size: 0.8em; overflow: auto; max-height: 300px;">${JSON.stringify(request, null, 2)}</pre>
+        </details>
+        <details style="margin-top: 5px;">
+            <summary>View Response</summary>
+            <pre style="font-size: 0.8em; overflow: auto; max-height: 300px;">${JSON.stringify(response, null, 2)}</pre>
+        </details>
+    `;
+    
+    apiHistoryContainer.appendChild(item);
 }
 
 init();
