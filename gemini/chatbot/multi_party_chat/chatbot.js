@@ -5,7 +5,7 @@ let botRoles = []; // Array of strings representing role names
 let userName = 'User'; // Default user name
 let currentApiKey = '';
 let selectedModel = 'gemini-2.5-flash-lite';
-let systemInstruction = 'Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language as input or previous diaglog. Do not include the thought in repsonse text.'; 
+let systemInstruction = 'Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language (Chinese , English, etc.) as input or previous diaglog. Do not include the thought in repsonse text.'; 
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
