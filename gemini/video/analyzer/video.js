@@ -23,7 +23,6 @@ const GEMINI_VIDEO_MODELS = {
     'gemini-2.0-flash': 'Gemini 2.0 Flash',
     'gemini-2.0-flash-lite': 'Gemini 2.0 Flash Lite',
     'gemini-3.1-pro-preview': 'Gemini 3.1 Pro Preview',
-    'gemini-3-pro-preview': 'Gemini 3.0 Pro Preview',
     'gemini-3-flash-preview': 'Gemini 3.0 Flash Preview'
 };
 
