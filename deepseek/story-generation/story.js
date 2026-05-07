@@ -36,10 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com/chat/completions';
 
-    const defaultSystemInstruction = `You are a skilled story writer.
-Continue the story one paragraph at a time, keeping the tone consistent.
-Ensure the new paragraph naturally follows the existing text and incorporates the given prompt for the next part of the story.
-Use the same language as input or previous paragraph.`;
+    const defaultSystemInstruction = `你是一位经验丰富的小说家。
+请每次续写一个段落，保持语调一致。
+确保新段落自然地衔接现有文本，并融入所给的后续剧情提示。
+使用与输入或前一段落相同的语言。`;
 
     apiKeyInput.value = localStorage.getItem('deepseekApiKey') || '';
     modelSelect.value = localStorage.getItem('deepseekModel') || 'deepseek-chat';
