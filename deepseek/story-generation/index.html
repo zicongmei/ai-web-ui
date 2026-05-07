@@ -8,43 +8,43 @@
 </head>
 <body>
     <div class="container">
-        <h1>DeepSeek AI Story Generator</h1>
+        <h1>DeepSeek AI 故事生成器</h1>
 
         <div id="errorDisplay" class="error-message hidden"></div>
 
         <div class="input-group">
-            <label for="storyOutput">Story So Far (editable):</label>
-            <textarea id="storyOutput" rows="20" placeholder="Start writing your story here, or leave blank and provide a prompt for the first paragraph."></textarea>
+            <label for="storyOutput">目前的故事（可编辑）：</label>
+            <textarea id="storyOutput" rows="20" placeholder="在此处开始编写您的故事，或者留空并为第一段提供提示。"></textarea>
         </div>
         <div class="input-group">
-            <label for="nextParagraphPrompt">What should happen in the next paragraph?</label>
+            <label for="nextParagraphPrompt">下一段应该发生什么？</label>
             <div class="next-paragraph-input-controls">
-                <textarea id="nextParagraphPrompt" rows="3" placeholder="e.g., The hero encounters a mysterious old woman who offers a cryptic warning."></textarea>
-                <button id="clearNextParagraphPromptBtn" type="button" class="secondary-btn clear-prompt-btn">Clear</button>
+                <textarea id="nextParagraphPrompt" rows="3" placeholder="例如：主角遇到了一位神秘的老妇人，她给出了一个晦涩的警告。"></textarea>
+                <button id="clearNextParagraphPromptBtn" type="button" class="secondary-btn clear-prompt-btn">清除</button>
             </div>
         </div>
         
         <div class="action-buttons">
-            <button id="generateBtn">Generate Next Paragraph</button>
-            <button id="stopBtn" class="stop-btn hidden">Stop Generation</button>
+            <button id="generateBtn">生成下一段</button>
+            <button id="stopBtn" class="stop-btn hidden">停止生成</button>
         </div>
         
-        <button id="revertLastParagraphBtn" class="secondary-btn" disabled>Remove Last Paragraph</button>
-        <button id="clearAllBtn" class="secondary-btn">Clear All Contents</button>  
-        <div id="loadingIndicator" class="hidden">Generating...</div>
+        <button id="revertLastParagraphBtn" class="secondary-btn" disabled>删除最后一段</button>
+        <button id="clearAllBtn" class="secondary-btn">清除所有内容</button>  
+        <div id="loadingIndicator" class="hidden">正在生成...</div>
 
          <div class="input-group">
-            <label for="systemInstruction">System Instruction for DeepSeek:</label>
+            <label for="systemInstruction">给 DeepSeek 的系统指令：</label>
             <textarea id="systemInstruction" rows="4" placeholder="例如：你是一位奇幻小说作家。请用生动有趣的文笔写作。保持段落相对简短。"></textarea>
         </div>
 
         <div class="input-group">
-            <label for="apiKey">DeepSeek API Key:</label>
-            <textarea id="apiKey" rows="1" placeholder="Enter your DeepSeek API Key"></textarea>
+            <label for="apiKey">DeepSeek API Key：</label>
+            <textarea id="apiKey" rows="1" placeholder="输入您的 DeepSeek API Key"></textarea>
         </div>
 
         <div class="input-group">
-            <label for="modelSelect">Select Model:</label>
+            <label for="modelSelect">选择模型：</label>
             <select id="modelSelect">
                 <option value="deepseek-chat" selected>deepseek-chat (V3)</option>
                 <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
@@ -54,24 +54,24 @@
         </div>
 
         <div class="token-display-group">
-            <p><strong>Input tokens for current request:</strong> <span id="currentRequestInputTokens">0</span></p>
-            <p><strong>Output tokens for current request:</strong> <span id="currentRequestOutputTokens">0</span></p>
-            <p><strong>Cost for current request:</strong> <span id="currentRequestCost">$0.000000</span></p>
+            <p><strong>当前请求输入 Token：</strong> <span id="currentRequestInputTokens">0</span></p>
+            <p><strong>当前请求输出 Token：</strong> <span id="currentRequestOutputTokens">0</span></p>
+            <p><strong>当前请求费用：</strong> <span id="currentRequestCost">$0.000000</span></p>
             <hr>
-            <p><strong>Accumulated input tokens:</strong> <span id="accumulatedInputTokens">0</span></p>
-            <p><strong>Accumulated output tokens:</strong> <span id="accumulatedOutputTokens">0</span></p>
-            <p><strong>Total accumulated tokens:</strong> <span id="accumulatedTokens">0</span></p> 
-            <p><strong>Total accumulated cost:</strong> <span id="accumulatedCost">$0.000000</span></p>
+            <p><strong>累计输入 Token：</strong> <span id="accumulatedInputTokens">0</span></p>
+            <p><strong>累计输出 Token：</strong> <span id="accumulatedOutputTokens">0</span></p>
+            <p><strong>累计总 Token：</strong> <span id="accumulatedTokens">0</span></p> 
+            <p><strong>累计总费用：</strong> <span id="accumulatedCost">$0.000000</span></p>
         </div>
     </div>
 
     <!-- Debug Button and Panel -->
     <div id="debugContainer">
-        <button id="debugToggleBtn" class="debug-toggle-btn">Debug</button>
+        <button id="debugToggleBtn" class="debug-toggle-btn">调试</button>
         <div id="debugPanel" class="debug-panel hidden">
             <div class="debug-header">
-                <h3>DeepSeek API Logs</h3>
-                <button id="clearDebugLogsBtn" class="secondary-btn debug-clear-btn">Clear Logs</button>
+                <h3>DeepSeek API 日志</h3>
+                <button id="clearDebugLogsBtn" class="secondary-btn debug-clear-btn">清除日志</button>
             </div>
             <div id="debugLogs" class="debug-logs-content">
                 <!-- Logs will be inserted here -->

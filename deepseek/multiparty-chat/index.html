@@ -15,47 +15,47 @@
         <div class="chat-history-controls">
             <button id="decreaseFontSizeButton">-</button>
             <button id="increaseFontSizeButton">+</button>
-            <button id="resetFontSizeButton">Reset</button>
-            <span>Font Size</span>
+            <button id="resetFontSizeButton">重置</button>
+            <span>字体大小</span>
         </div>
         
         <!-- Chat History Area (Editable & Auto-expanding) -->
-        <textarea class="chat-history-box" id="chatHistoryBox" placeholder="Chat history will appear here. You can edit this text directly..."></textarea>
+        <textarea class="chat-history-box" id="chatHistoryBox" placeholder="聊天记录将显示在此处。您可以直接编辑此文本..."></textarea>
         <div id="errorMessage" class="error-message"></div>
 
         <!-- User Input Area -->
         <div class="chat-input-area">
-            <textarea id="messageInput" placeholder="Type a message..." rows="1" autocomplete="off"></textarea>
-            <button id="sendUserMessageButton">Add as User</button>
+            <textarea id="messageInput" placeholder="输入消息..." rows="1" autocomplete="off"></textarea>
+            <button id="sendUserMessageButton">作为用户添加</button>
         </div>
 
         <!-- Narrator Input Area -->
         <div class="chat-input-area">
-            <textarea id="narratorMessageInput" placeholder="Type a message for Narrator..." rows="1" autocomplete="off"></textarea>
-            <button id="sendNarratorMessageButton">Add as Narrator</button>
+            <textarea id="narratorMessageInput" placeholder="输入旁白消息..." rows="1" autocomplete="off"></textarea>
+            <button id="sendNarratorMessageButton">作为旁白添加</button>
         </div>
 
         <!-- Response Generation Section (Dynamic Buttons) -->
         <div class="section-box bot-actions-section">
-            <h3>Generate Response</h3>
+            <h3>生成回复</h3>
             <div id="responseGenerationButtonsContainer" class="bot-buttons-container">
                 <!-- Buttons like "Generate as User", "Generate as Mike" will appear here -->
             </div>
-            <button id="stopMessageButton" class="stop-button hidden">Stop Generation</button>
+            <button id="stopMessageButton" class="stop-button hidden">停止生成</button>
         </div>
 
         <!-- History Actions - Grouped Here -->
         <div class="chat-actions-section">
-            <button id="removeLastEntryButton">Remove Last Line</button>
-            <button id="regenerateLastLineButton">Regenerate Last Line</button>
+            <button id="removeLastEntryButton">删除最后一行</button>
+            <button id="regenerateLastLineButton">重新生成最后一行</button>
         </div>
 
         <!-- Role Management Section -->
         <div class="section-box role-management-section">
-            <h3>Role Management</h3>
+            <h3>角色管理</h3>
             <div class="add-role-controls">
-                <input type="text" id="newRoleNameInput" placeholder="Enter Bot Name (e.g. Mike)" autocomplete="off">
-                <button id="addRoleButton">Add Role</button>
+                <input type="text" id="newRoleNameInput" placeholder="输入机器人名称 (例如：Mike)" autocomplete="off">
+                <button id="addRoleButton">添加角色</button>
             </div>
             <div id="activeRolesList" class="active-roles-list">
                 <!-- Roles will be listed here -->
@@ -64,36 +64,36 @@
 
         <!-- User Name Section -->
         <div class="user-name-section">
-            <label for="userNameInput">Your Name:</label>
+            <label for="userNameInput">您的名字：</label>
             <input id="userNameInput" type="text" value="User" autocomplete="off">
         </div>
       
         <!-- System Instruction -->
         <div class="system-instruction-section">
-            <label for="systemInstructionInput">Background / System Context:</label>
-            <textarea id="systemInstructionInput" placeholder="Define the setting, scenario, or shared context for all characters..." autocomplete="off">你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。</textarea>
-            <button id="clearSystemInstructionButton">Clear Context</button>
+            <label for="systemInstructionInput">背景 / 系统上下文：</label>
+            <textarea id="systemInstructionInput" placeholder="定义所有角色的设定、场景或共享上下文..." autocomplete="off">你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。</textarea>
+            <button id="clearSystemInstructionButton">清除上下文</button>
         </div>
 
 
         <!-- History Actions - Grouped Here -->
         <div class="chat-actions-section">
-            <button id="saveChatButton">Save to File</button>
+            <button id="saveChatButton">保存到文件</button>
             <input type="file" id="loadChatFileInput" accept=".json" style="display: none;">
-            <button id="loadChatButton">Load from File</button>
-            <button id="clearAllHistoryButton" class="danger-button">Clear All History</button>
+            <button id="loadChatButton">从文件加载</button>
+            <button id="clearAllHistoryButton" class="danger-button">清除所有记录</button>
         </div>
 
 
         <!-- Config Sections -->
         <div class="api-key-section">
             <label for="deepseekApiKey">DeepSeek API Key:</label>
-            <input id="deepseekApiKey" type="text" placeholder="Enter Key" autocomplete="off">
-            <button id="setApiKeyButton">Set</button>
+            <input id="deepseekApiKey" type="text" placeholder="输入 Key" autocomplete="off">
+            <button id="setApiKeyButton">设置</button>
         </div>
 
         <div class="model-selection-section">
-            <label for="deepseekModel">Model:</label>
+            <label for="deepseekModel">模型：</label>
             <select id="deepseekModel">
                 <option value="deepseek-chat" selected>deepseek-chat (V3)</option>
                 <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
@@ -104,11 +104,11 @@
 
         <!-- Debug Sections (JSON Editor Removed) -->
         <div class="api-debug-section">
-            <button id="showApiDebugButton">Show Last API Call</button>
+            <button id="showApiDebugButton">显示最后一次 API 调用</button>
             <div id="apiDebugContent" class="hidden">
-                <h4>Request:</h4>
+                <h4>请求：</h4>
                 <pre id="apiRequestBody"></pre>
-                <h4>Response:</h4>
+                <h4>响应：</h4>
                 <pre id="apiResponseBody"></pre>
             </div>
         </div>
