@@ -9,6 +9,12 @@ const GEMINI_PRICING_CONFIG = {
                 outputRate: 1.50 / 1_000_000
             })
         },
+        'gemini-3.5-flash': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 1.50 / 1_000_000,
+                outputRate: 9.00 / 1_000_000
+            })
+        },
         'gemini-2.5-flash': {
             getPricing: (promptTokenCount) => ({
                 inputRate: 0.30 / 1_000_000,

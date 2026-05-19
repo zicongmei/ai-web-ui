@@ -16,6 +16,7 @@ let totalEstimatedCost = 0;
 
 // Gemini Models suitable for Video Analysis
 const GEMINI_VIDEO_MODELS = {
+    'gemini-3.5-flash': 'Gemini 3.5 Flash',
     'gemini-2.5-flash': 'Gemini 2.5 Flash',
     'gemini-2.5-pro': 'Gemini 2.5 Pro',
     'gemini-3.1-flash-lite-preview': 'Gemini 3.1 Flash-Lite Preview',
