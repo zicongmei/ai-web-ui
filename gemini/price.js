@@ -130,7 +130,7 @@ const GEMINI_PRICING_CONFIG = {
                 text_and_image_per_m_tokens: 0.25,
             },
             output: {
-                image_0_5K_fixed_price: 0.045,
+                image_512_fixed_price: 0.045,
                 image_1K_fixed_price: 0.067,
                 image_2K_fixed_price: 0.101,
                 image_4K_fixed_price: 0.151,
