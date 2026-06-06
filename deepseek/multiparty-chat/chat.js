@@ -4,7 +4,7 @@ let chatHistory = []; // Array of { speaker: string, text: string }
 let botRoles = []; // Array of strings representing role names
 let userName = 'User'; // Default user name
 let currentApiKey = '';
-let selectedModel = 'deepseek-chat';
+let selectedModel = 'deepseek-v4-flash';
 let systemInstruction = '你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。'; 
 
 let totalInputTokens = 0;

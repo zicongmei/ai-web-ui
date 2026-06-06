@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
 使用与输入或前一段落相同的语言。`;
 
     apiKeyInput.value = localStorage.getItem('deepseekApiKey') || '';
-    modelSelect.value = localStorage.getItem('deepseekModel') || 'deepseek-chat';
+    modelSelect.value = localStorage.getItem('deepseekModel') || 'deepseek-v4-flash';
     systemInstructionTextarea.value = localStorage.getItem('deepseekSystemInstruction') || defaultSystemInstruction;
     nextParagraphPromptTextarea.value = localStorage.getItem('deepseekNextParagraphPrompt') || '';
     storyOutputTextarea.value = localStorage.getItem('deepseekStoryOutput') || ''; 
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        modelSelect.value = 'deepseek-chat'; 
+        modelSelect.value = 'deepseek-v4-flash'; 
         systemInstructionTextarea.value = defaultSystemInstruction; 
         nextParagraphPromptTextarea.value = ''; 
         storyOutputTextarea.value = '';
