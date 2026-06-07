@@ -173,7 +173,7 @@ function loadRolesFromLocalStorage() {
 function addRole() {
     const name = newRoleNameInput.value.trim();
     if (!name) return;
-    if (botRoles.includes(name) || name === userName || name === 'Narrator' || name === 'System') { 
+    if (botRoles.includes(name) || name === userName || name === '旁白' || name === 'System') { 
         errorMessageDiv.textContent = `Role name "${name}" is reserved or already exists.`;
         setTimeout(() => errorMessageDiv.textContent = '', 3000);
         return;
@@ -289,6 +289,10 @@ function loadChatHistory() {
         try {
             chatHistory = JSON.parse(h);
             if (!Array.isArray(chatHistory)) chatHistory = [];
+            // Migrate legacy 'Narrator' to '旁白'
+            chatHistory.forEach(entry => {
+                if (entry.speaker === 'Narrator') entry.speaker = '旁白';
+            });
         } catch (e) { chatHistory = []; }
     }
 
@@ -316,7 +320,7 @@ function addNarratorMessage() {
 
     if (document.activeElement) document.activeElement.blur();
 
-    chatHistory.push({ speaker: 'Narrator', text: text });
+    chatHistory.push({ speaker: '旁白', text: text });
 
     narratorMessageInput.value = '';
     adjustNarratorTextareaHeight(); 
@@ -352,7 +356,7 @@ async function regenerateLastLine() {
     if (chatHistory.length === 0) return;
     
     const lastEntry = chatHistory[chatHistory.length - 1];
-    const generatableRoles = [userName, 'Narrator', ...botRoles];
+    const generatableRoles = [userName, '旁白', ...botRoles];
     if (generatableRoles.includes(lastEntry.speaker)) {
         chatHistory.pop();
         renderChatHistory();
@@ -428,7 +432,7 @@ async function generateResponseForRole(targetRole) {
             messages: messages,
             temperature: 0.7,
             max_tokens: 2048,
-            stop: [`\n${userName}:`, `\nNarrator:`, `\nSystem:`].concat(botRoles.filter(r => r !== targetRole).map(r => `\n${r}:`))
+            stop: [`\n${userName}:`, `\n旁白:`, `\nSystem:`].concat(botRoles.filter(r => r !== targetRole).map(r => `\n${r}:`))
         };
 
         lastRawRequestBody = JSON.stringify(requestBody, null, 2);

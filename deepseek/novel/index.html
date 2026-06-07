@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek Novel Generator</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <button id="toggleSidebar" class="sidebar-toggle-btn" title="Toggle History">
+        <span class="toggle-icon">◀</span>
+    </button>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>History</h2>
+        </div>
+        <div class="history-list" id="historyList">
+            <!-- History items will be injected here -->
+        </div>
+        <div class="sidebar-footer">
+            <button id="newAbstractButton">New Abstract</button>
+            <button id="saveToFileButton" class="secondary">Save Selected Job</button>
+            <button id="loadFromFileButton" class="secondary">Load Job File</button>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
+            <button id="clearHistoryButton" class="danger">Clear History</button>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="container" id="abstractGenContainer">
+            <div class="collapsible-header" id="toggleAbstractGen" style="background: none; border: none; padding: 0; margin-bottom: 20px;">
+                <h1 style="margin: 0; flex-grow: 1; border: none;">DeepSeek Abstract Generator</h1>
+                <span class="toggle-icon" style="font-size: 1.5em;">▼</span>
+            </div>
+            
+            <div id="abstractGenContent" class="collapsible-content">
+                <div class="form-group">
+                    <label for="apiKey">DeepSeek API Key:</label>
+                    <div class="row">
+                        <input id="apiKey" type="text" placeholder="Enter your DeepSeek API Key">
+                        <button id="setApiKeyButton" style="width: auto;">Set Key</button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="collapsible-header" id="toggleInstruction">
+                        <label>System Instruction (Read-only)</label>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="systemInstructionTemplate" class="instruction-template collapsible-content collapsed">
+                        Write a concise, compelling story writing plan.
+                        <b>Start your response with "Title: [Your Creative Title]".</b>
+                        <br><br>
+                        It need to include the settings, the name of main characters and a detail plan for all <span id="tplChapters">xx</span> chapters.
+                        <br><br>
+                        Create a detailed story idea. Use around <span id="tplPlanWords">100</span> words to describe each chapter in the story planning.
+                        <div id="tplIdeaWrapper">
+                            <br>
+                            The story idea is: <span id="tplIdea">xx</span>
+                        </div>
+                        <br>
+                        The story language is <span id="tplLanguage">xx</span>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="languageInput">Language:</label>
+                            <input type="text" id="languageInput" value="English" placeholder="e.g. English, Chinese, Spanish">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="modelSelect">Model:</label>
+                            <select id="modelSelect">
+                                <option value="deepseek-chat">deepseek-chat (V3)</option>
+                                <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+                                <option value="deepseek-v4-flash" selected>deepseek-v4-flash</option>
+                                <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="numChapters">Number of Chapters:</label>
+                            <input type="number" id="numChapters" value="10" min="1" max="100">
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="planWordsPerChapter">Words per Chapter (Plan):</label>
+                            <input type="number" id="planWordsPerChapter" value="100" min="10" max="1000">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="additionalPrompt">Additional Prompt / Requirements:</label>
+                    <textarea id="additionalPrompt" rows="4" placeholder="e.g. A mystery novel set in Victorian London..."></textarea>
+                </div>
+
+                <button id="generateButton">Generate Abstract</button>
+                <button id="stopButton" class="danger hidden">Stop Generation</button>
+                
+                <div id="statusDiv" class="status-bar hidden"></div>
+                
+                <div id="retryArea" class="hidden" style="text-align: center; margin-top: 15px;">
+                    <button id="retryButton" class="secondary">Retry Fetch Once</button>
+                </div>
+
+                <div id="debugSection" class="debug-section">
+                    <div class="debug-header collapsible-header" id="toggleDebug">
+                        <label>Debug Panel</label>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="debugContent" class="collapsible-content collapsed">
+                        <div class="debug-group" id="requestPreviewGroup">
+                            <label>Request Preview:</label>
+                            <div class="debug-url">URL: <span id="debugUrlPreview">-</span></div>
+                            <pre id="debugRequestPreview"></pre>
+                        </div>
+                        <div class="debug-group hidden" id="actualRequestGroup">
+                            <label>Actual API Request:</label>
+                            <div class="debug-url">URL: <span id="debugActualUrl">-</span></div>
+                            <pre id="debugActualRequest"></pre>
+                        </div>
+                        <div class="debug-group hidden" id="apiResponseGroup">
+                            <label>API Response:</label>
+                            <pre id="debugResponse"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultArea" class="container result-area hidden">
+            <div class="result-header">
+                <h2 id="resultTitle">Title</h2>
+                <div class="result-actions">
+                    <button id="saveEditButton" class="hidden">Save Changes</button>
+                    <button id="discardEditButton" class="secondary hidden">Discard</button>
+                    <span id="tokenStats" class="result-stats">Tokens: -</span>
+                    <span id="priceStats" class="result-stats">Cost: -</span>
+                </div>
+            </div>
+            <div id="resultContent" class="abstract-content" contenteditable="true"></div>
+
+            <div id="storyGenControls" class="story-gen-controls hidden">
+                <hr class="section-divider">
+                <h3>Generate Full Novel</h3>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="storyModelSelect">Model for Story:</label>
+                            <select id="storyModelSelect">
+                                <option value="deepseek-chat">deepseek-chat (V3)</option>
+                                <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+                                <option value="deepseek-v4-flash" selected>deepseek-v4-flash</option>
+                                <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="wordsPerChapter">Words Per Chapter:</label>
+                            <input type="number" id="wordsPerChapter" value="5000" step="500">
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="storyAdditionalPrompt">Chapter Style / Additional Prompt:</label>
+                            <textarea id="storyAdditionalPrompt" rows="2" placeholder="e.g. Write in a suspenseful, noir style..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="useThoughtSignature" checked> Use Thought Signature (for R1 model)
+                    </label>
+                </div>
+                
+                <div class="button-group">
+                    <button id="startStoryButton">Start Story Generation</button>
+                    <button id="pauseStoryButton" class="secondary hidden">Pause Generation</button>
+                    <button id="resumeStoryButton" class="hidden">Resume Generation</button>
+                    <button id="deleteAllChaptersButton" class="danger hidden">Delete All Chapters</button>
+                </div>
+
+                <div id="storyDebugSection" class="debug-section hidden">
+                    <div class="debug-header collapsible-header" id="toggleStoryDebug">
+                        <label>Story Generation Debug Logs</label>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div id="storyDebugContent" class="collapsible-content collapsed" style="padding: 0;">
+                        <!-- Log entries will be injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="storyArea" class="story-area hidden">
+            <!-- Chapters will be injected here -->
+        </div>
+    </div>
+
+    <script src="../price.js"></script>
+    <script src="novel.js"></script>
+</body>
+</html>
