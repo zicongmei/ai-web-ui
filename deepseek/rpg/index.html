@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek AI RPG 游戏</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>DeepSeek AI RPG 游戏</h1>
+
+        <div id="errorDisplay" class="error-message hidden"></div>
+
+        <div class="main-layout">
+            <div class="game-history">
+                <div class="input-group">
+                    <label for="gameHistory">游戏历史 (可编辑):</label>
+                    <textarea id="gameHistory" rows="20" placeholder="在此处开始您的冒险，或留空并为第一幕提供提示。"></textarea>
+                </div>
+            </div>
+            
+            <div class="game-sidebar">
+                <div class="input-group">
+                    <label for="inventoryDisplay">物品栏 (可编辑):</label>
+                    <textarea id="inventoryDisplay" rows="10" placeholder="您的物品将显示在此处..."></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="nextMovePrompt">您的下一步行动是什么？</label>
+            <div class="next-paragraph-input-controls">
+                <textarea id="nextMovePrompt" rows="3" placeholder="例如：我探索北边黑暗的洞穴。"></textarea>
+                <button id="clearNextMovePromptBtn" type="button" class="secondary-btn clear-prompt-btn">清除</button>
+            </div>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="generateBtn">提交行动</button>
+            <button id="stopBtn" class="stop-btn hidden">停止生成</button>
+        </div>
+        
+        <button id="revertLastMoveBtn" class="secondary-btn" disabled>撤销上一步</button>
+        <button id="clearAllBtn" class="secondary-btn">清空所有内容</button>  
+        <div id="loadingIndicator" class="hidden">DeepSeek 正在思考...</div>
+
+         <div class="input-group">
+            <label for="systemInstruction">给 DeepSeek 的系统指令:</label>
+            <textarea id="systemInstruction" rows="6" placeholder="您是一个文字 RPG 的游戏主持人 (DM)。生动地描述用户行动的结果。保持世界观的一致性。"></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="apiKey">DeepSeek API Key:</label>
+            <textarea id="apiKey" rows="1" placeholder="输入您的 DeepSeek API Key"></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="modelSelect">选择模型:</label>
+            <select id="modelSelect">
+                <option value="deepseek-chat">deepseek-chat (V3)</option>
+                <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+                <option value="deepseek-v4-flash" selected>deepseek-v4-flash</option>
+                <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+            </select>
+        </div>
+
+        <div class="token-display-group">
+            <p><strong>当前请求输入 Token:</strong> <span id="currentRequestInputTokens">0</span></p>
+            <p><strong>当前请求输出 Token:</strong> <span id="currentRequestOutputTokens">0</span></p>
+            <p><strong>当前请求费用:</strong> <span id="currentRequestCost">$0.000000</span></p>
+            <hr>
+            <p><strong>累计输入 Token:</strong> <span id="accumulatedInputTokens">0</span></p>
+            <p><strong>累计输出 Token:</strong> <span id="accumulatedOutputTokens">0</span></p>
+            <p><strong>累计总 Token:</strong> <span id="accumulatedTokens">0</span></p> 
+            <p><strong>累计总费用:</strong> <span id="accumulatedCost">$0.000000</span></p>
+        </div>
+    </div>
+
+    <!-- Debug Button and Panel -->
+    <div id="debugContainer">
+        <button id="debugToggleBtn" class="debug-toggle-btn">调试</button>
+        <div id="debugPanel" class="debug-panel hidden">
+            <div class="debug-header">
+                <h3>DeepSeek API 日志</h3>
+                <button id="clearDebugLogsBtn" class="secondary-btn debug-clear-btn">清除日志</button>
+            </div>
+            <div id="debugLogs" class="debug-logs-content">
+                <!-- 日志将注入在此处 -->
+            </div>
+        </div>
+    </div>
+
+    <script src="../price.js"></script>
+    <script src="./game.js" defer></script>
+</body>
+</html>
