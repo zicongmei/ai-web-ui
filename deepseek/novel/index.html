@@ -1,80 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Novel Generator</title>
+    <title>DeepSeek AI 小说生成器</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <button id="toggleSidebar" class="sidebar-toggle-btn" title="Toggle History">
+    <button id="toggleSidebar" class="sidebar-toggle-btn" title="切换历史记录">
         <span class="toggle-icon">◀</span>
     </button>
 
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
-            <h2>History</h2>
+            <h2>历史记录</h2>
         </div>
         <div class="history-list" id="historyList">
-            <!-- History items will be injected here -->
+            <!-- 历史项目将注入在此处 -->
         </div>
         <div class="sidebar-footer">
-            <button id="newAbstractButton">New Abstract</button>
-            <button id="saveToFileButton" class="secondary">Save Selected Job</button>
-            <button id="loadFromFileButton" class="secondary">Load Job File</button>
+            <button id="newAbstractButton">新建大纲</button>
+            <button id="saveToFileButton" class="secondary">保存所选任务</button>
+            <button id="loadFromFileButton" class="secondary">导入任务文件</button>
             <input type="file" id="fileInput" accept=".json" style="display: none;">
-            <button id="clearHistoryButton" class="danger">Clear History</button>
+            <button id="clearHistoryButton" class="danger">清空历史记录</button>
         </div>
     </div>
 
     <div class="main-content">
         <div class="container" id="abstractGenContainer">
             <div class="collapsible-header" id="toggleAbstractGen" style="background: none; border: none; padding: 0; margin-bottom: 20px;">
-                <h1 style="margin: 0; flex-grow: 1; border: none;">DeepSeek Abstract Generator</h1>
+                <h1 style="margin: 0; flex-grow: 1; border: none;">DeepSeek 大纲生成器</h1>
                 <span class="toggle-icon" style="font-size: 1.5em;">▼</span>
             </div>
             
             <div id="abstractGenContent" class="collapsible-content">
                 <div class="form-group">
-                    <label for="apiKey">DeepSeek API Key:</label>
+                    <label for="apiKey">DeepSeek API Key (密钥):</label>
                     <div class="row">
-                        <input id="apiKey" type="text" placeholder="Enter your DeepSeek API Key">
-                        <button id="setApiKeyButton" style="width: auto;">Set Key</button>
+                        <input id="apiKey" type="text" placeholder="输入您的 DeepSeek API Key">
+                        <button id="setApiKeyButton" style="width: auto;">设置密钥</button>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <div class="collapsible-header" id="toggleInstruction">
-                        <label>System Instruction (Read-only)</label>
+                        <label>系统指令（只读预览）</label>
                         <span class="toggle-icon">▼</span>
                     </div>
                     <div id="systemInstructionTemplate" class="instruction-template collapsible-content collapsed">
-                        Write a concise, compelling story writing plan.
-                        <b>Start your response with "Title: [Your Creative Title]".</b>
+                        撰写一份简洁且吸引人的故事编写大纲。
+                        <b>在回复的开头加上 "Title: [您的创意标题]"。</b>
                         <br><br>
-                        It need to include the settings, the name of main characters and a detail plan for all <span id="tplChapters">xx</span> chapters.
+                        它需要包括故事设定、主要角色姓名以及所有 <span id="tplChapters">xx</span> 章的详细计划。
                         <br><br>
-                        Create a detailed story idea. Use around <span id="tplPlanWords">100</span> words to describe each chapter in the story planning.
+                        创建一个详细的故事构思。在大纲规划中，用大约 <span id="tplPlanWords">100</span> 字来描述每一章。
                         <div id="tplIdeaWrapper">
                             <br>
-                            The story idea is: <span id="tplIdea">xx</span>
+                            故事构思是：<span id="tplIdea">xx</span>
                         </div>
                         <br>
-                        The story language is <span id="tplLanguage">xx</span>
+                        故事语言是 <span id="tplLanguage">xx</span>
                     </div>
                 </div>
 
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
-                            <label for="languageInput">Language:</label>
-                            <input type="text" id="languageInput" value="English" placeholder="e.g. English, Chinese, Spanish">
+                            <label for="languageInput">写作语言:</label>
+                            <input type="text" id="languageInput" value="中文" placeholder="例如：中文、英文、西班牙文">
                         </div>
                     </div>
                     <div class="col">
                         <div class="form-group">
-                            <label for="modelSelect">Model:</label>
+                            <label for="modelSelect">大纲生成模型:</label>
                             <select id="modelSelect">
                                 <option value="deepseek-chat">deepseek-chat (V3)</option>
                                 <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
@@ -88,50 +88,50 @@
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
-                            <label for="numChapters">Number of Chapters:</label>
+                            <label for="numChapters">章节数量:</label>
                             <input type="number" id="numChapters" value="10" min="1" max="100">
                         </div>
                     </div>
                     <div class="col">
                         <div class="form-group">
-                            <label for="planWordsPerChapter">Words per Chapter (Plan):</label>
+                            <label for="planWordsPerChapter">大纲单章描述字数:</label>
                             <input type="number" id="planWordsPerChapter" value="100" min="10" max="1000">
                         </div>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="additionalPrompt">Additional Prompt / Requirements:</label>
-                    <textarea id="additionalPrompt" rows="4" placeholder="e.g. A mystery novel set in Victorian London..."></textarea>
+                    <label for="additionalPrompt">故事核心构思 / 附加要求:</label>
+                    <textarea id="additionalPrompt" rows="4" placeholder="例如：一部设定在维多利亚时代伦敦的悬疑小说，主角是一个拥有读心术的侦探..."></textarea>
                 </div>
 
-                <button id="generateButton">Generate Abstract</button>
-                <button id="stopButton" class="danger hidden">Stop Generation</button>
+                <button id="generateButton">生成小说大纲</button>
+                <button id="stopButton" class="danger hidden">停止生成</button>
                 
                 <div id="statusDiv" class="status-bar hidden"></div>
                 
                 <div id="retryArea" class="hidden" style="text-align: center; margin-top: 15px;">
-                    <button id="retryButton" class="secondary">Retry Fetch Once</button>
+                    <button id="retryButton" class="secondary">重试一次</button>
                 </div>
 
                 <div id="debugSection" class="debug-section">
                     <div class="debug-header collapsible-header" id="toggleDebug">
-                        <label>Debug Panel</label>
+                        <label>调试面板</label>
                         <span class="toggle-icon">▼</span>
                     </div>
                     <div id="debugContent" class="collapsible-content collapsed">
                         <div class="debug-group" id="requestPreviewGroup">
-                            <label>Request Preview:</label>
+                            <label>请求预览:</label>
                             <div class="debug-url">URL: <span id="debugUrlPreview">-</span></div>
                             <pre id="debugRequestPreview"></pre>
                         </div>
                         <div class="debug-group hidden" id="actualRequestGroup">
-                            <label>Actual API Request:</label>
+                            <label>实际 API 请求:</label>
                             <div class="debug-url">URL: <span id="debugActualUrl">-</span></div>
                             <pre id="debugActualRequest"></pre>
                         </div>
                         <div class="debug-group hidden" id="apiResponseGroup">
-                            <label>API Response:</label>
+                            <label>API 响应结果:</label>
                             <pre id="debugResponse"></pre>
                         </div>
                     </div>
@@ -141,23 +141,23 @@
 
         <div id="resultArea" class="container result-area hidden">
             <div class="result-header">
-                <h2 id="resultTitle">Title</h2>
+                <h2 id="resultTitle">标题</h2>
                 <div class="result-actions">
-                    <button id="saveEditButton" class="hidden">Save Changes</button>
-                    <button id="discardEditButton" class="secondary hidden">Discard</button>
+                    <button id="saveEditButton" class="hidden">保存大纲修改</button>
+                    <button id="discardEditButton" class="secondary hidden">放弃修改</button>
                     <span id="tokenStats" class="result-stats">Tokens: -</span>
-                    <span id="priceStats" class="result-stats">Cost: -</span>
+                    <span id="priceStats" class="result-stats">费用: -</span>
                 </div>
             </div>
             <div id="resultContent" class="abstract-content" contenteditable="true"></div>
 
             <div id="storyGenControls" class="story-gen-controls hidden">
                 <hr class="section-divider">
-                <h3>Generate Full Novel</h3>
+                <h3>生成小说全文</h3>
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
-                            <label for="storyModelSelect">Model for Story:</label>
+                            <label for="storyModelSelect">正文生成模型:</label>
                             <select id="storyModelSelect">
                                 <option value="deepseek-chat">deepseek-chat (V3)</option>
                                 <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
@@ -168,7 +168,7 @@
                     </div>
                     <div class="col">
                         <div class="form-group">
-                            <label for="wordsPerChapter">Words Per Chapter:</label>
+                            <label for="wordsPerChapter">单章期望字数:</label>
                             <input type="number" id="wordsPerChapter" value="5000" step="500">
                         </div>
                     </div>
@@ -176,38 +176,38 @@
                 <div class="row">
                     <div class="col">
                         <div class="form-group">
-                            <label for="storyAdditionalPrompt">Chapter Style / Additional Prompt:</label>
-                            <textarea id="storyAdditionalPrompt" rows="2" placeholder="e.g. Write in a suspenseful, noir style..."></textarea>
+                            <label for="storyAdditionalPrompt">章节写作风格 / 附加提示:</label>
+                            <textarea id="storyAdditionalPrompt" rows="2" placeholder="例如：请用悬疑、黑色幽默的风格写作，多用细节和环境描写..."></textarea>
                         </div>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>
-                        <input type="checkbox" id="useThoughtSignature" checked> Use Thought Signature (for R1 model)
+                        <input type="checkbox" id="useThoughtSignature" checked> 启用思维链显示（适用于 R1 模型）
                     </label>
                 </div>
                 
                 <div class="button-group">
-                    <button id="startStoryButton">Start Story Generation</button>
-                    <button id="pauseStoryButton" class="secondary hidden">Pause Generation</button>
-                    <button id="resumeStoryButton" class="hidden">Resume Generation</button>
-                    <button id="deleteAllChaptersButton" class="danger hidden">Delete All Chapters</button>
+                    <button id="startStoryButton">开始生成正文</button>
+                    <button id="pauseStoryButton" class="secondary hidden">暂停生成</button>
+                    <button id="resumeStoryButton" class="hidden">恢复生成</button>
+                    <button id="deleteAllChaptersButton" class="danger hidden">删除已生成章节</button>
                 </div>
 
                 <div id="storyDebugSection" class="debug-section hidden">
                     <div class="debug-header collapsible-header" id="toggleStoryDebug">
-                        <label>Story Generation Debug Logs</label>
+                        <label>正文生成调试日志</label>
                         <span class="toggle-icon">▼</span>
                     </div>
                     <div id="storyDebugContent" class="collapsible-content collapsed" style="padding: 0;">
-                        <!-- Log entries will be injected here -->
+                        <!-- 日志内容将注入在此处 -->
                     </div>
                 </div>
             </div>
         </div>
 
         <div id="storyArea" class="story-area hidden">
-            <!-- Chapters will be injected here -->
+            <!-- 章节卡片将注入在此处 -->
         </div>
     </div>
 

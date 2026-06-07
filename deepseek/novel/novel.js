@@ -1,4 +1,4 @@
-// novel.js for DeepSeek Novel Generator
+// novel.js for DeepSeek Novel Generator (Chinese Version)
 
 // Configuration
 const DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com/chat/completions';
@@ -85,27 +85,27 @@ const sidebar = document.getElementById('sidebar');
 const toggleSidebar = document.getElementById('toggleSidebar');
 
 const SYSTEM_INSTRUCTION_BASE = `
-Write a concise, compelling story writing plan.
-Start your response with "Title: [Your Creative Title]".
-It need to include the settings, the name of main characters and a detail plan for all {{chapters}} chapters.
+撰写一份简洁且吸引人的故事编写大纲。
+请在回复的开头加上 "Title: [您的创意标题]"。
+大纲需要包括故事设定、主要角色姓名以及所有 {{chapters}} 个章节的详细计划。
 
-Create a detailed story idea. Use around 100 words to describe each chapter in the story planning.
+创建一个详细的故事构思。在章节规划中，用大约 100 字来描述每一章。
 `.trim();
 
 const CHAPTER_PROMPT_TEMPLATE = `
-Given the following complete story abstract (plan) and the chapters already written, please write Chapter {{chapter_num}} of the story.
-Generate a short title for the chapter.
-The chapter should be approximately {{words}} words. Focus on progressing the narrative as outlined in the abstract for this specific chapter.
+根据以下完整的故事大纲（计划）以及已经写好的章节，请编写故事的第 {{chapter_num}} 章。
+请为该章节生成一个简短的标题。
+该章节的字数应大约为 {{words}} 字。重点是按照大纲中针对该特定章节的规划来推进叙事。
 
---- Full Story Abstract (Plan) ---
+--- 完整故事大纲（计划） ---
 {{abstract}}
---- End Full Story Abstract (Plan) ---
+--- 结束完整故事大纲（计划） ---
 
---- Previously Written Chapters (including abstract and previous chapters) ---
+--- 之前已写好的章节（包括大纲和之前的章节） ---
 {{previous_chapters}}
---- End Previously Written Chapters ---
+--- 结束之前已写好的章节 ---
 
-Write Chapter {{chapter_num}} now, ensuring it flows logically from previous chapters and adheres to the overall story plan.
+现在开始编写第 {{chapter_num}} 章，确保它与之前的章节逻辑衔接，并遵循整体的故事计划。
 `.trim();
 
 // Initialization
@@ -217,7 +217,11 @@ function loadSettings() {
     }
     
     const lang = localStorage.getItem(STORAGE_PREFIX + 'language');
-    if (lang) languageInput.value = lang;
+    if (lang) {
+        languageInput.value = lang;
+    } else {
+        languageInput.value = '中文'; // Default to Chinese
+    }
     
     const chapters = localStorage.getItem(STORAGE_PREFIX + 'chapters');
     if (chapters) numChaptersInput.value = chapters;
@@ -261,7 +265,7 @@ function renderHistory() {
         if (currentAbstractId === item.id) div.classList.add('active');
         
         const title = document.createElement('h4');
-        title.textContent = item.title || 'Untitled';
+        title.textContent = item.title || '无标题';
         
         const info = document.createElement('p');
         const date = new Date(item.timestamp).toLocaleString();
@@ -270,24 +274,24 @@ function renderHistory() {
         if (item.status === 'failed') {
             const statusSpan = document.createElement('span');
             statusSpan.style.color = '#dc3545';
-            statusSpan.textContent = ' (Failed)';
+            statusSpan.textContent = ' (失败)';
             info.appendChild(statusSpan);
         } else if (item.storyStatus === 'generating') {
             const statusSpan = document.createElement('span');
             statusSpan.style.color = '#28a745';
-            statusSpan.textContent = ` (Writing Ch ${item.currentChapterIndex}...)`;
+            statusSpan.textContent = ` (正在生成第 ${item.currentChapterIndex} 章...)`;
             info.appendChild(statusSpan);
         } else if (item.storyStatus === 'paused') {
             const statusSpan = document.createElement('span');
             statusSpan.style.color = '#6c757d';
-            statusSpan.textContent = ' (Paused)';
+            statusSpan.textContent = ' (已暂停)';
             info.appendChild(statusSpan);
         }
 
         const deleteBtn = document.createElement('span');
         deleteBtn.className = 'delete-btn';
         deleteBtn.innerHTML = '&times;';
-        deleteBtn.title = 'Delete from history';
+        deleteBtn.title = '从历史记录中删除';
         deleteBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             deleteHistoryItem(item.id);
@@ -303,7 +307,7 @@ function renderHistory() {
 }
 
 function deleteHistoryItem(id) {
-    if (confirm('Delete this item from history?')) {
+    if (confirm('确定要从历史记录中删除此项吗？')) {
         history = history.filter(h => h.id !== id);
         saveHistory();
         if (currentAbstractId === id) {
@@ -336,12 +340,12 @@ function updateDebugPreview() {
     if (idea) {
         if (tplIdea) tplIdea.textContent = idea;
         if (tplIdeaWrapper) tplIdeaWrapper.classList.remove('hidden');
-        systemInst += `\n\nThe story idea is: ${idea}`;
+        systemInst += `\n\n故事构思是：${idea}`;
     } else {
         if (tplIdeaWrapper) tplIdeaWrapper.classList.add('hidden');
     }
 
-    systemInst += `\n\nThe story language is ${language}`;
+    systemInst += `\n\n故事语言是 ${language}`;
 
     const model = modelSelect.value;
 
@@ -372,13 +376,13 @@ function loadAbstract(id) {
     resultTitle.textContent = item.title;
     
     if (item.status === 'failed') {
-        resultContent.textContent = 'Generation failed: ' + (item.error || 'Unknown error');
-        statusDiv.textContent = 'Job failed.';
+        resultContent.textContent = '生成大纲失败: ' + (item.error || '未知错误');
+        statusDiv.textContent = '任务失败。';
         statusDiv.classList.remove('hidden');
         retryArea.classList.remove('hidden');
 
         tokenStats.textContent = 'Tokens: -';
-        priceStats.textContent = 'Cost: -';
+        priceStats.textContent = '费用: -';
 
         if (abstractGenContent) {
             abstractGenContent.classList.remove('collapsed');
@@ -487,7 +491,7 @@ function renderChapters(item) {
         }
 
         const title = document.createElement('h2');
-        title.textContent = chapter.title || `Chapter ${index + 1}`;
+        title.textContent = chapter.title || `第 ${index + 1} 章`;
         
         titleGroup.appendChild(toggleIcon);
         titleGroup.appendChild(title);
@@ -497,15 +501,15 @@ function renderChapters(item) {
 
         const saveBtn = document.createElement('button');
         saveBtn.className = 'hidden';
-        saveBtn.textContent = 'Save';
+        saveBtn.textContent = '保存修改';
 
         const discardBtn = document.createElement('button');
         discardBtn.className = 'secondary hidden';
-        discardBtn.textContent = 'Discard';
+        discardBtn.textContent = '放弃修改';
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'danger';
-        deleteBtn.textContent = 'Delete';
+        deleteBtn.textContent = '删除章节';
 
         actions.appendChild(saveBtn);
         actions.appendChild(discardBtn);
@@ -522,16 +526,15 @@ function renderChapters(item) {
         // Show reasoning content if available and enabled
         if (chapter.thought) {
             const thoughtDiv = document.createElement('div');
-            thoughtDiv.className = 'chapter-thought hidden'; // Hidden by default, can be toggled if needed, or just kept for reference
+            thoughtDiv.className = 'chapter-thought hidden';
             thoughtDiv.style.fontStyle = 'italic';
             thoughtDiv.style.color = '#777';
             thoughtDiv.style.borderLeft = '3px solid #ccc';
             thoughtDiv.style.paddingLeft = '10px';
             thoughtDiv.style.marginBottom = '10px';
-            thoughtDiv.textContent = "Reasoning:\n" + chapter.thought;
+            thoughtDiv.textContent = "思考过程:\n" + chapter.thought;
             card.appendChild(thoughtDiv); // Append before content
             
-            // Maybe add a toggle button for thought?
             const toggleThoughtBtn = document.createElement('button');
             toggleThoughtBtn.className = 'secondary';
             toggleThoughtBtn.style.width = 'auto';
@@ -539,11 +542,11 @@ function renderChapters(item) {
             toggleThoughtBtn.style.fontSize = '0.8em';
             toggleThoughtBtn.style.marginTop = '5px';
             toggleThoughtBtn.style.marginBottom = '5px';
-            toggleThoughtBtn.textContent = 'Show Reasoning';
+            toggleThoughtBtn.textContent = '显示思维链';
             toggleThoughtBtn.onclick = (e) => {
                 e.stopPropagation();
                 const isHidden = thoughtDiv.classList.toggle('hidden');
-                toggleThoughtBtn.textContent = isHidden ? 'Show Reasoning' : 'Hide Reasoning';
+                toggleThoughtBtn.textContent = isHidden ? '显示思维链' : '隐藏思维链';
             };
             header.querySelector('.chapter-actions').prepend(toggleThoughtBtn);
         }
@@ -575,7 +578,7 @@ function renderChapters(item) {
         };
 
         deleteBtn.onclick = () => {
-            if (confirm(`Delete Chapter ${index + 1}?`)) {
+            if (confirm(`确定要删除第 ${index + 1} 章吗？`)) {
                 item.chapters.splice(index, 1);
                 if (item.currentChapterIndex > item.chapters.length + 1) {
                     item.currentChapterIndex = item.chapters.length + 1;
@@ -595,7 +598,7 @@ function deleteAllChapters() {
     const item = history.find(h => h.id === currentAbstractId);
     if (!item) return;
 
-    if (confirm('Delete ALL chapters? This cannot be undone.')) {
+    if (confirm('确定要删除所有章节吗？此操作无法撤销。')) {
         item.chapters = [];
         item.currentChapterIndex = 1;
         item.storyStatus = 'idle';
@@ -611,7 +614,7 @@ function saveAbstractEdits() {
         saveHistory();
         saveEditButton.classList.add('hidden');
         discardEditButton.classList.add('hidden');
-        alert('Changes saved to history.');
+        alert('修改已保存到历史记录。');
     }
 }
 
@@ -621,7 +624,7 @@ async function startStoryGeneration() {
     if (!item) return;
 
     if (item.chapters && item.chapters.length > 0) {
-        if (!confirm('This will clear existing chapters and start from Chapter 1. Continue?')) return;
+        if (!confirm('这将清除现有章节并从第一章重新开始。确定要继续吗？')) return;
     }
 
     item.chapters = [];
@@ -654,7 +657,7 @@ function pauseStoryGeneration() {
     }
     
     loadAbstract(item.id);
-    statusDiv.textContent = 'Story generation paused.';
+    statusDiv.textContent = '小说生成已暂停。';
 }
 
 function resumeStoryGeneration() {
@@ -684,7 +687,7 @@ async function generateNextChapter(id) {
         item.storyStatus = 'completed';
         saveHistory();
         loadAbstract(id);
-        alert('Full novel generation complete!');
+        alert('整部小说生成完成！');
         return;
     }
 
@@ -698,13 +701,13 @@ async function generateNextChapter(id) {
     
     messages.push({
         role: "system",
-        content: "You are a creative writer. Write the story based on the provided plan."
+        content: "你是一位富有创意的作家。请根据提供的大纲编写故事。"
     });
 
-    let initialPrompt = `Here is the full story plan:\n\n${item.content}\n\n`;
-    initialPrompt += `Please write Chapter 1 now. It should be approximately ${words} words.`;
+    let initialPrompt = `这里是完整的故事大纲（计划）：\n\n${item.content}\n\n`;
+    initialPrompt += `请现在开始编写第 1 章。字数要求大约为 ${words} 字。`;
     if (chapterNum === 1 && additionalPrompt) {
-        initialPrompt += `\nAdditional Instructions: ${additionalPrompt}`;
+        initialPrompt += `\n附加要求：${additionalPrompt}`;
     }
 
     messages.push({
@@ -726,15 +729,15 @@ async function generateNextChapter(id) {
         if (i < item.chapters.length - 1) {
             messages.push({
                 role: "user",
-                content: `Great. Now please write Chapter ${nextIdx}. Approximately ${words} words.`
+                content: `太好了。现在请编写第 ${nextIdx} 章。大约 ${words} 字。`
             });
         }
     });
 
     if (chapterNum > 1) {
-        let currentChPrompt = `Great. Now please write Chapter ${chapterNum}. Approximately ${words} words.`;
+        let currentChPrompt = `太好了。现在请编写第 ${chapterNum} 章。大约 ${words} 字。`;
         if (additionalPrompt) {
-            currentChPrompt += `\nAdditional Instructions: ${additionalPrompt}`;
+            currentChPrompt += `\n附加要求：${additionalPrompt}`;
         }
         messages.push({
             role: "user",
@@ -773,7 +776,7 @@ async function generateNextChapter(id) {
 
         const data = await response.json();
         
-        addStoryDebugLog(`Ch ${chapterNum} Submission`, url, 'POST', requestBody, data);
+        addStoryDebugLog(`第 ${chapterNum} 章 提交结果`, url, 'POST', requestBody, data);
 
         if (!response.ok) throw new Error(data.error?.message || JSON.stringify(data));
         
@@ -783,7 +786,7 @@ async function generateNextChapter(id) {
         }
 
         const choice = data.choices?.[0];
-        if (!choice) throw new Error('No choice in response');
+        if (!choice) throw new Error('响应中没有候选结果 (choice)');
 
         const text = choice.message?.content;
         const thought = choice.message?.reasoning_content;
@@ -796,7 +799,7 @@ async function generateNextChapter(id) {
 
         if (currentAbstractId === id) {
             renderChapters(item);
-            statusDiv.textContent = `Chapter ${chapterNum} complete. Starting next...`;
+            statusDiv.textContent = `第 ${chapterNum} 章生成完成。正在开始下一章...`;
         }
 
         setTimeout(() => {
@@ -808,12 +811,12 @@ async function generateNextChapter(id) {
 
     } catch (e) {
         if (e.name === 'AbortError') {
-            console.log('Generation aborted');
+            console.log('生成已中止');
         } else {
             console.error(e);
             if (currentAbstractId === id) {
-                statusDiv.textContent = `Error starting Chapter ${chapterNum}: ${e.message}`;
-                alert(`Error starting Chapter ${chapterNum}: ${e.message}`);
+                statusDiv.textContent = `开始生成第 ${chapterNum} 章时出错: ${e.message}`;
+                alert(`开始生成第 ${chapterNum} 章时出错: ${e.message}`);
             }
             item.storyStatus = 'paused';
             saveHistory();
@@ -825,7 +828,7 @@ async function generateNextChapter(id) {
 }
 
 function parseChapterResponse(text, chapterNum) {
-    let title = `Chapter ${chapterNum}`;
+    let title = `第 ${chapterNum} 章`;
     let content = text;
     const titleMatch = text.match(/^(?:Title|Chapter \d+):?\s*(.+)$/m);
     if (titleMatch) {
@@ -838,7 +841,7 @@ function parseChapterResponse(text, chapterNum) {
 // Generation Logic for Abstract
 async function generateAbstract() {
     if (!currentApiKey) {
-        alert('Please set your API Key first.');
+        alert('请先设置您的 API Key。');
         return;
     }
 
@@ -852,9 +855,9 @@ async function generateAbstract() {
         .replace('{{chapters}}', chapters)
         .replace('{{plan_words}}', planWords);
     if (prompt) {
-        systemInst += `\n\nThe story idea is: ${prompt}`;
+        systemInst += `\n\n故事构思是：${prompt}`;
     }
-    systemInst += `\n\nThe story language is ${language}`;
+    systemInst += `\n\n故事语言是 ${language}`;
 
     const messages = [
         { role: 'system', content: systemInst },
@@ -877,7 +880,7 @@ async function generateAbstract() {
     generateButton.disabled = true;
     generateButton.classList.add('hidden');
     stopButton.classList.remove('hidden');
-    statusDiv.textContent = 'Generating Abstract...';
+    statusDiv.textContent = '正在生成大纲...';
     statusDiv.classList.remove('hidden');
     if (resultArea) resultArea.classList.add('hidden');
     
@@ -905,7 +908,7 @@ async function generateAbstract() {
         if (debugResponseGroup) debugResponseGroup.classList.remove('hidden');
 
         const choice = data.choices?.[0];
-        if (!choice) throw new Error('No choice in response');
+        if (!choice) throw new Error('响应中没有候选结果 (choice)');
 
         const text = choice.message?.content;
         const { title, content } = parseAbstractResponse(text, getTimestampTitle());
@@ -933,7 +936,7 @@ async function generateAbstract() {
         saveHistory();
         loadAbstract(newEntry.id);
         
-        statusDiv.textContent = 'Generation Complete!';
+        statusDiv.textContent = '大纲生成完成！';
         generateButton.disabled = false;
         generateButton.classList.remove('hidden');
         stopButton.classList.add('hidden');
@@ -945,16 +948,16 @@ async function generateAbstract() {
 
     } catch (e) {
         if (e.name === 'AbortError') {
-            statusDiv.textContent = 'Cancelled.';
+            statusDiv.textContent = '已取消。';
         } else {
             console.error(e);
-            statusDiv.textContent = `Error: ${e.message}`;
-            alert(`Error: ${e.message}`);
+            statusDiv.textContent = `出错: ${e.message}`;
+            alert(`出错: ${e.message}`);
             
             const newEntry = {
                 id: Date.now().toString(),
                 timestamp: Date.now(),
-                title: getTimestampTitle() + ' (Failed)',
+                title: getTimestampTitle() + ' (失败)',
                 status: 'failed',
                 error: e.message,
                 model: model,
@@ -1002,9 +1005,10 @@ function calculateCost(model, input, output) {
     return 0;
 }
 
+// Stats display format in Chinese
 function updateStatsDisplay(stats) {
-    tokenStats.textContent = `Tokens: In ${stats.inputTokens} / Out ${stats.outputTokens}`;
-    priceStats.textContent = `Est. Cost: $${stats.cost.toFixed(6)}`;
+    tokenStats.textContent = `Tokens: 输入 ${stats.inputTokens} / 输出 ${stats.outputTokens}`;
+    priceStats.textContent = `预估费用: $${stats.cost.toFixed(6)}`;
 }
 
 function addStoryDebugLog(title, url, method, request, response) {
@@ -1026,7 +1030,7 @@ function addStoryDebugLog(title, url, method, request, response) {
 
     if (request) {
         const reqLabel = document.createElement('label');
-        reqLabel.textContent = 'Request Body:';
+        reqLabel.textContent = '请求包体 (Request Body):';
         reqLabel.style.color = '#ffc66d';
         reqLabel.style.fontSize = '0.9em';
         reqLabel.style.display = 'block';
@@ -1039,7 +1043,7 @@ function addStoryDebugLog(title, url, method, request, response) {
 
     if (response) {
         const resLabel = document.createElement('label');
-        resLabel.textContent = 'Response Body:';
+        resLabel.textContent = '响应包体 (Response Body):';
         resLabel.style.color = '#ffc66d';
         resLabel.style.fontSize = '0.9em';
         resLabel.style.marginTop = '10px';
@@ -1064,7 +1068,7 @@ async function retryGeneration(id) {
     const item = history.find(h => h.id === id);
     if (!item) return;
 
-    statusDiv.textContent = 'Retrying...';
+    statusDiv.textContent = '正在重试...';
     retryArea.classList.add('hidden');
 
     languageInput.value = item.params.language;
@@ -1086,7 +1090,7 @@ const storyDebugContent = document.getElementById('storyDebugContent');
 setApiKeyButton.addEventListener('click', () => {
     currentApiKey = apiKeyInput.value.trim();
     saveSettings();
-    alert('API Key Saved');
+    alert('API Key 已保存');
 });
 
 generateButton.addEventListener('click', generateAbstract);
@@ -1109,7 +1113,7 @@ newAbstractButton.addEventListener('click', () => {
 });
 
 clearHistoryButton.addEventListener('click', () => {
-    if (confirm('Clear all history?')) {
+    if (confirm('确定要清空所有历史记录吗？')) {
         history = [];
         saveHistory();
         newAbstractButton.click();
@@ -1118,7 +1122,7 @@ clearHistoryButton.addEventListener('click', () => {
 
 saveToFileButton.addEventListener('click', () => {
     if (!currentAbstractId) {
-        alert('Please select a job from history to save.');
+        alert('请先从历史记录中选择一个任务进行保存。');
         return;
     }
     const item = history.find(h => h.id === currentAbstractId);
@@ -1169,12 +1173,12 @@ fileInput.addEventListener('change', (e) => {
                 if (addedCount === 1 && !Array.isArray(loaded)) {
                     loadAbstract(loaded.id);
                 }
-                alert(`Successfully loaded ${addedCount} job(s).`);
+                alert(`成功加载 ${addedCount} 个任务。`);
             } else {
-                alert('No new unique jobs found in the file.');
+                alert('文件中未找到新的唯一任务。');
             }
         } catch (err) {
-            alert('Error loading file: ' + err.message);
+            alert('加载文件出错: ' + err.message);
         }
         e.target.value = '';
     };
