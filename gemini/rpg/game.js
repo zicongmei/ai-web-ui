@@ -9,6 +9,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn');
     const revertLastMoveBtn = document.getElementById('revertLastMoveBtn'); 
     const clearAllBtn = document.getElementById('clearAllBtn');
+    const saveGameBtn = document.getElementById('saveGameBtn');
+    const loadGameBtn = document.getElementById('loadGameBtn');
+    const loadGameInput = document.getElementById('loadGameInput');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const errorDisplay = document.getElementById('errorDisplay');
     const clearNextMovePromptBtn = document.getElementById('clearNextMovePromptBtn');
@@ -101,6 +104,9 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
     generateBtn.addEventListener('click', submitMove);
     revertLastMoveBtn.addEventListener('click', removeLastTurn);
     clearAllBtn.addEventListener('click', clearAllContents);
+    saveGameBtn.addEventListener('click', saveGame);
+    loadGameBtn.addEventListener('click', () => loadGameInput.click());
+    loadGameInput.addEventListener('change', loadGame);
 
     stopBtn.addEventListener('click', () => {
         if (abortController) {
@@ -411,6 +417,81 @@ INVENTORY: [A comma-separated list of ALL items the player currently has in thei
             debugLogsContainer.appendChild(logEntryDiv);
         });
         debugLogsContainer.scrollTop = debugLogsContainer.scrollHeight;
+    }
+
+    function saveGame() {
+        const gameState = {
+            gameHistory: gameHistoryTextarea.value,
+            inventory: inventoryDisplayTextarea.value,
+            systemInstruction: systemInstructionTextarea.value,
+            model: modelSelect.value
+        };
+
+        const jsonString = JSON.stringify(gameState, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+        const filename = `rpg_save_${timestamp}.json`;
+
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    function loadGame(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const gameState = JSON.parse(e.target.result);
+                
+                if (gameState.gameHistory === undefined || gameState.inventory === undefined) {
+                    throw new Error('Invalid save file format.');
+                }
+
+                gameHistoryTextarea.value = gameState.gameHistory || '';
+                inventoryDisplayTextarea.value = gameState.inventory || '';
+                
+                if (gameState.systemInstruction !== undefined) {
+                    systemInstructionTextarea.value = gameState.systemInstruction;
+                }
+                if (gameState.model !== undefined) {
+                    modelSelect.value = gameState.model;
+                }
+
+                localStorage.setItem('geminiRpgGameHistory', gameHistoryTextarea.value);
+                localStorage.setItem('geminiRpgInventory', inventoryDisplayTextarea.value);
+                if (gameState.systemInstruction !== undefined) {
+                    localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value);
+                }
+                if (gameState.model !== undefined) {
+                    localStorage.setItem('geminiRpgModel', modelSelect.value);
+                }
+
+                revertLastMoveBtn.disabled = !gameHistoryTextarea.value.trim();
+                showError('');
+                alert('Game loaded successfully!');
+            } catch (err) {
+                showError(`Failed to load game: ${err.message}`);
+            }
+            loadGameInput.value = '';
+        };
+        reader.readAsText(file);
     }
 
     function showError(message) {
