@@ -182,6 +182,7 @@ function setUserName() {
 function updateUserMessagePlaceholder() {
     const displayUserName = userName || 'User'; // Use 'User' for display if userName is empty
     messageInput.placeholder = `Type a message for ${displayUserName}...`;
+    sendUserMessageButton.textContent = `Add as ${displayUserName}`;
 }
 
 // --- Font Size ---

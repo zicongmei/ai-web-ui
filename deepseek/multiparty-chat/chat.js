@@ -134,8 +134,9 @@ function setUserName() {
 }
 
 function updateUserMessagePlaceholder() {
-    const displayUserName = userName || 'User'; 
-    messageInput.placeholder = `Type a message for ${displayUserName}...`;
+    const displayUserName = userName || '用户'; 
+    messageInput.placeholder = `输入 ${displayUserName} 的消息...`;
+    sendUserMessageButton.textContent = `作为 ${displayUserName} 添加`;
 }
 
 // --- Font Size ---
