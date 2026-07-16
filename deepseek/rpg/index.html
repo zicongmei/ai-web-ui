@@ -30,10 +30,7 @@
 
         <div class="input-group">
             <label for="nextMovePrompt">您的下一步行动是什么？</label>
-            <div class="next-paragraph-input-controls">
-                <textarea id="nextMovePrompt" rows="3" placeholder="例如：我探索北边黑暗的洞穴。"></textarea>
-                <button id="clearNextMovePromptBtn" type="button" class="secondary-btn clear-prompt-btn">清除</button>
-            </div>
+            <textarea id="nextMovePrompt" rows="3" placeholder="例如：我探索北边黑暗的洞穴。"></textarea>
         </div>
         
         <div class="action-buttons">
@@ -42,6 +39,7 @@
         </div>
         
         <button id="revertLastMoveBtn" class="secondary-btn" disabled>撤销上一步</button>
+        <button id="clearNextMovePromptBtn" type="button" class="secondary-btn">清除草稿</button>
         <button id="clearAllBtn" class="secondary-btn">清空所有内容</button>  
         <button id="saveGameBtn" class="secondary-btn">保存游戏</button>
         <button id="loadGameBtn" class="secondary-btn">加载游戏</button>

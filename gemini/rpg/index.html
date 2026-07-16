@@ -30,10 +30,7 @@
 
         <div class="input-group">
             <label for="nextMovePrompt">What is your next move?</label>
-            <div class="next-paragraph-input-controls">
-                <textarea id="nextMovePrompt" rows="3" placeholder="e.g., I explore the dark cave to the north."></textarea>
-                <button id="clearNextMovePromptBtn" type="button" class="secondary-btn clear-prompt-btn">Clear</button>
-            </div>
+            <textarea id="nextMovePrompt" rows="3" placeholder="e.g., I explore the dark cave to the north."></textarea>
         </div>
         
         <div class="action-buttons">
@@ -42,6 +39,7 @@
         </div>
         
         <button id="revertLastMoveBtn" class="secondary-btn" disabled>Remove Last Turn</button>
+        <button id="clearNextMovePromptBtn" type="button" class="secondary-btn">Clear Draft</button>
         <button id="clearAllBtn" class="secondary-btn">Clear All Contents</button>  
         <button id="saveGameBtn" class="secondary-btn">Save Game</button>
         <button id="loadGameBtn" class="secondary-btn">Load Game</button>
