@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepSeek AI RPG 游戏 (增强记忆与角色反应版)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>DeepSeek AI RPG 游戏 (增强记忆与角色反应版)</h1>
+
+        <div id="errorDisplay" class="error-message hidden"></div>
+
+        <div class="input-group">
+            <div class="collapsible-header" id="toggleLongTermMemory">
+                <label for="longTermMemoryDisplay">长期记忆 (以往游戏全局总结)</label>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div id="longTermMemoryContent" class="collapsible-content">
+                <textarea id="longTermMemoryDisplay" rows="6" placeholder="整个以往冒险历程的总结将显示在这里..."></textarea>
+            </div>
+        </div>
+        <div class="input-group">
+            <div class="collapsible-header" id="toggleShortTermMemory">
+                <label for="shortTermMemoryDisplay">短期记忆 (近期互动总结)</label>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div id="shortTermMemoryContent" class="collapsible-content">
+                <textarea id="shortTermMemoryDisplay" rows="6" placeholder="近期几轮对局和当前局势的总结将显示在这里..."></textarea>
+            </div>
+        </div>
+        <div class="input-group">
+            <div class="collapsible-header" id="toggleCharactersThoughts">
+                <label for="charactersThoughtsDisplay">当前场景角色反应 (内心想法与对玩家看法)</label>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div id="charactersThoughtsContent" class="collapsible-content">
+                <div id="charactersReactionsContainer"></div>
+                <textarea id="charactersThoughtsDisplay" style="display: none;"></textarea>
+            </div>
+        </div>
+        <div class="input-group">
+            <label for="gameHistory">游戏历史 (可编辑):</label>
+            <textarea id="gameHistory" rows="25" placeholder="在此处开始您的冒险，或留空并为第一幕提供提示。"></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="nextMovePrompt">您的下一步行动是什么？</label>
+            <textarea id="nextMovePrompt" rows="3" placeholder="例如：我探索北边黑暗的洞穴。"></textarea>
+        </div>
+        
+        <div class="action-buttons">
+            <button id="generateBtn">提交行动</button>
+            <button id="stopBtn" class="stop-btn hidden">停止生成</button>
+        </div>
+        
+        <button id="revertLastMoveBtn" class="secondary-btn" disabled>撤销上一步</button>
+        <button id="clearNextMovePromptBtn" type="button" class="secondary-btn">清除草稿</button>
+        <button id="refreshMemoriesBtn" class="secondary-btn">从历史记录刷新记忆</button>
+        <button id="clearAllBtn" class="secondary-btn">清空所有内容</button>  
+        <button id="saveGameBtn" class="secondary-btn">保存游戏</button>
+        <button id="loadGameBtn" class="secondary-btn">加载游戏</button>
+        <input type="file" id="loadGameInput" accept=".json" style="display: none;">
+        <div id="loadingIndicator" class="hidden">DeepSeek 正在思考...</div>
+
+         <div class="input-group">
+            <label for="systemInstruction">给 DeepSeek 的系统指令:</label>
+            <textarea id="systemInstruction" rows="7" placeholder='你是一个具有长期与短期记忆能力的文字 RPG 游戏主持人 (DM)。生动地描述用户行动的结果并保持世界观一致性。回答应简短且引人入胜。只模拟世界，不模拟玩家行动。如果当前场景中有其他角色，请提供其结构化反应。重要：你必须严格按照 JSON 格式返回：{"STORY": "[发生故事的描述]", "CHARACTERS_REACTIONS": [{"name": "[角色名]", "internal_thought": "[内心想法]", "view_of_the_player": "[对玩家的看法]"}], "SHORT_TERM_MEMORY": "[近期局势总结]", "LONG_TERM_MEMORY": "[全局以往总结]"}'></textarea>
+        </div>
+
+        <div class="input-group">
+            <label for="modelSelect">选择模型:</label>
+            <select id="modelSelect">
+                <option value="deepseek-chat">deepseek-chat (V3)</option>
+                <option value="deepseek-reasoner">deepseek-reasoner (R1)</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="apiKey">DeepSeek API Key:</label>
+            <textarea id="apiKey" rows="1" placeholder="输入您的 DeepSeek API Key"></textarea>
+        </div>
+
+        <!-- Token and Cost Display Status Bar -->
+        <div class="status-bar">
+            <div>本次请求 Input Tokens: <span id="currentRequestInputTokens">0</span></div>
+            <div>本次请求 Output Tokens: <span id="currentRequestOutputTokens">0</span></div>
+            <div>本次请求预估费用: <span id="currentRequestCost">$0.000000</span></div>
+            <div>累计 Input Tokens: <span id="accumulatedInputTokens">0</span></div>
+            <div>累计 Output Tokens: <span id="accumulatedOutputTokens">0</span></div>
+            <div>累计 Tokens: <span id="accumulatedTokens">0</span></div>
+            <div>累计预估总费用: <span id="accumulatedCost">$0.000000</span></div>
+        </div>
+
+        <div class="debug-section">
+            <button id="debugToggleBtn" class="debug-toggle-btn">显示/隐藏 调试日志 (API Logs)</button>
+            <div id="debugPanel" class="debug-panel hidden">
+                <button id="clearDebugLogsBtn" class="secondary-btn" style="width: auto; margin-bottom: 15px;">清空日志</button>
+                <div id="debugLogs"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="pricing.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
