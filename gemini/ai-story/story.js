@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const stopBtn = document.getElementById('stopBtn'); // Reference to the stop button
     const revertLastParagraphBtn = document.getElementById('revertLastParagraphBtn'); 
     const clearAllBtn = document.getElementById('clearAllBtn');
+    const saveStoryBtn = document.getElementById('saveStoryBtn');
+    const loadStoryBtn = document.getElementById('loadStoryBtn');
+    const loadStoryInput = document.getElementById('loadStoryInput');
     const loadingIndicator = document.getElementById('loadingIndicator');
     const errorDisplay = document.getElementById('errorDisplay');
     const clearNextParagraphPromptBtn = document.getElementById('clearNextParagraphPromptBtn'); // New: Reference to the clear prompt button
@@ -91,6 +94,9 @@ Use the same language as input or previous paragraph.`;
     generateBtn.addEventListener('click', generateParagraph);
     revertLastParagraphBtn.addEventListener('click', removeLastParagraph); // This function will now remove the last paragraph
     clearAllBtn.addEventListener('click', clearAllContents);
+    saveStoryBtn.addEventListener('click', saveStory);
+    loadStoryBtn.addEventListener('click', () => loadStoryInput.click());
+    loadStoryInput.addEventListener('change', loadStory);
 
     // Stop button event listener
     stopBtn.addEventListener('click', () => {
@@ -190,6 +196,85 @@ Use the same language as input or previous paragraph.`;
             localStorage.setItem('geminiStoryOutput', '');
             revertLastParagraphBtn.disabled = true;
         }
+    }
+
+    function saveStory() {
+        const storyState = {
+            storyOutput: storyOutputTextarea.value,
+            systemInstruction: systemInstructionTextarea.value,
+            nextParagraphPrompt: nextParagraphPromptTextarea.value,
+            model: modelSelect.value
+        };
+
+        const jsonString = JSON.stringify(storyState, null, 2);
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timestamp = `${year}${month}${day}_${hours}${minutes}${seconds}`;
+        const filename = `story_save_${timestamp}.json`;
+
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+    }
+
+    function loadStory(event) {
+        const file = event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const storyState = JSON.parse(e.target.result);
+                const storyText = storyState.storyOutput !== undefined ? storyState.storyOutput : storyState.story;
+                if (storyText === undefined) {
+                    throw new Error('Invalid save file format.');
+                }
+
+                storyOutputTextarea.value = storyText || '';
+                if (storyState.nextParagraphPrompt !== undefined) {
+                    nextParagraphPromptTextarea.value = storyState.nextParagraphPrompt;
+                } else {
+                    nextParagraphPromptTextarea.value = '';
+                }
+                
+                if (storyState.systemInstruction !== undefined) {
+                    systemInstructionTextarea.value = storyState.systemInstruction;
+                }
+                if (storyState.model !== undefined) {
+                    modelSelect.value = storyState.model;
+                }
+
+                localStorage.setItem('geminiStoryOutput', storyOutputTextarea.value);
+                localStorage.setItem('geminiNextParagraphPrompt', nextParagraphPromptTextarea.value);
+                if (storyState.systemInstruction !== undefined) {
+                    localStorage.setItem('geminiSystemInstruction', systemInstructionTextarea.value);
+                }
+                if (storyState.model !== undefined) {
+                    localStorage.setItem('geminiModel', modelSelect.value);
+                }
+
+                revertLastParagraphBtn.disabled = !storyOutputTextarea.value.trim();
+                showError('');
+                alert('Story loaded successfully!');
+            } catch (err) {
+                showError(`Failed to load story: ${err.message}`);
+            }
+            loadStoryInput.value = '';
+        };
+        reader.readAsText(file);
     }
 
     function calculateRequestCost(model, inputTokens, outputTokens) {
