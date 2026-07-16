@@ -53,6 +53,7 @@ label {
 
 input[type="text"],
 input[type="password"],
+input[type="number"],
 textarea,
 select {
     width: 100%; /* Set to 100% to fill container correctly with border-box */

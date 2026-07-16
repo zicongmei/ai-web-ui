@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelSelect = document.getElementById('modelSelect');
     const systemInstructionTextarea = document.getElementById('systemInstruction');
     const nextParagraphPromptTextarea = document.getElementById('nextParagraphPrompt');
+    const targetWordCountInput = document.getElementById('targetWordCount');
     const storyOutputTextarea = document.getElementById('storyOutput');
     const generateBtn = document.getElementById('generateBtn');
     const stopBtn = document.getElementById('stopBtn'); // Reference to the stop button
@@ -57,6 +58,7 @@ Use the same language as input or previous paragraph.`;
     modelSelect.value = localStorage.getItem('geminiModel') || 'gemini-2.5-flash-lite';
     systemInstructionTextarea.value = localStorage.getItem('geminiSystemInstruction') || defaultSystemInstruction;
     nextParagraphPromptTextarea.value = localStorage.getItem('geminiNextParagraphPrompt') || '';
+    if (targetWordCountInput) targetWordCountInput.value = localStorage.getItem('geminiTargetWordCount') || '100';
     storyOutputTextarea.value = localStorage.getItem('geminiStoryOutput') || ''; 
     
     // Display loaded accumulated tokens
@@ -80,6 +82,7 @@ Use the same language as input or previous paragraph.`;
     nextParagraphPromptTextarea.addEventListener('input', () => localStorage.setItem('geminiNextParagraphPrompt', nextParagraphPromptTextarea.value));
     
     // Save story on manual input and update button state
+    if (targetWordCountInput) targetWordCountInput.addEventListener('input', () => localStorage.setItem('geminiTargetWordCount', targetWordCountInput.value));
     storyOutputTextarea.addEventListener('input', () => {
         localStorage.setItem('geminiStoryOutput', storyOutputTextarea.value);
         revertLastParagraphBtn.disabled = !storyOutputTextarea.value.trim(); // Update button state on manual edit
@@ -135,7 +138,8 @@ Use the same language as input or previous paragraph.`;
 
         modelSelect.value = 'gemini-2.5-flash-lite'; 
         systemInstructionTextarea.value = defaultSystemInstruction; 
-        nextParagraphPromptTextarea.value = ''; // Clear next paragraph prompt as well
+        nextParagraphPromptTextarea.value = ''; 
+        if (targetWordCountInput) targetWordCountInput.value = '100';
         storyOutputTextarea.value = '';
 
         revertLastParagraphBtn.disabled = true;
@@ -144,6 +148,7 @@ Use the same language as input or previous paragraph.`;
         localStorage.removeItem('geminiModel');
         localStorage.removeItem('geminiSystemInstruction');
         localStorage.removeItem('geminiNextParagraphPrompt');
+        localStorage.removeItem('geminiTargetWordCount');
         localStorage.removeItem('geminiStoryOutput'); 
         localStorage.removeItem('geminiTotalAccumulatedInputTokens'); 
         localStorage.removeItem('geminiTotalAccumulatedOutputTokens'); 
@@ -203,6 +208,7 @@ Use the same language as input or previous paragraph.`;
             storyOutput: storyOutputTextarea.value,
             systemInstruction: systemInstructionTextarea.value,
             nextParagraphPrompt: nextParagraphPromptTextarea.value,
+            targetWordCount: targetWordCountInput ? targetWordCountInput.value : '100',
             model: modelSelect.value
         };
 
@@ -248,6 +254,10 @@ Use the same language as input or previous paragraph.`;
                     nextParagraphPromptTextarea.value = storyState.nextParagraphPrompt;
                 } else {
                     nextParagraphPromptTextarea.value = '';
+                }
+                if (targetWordCountInput) {
+                    targetWordCountInput.value = storyState.targetWordCount !== undefined ? storyState.targetWordCount : '100';
+                    localStorage.setItem('geminiTargetWordCount', targetWordCountInput.value);
                 }
                 
                 if (storyState.systemInstruction !== undefined) {
@@ -296,6 +306,7 @@ Use the same language as input or previous paragraph.`;
         const systemInstruction = systemInstructionTextarea.value.trim();
         const currentStory = storyOutputTextarea.value.trim();
         const nextParagraphPrompt = nextParagraphPromptTextarea.value.trim();
+        const targetWordCount = targetWordCountInput ? (targetWordCountInput.value.trim() || '100') : '100';
 
         if (!apiKey) {
             showError('Please enter your Gemini API Key.');
@@ -323,9 +334,9 @@ Use the same language as input or previous paragraph.`;
         
         let userPrompt = '';
         if (currentStory === '') {
-            userPrompt = `Start a new story. The first paragraph should be about: ${nextParagraphPrompt}`;
+            userPrompt = `Start a new story. The first paragraph should be about: ${nextParagraphPrompt}\n\nThe target word count for this paragraph is approximately ${targetWordCount} words.`;
         } else {
-            userPrompt = `Here is the story so far:\n\n${currentStory}\n\nWhat should happen next is: ${nextParagraphPrompt}\n\nContinue the story with ONE new paragraph, making sure it logically follows the previous text and incorporates the "what should happen next" prompt.`;
+            userPrompt = `Here is the story so far:\n\n${currentStory}\n\nWhat should happen next is: ${nextParagraphPrompt}\n\nContinue the story with ONE new paragraph of approximately ${targetWordCount} words, making sure it logically follows the previous text and incorporates the "what should happen next" prompt.`;
         }
         
         const requestBody = {

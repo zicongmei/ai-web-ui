@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const modelSelect = document.getElementById('modelSelect');
     const systemInstructionTextarea = document.getElementById('systemInstruction');
     const nextParagraphPromptTextarea = document.getElementById('nextParagraphPrompt');
+    const targetWordCountInput = document.getElementById('targetWordCount');
     const storyOutputTextarea = document.getElementById('storyOutput');
     const generateBtn = document.getElementById('generateBtn');
     const stopBtn = document.getElementById('stopBtn'); 
@@ -48,6 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modelSelect.value = localStorage.getItem('deepseekModel') || 'deepseek-v4-flash';
     systemInstructionTextarea.value = localStorage.getItem('deepseekSystemInstruction') || defaultSystemInstruction;
     nextParagraphPromptTextarea.value = localStorage.getItem('deepseekNextParagraphPrompt') || '';
+    if (targetWordCountInput) targetWordCountInput.value = localStorage.getItem('deepseekTargetWordCount') || '200';
     storyOutputTextarea.value = localStorage.getItem('deepseekStoryOutput') || ''; 
     
     accumulatedInputTokensDisplay.textContent = totalAccumulatedInputTokens;
@@ -61,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     modelSelect.addEventListener('change', () => localStorage.setItem('deepseekModel', modelSelect.value));
     systemInstructionTextarea.addEventListener('input', () => localStorage.setItem('deepseekSystemInstruction', systemInstructionTextarea.value));
     nextParagraphPromptTextarea.addEventListener('input', () => localStorage.setItem('deepseekNextParagraphPrompt', nextParagraphPromptTextarea.value));
+    if (targetWordCountInput) targetWordCountInput.addEventListener('input', () => localStorage.setItem('deepseekTargetWordCount', targetWordCountInput.value));
     
     storyOutputTextarea.addEventListener('input', () => {
         localStorage.setItem('deepseekStoryOutput', storyOutputTextarea.value);
@@ -114,6 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modelSelect.value = 'deepseek-v4-flash'; 
         systemInstructionTextarea.value = defaultSystemInstruction; 
         nextParagraphPromptTextarea.value = ''; 
+        if (targetWordCountInput) targetWordCountInput.value = '200';
         storyOutputTextarea.value = '';
 
         revertLastParagraphBtn.disabled = true;
@@ -121,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('deepseekModel');
         localStorage.removeItem('deepseekSystemInstruction');
         localStorage.removeItem('deepseekNextParagraphPrompt');
+        localStorage.removeItem('deepseekTargetWordCount');
         localStorage.removeItem('deepseekStoryOutput'); 
         localStorage.removeItem('deepseekTotalAccumulatedInputTokens'); 
         localStorage.removeItem('deepseekTotalAccumulatedOutputTokens'); 
@@ -168,6 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
             storyOutput: storyOutputTextarea.value,
             systemInstruction: systemInstructionTextarea.value,
             nextParagraphPrompt: nextParagraphPromptTextarea.value,
+            targetWordCount: targetWordCountInput ? targetWordCountInput.value : '200',
             model: modelSelect.value
         };
 
@@ -214,6 +220,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     nextParagraphPromptTextarea.value = '';
                 }
+                if (targetWordCountInput) {
+                    targetWordCountInput.value = storyState.targetWordCount !== undefined ? storyState.targetWordCount : '200';
+                    localStorage.setItem('deepseekTargetWordCount', targetWordCountInput.value);
+                }
                 
                 if (storyState.systemInstruction !== undefined) {
                     systemInstructionTextarea.value = storyState.systemInstruction;
@@ -255,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const systemInstruction = systemInstructionTextarea.value.trim();
         const currentStory = storyOutputTextarea.value.trim();
         const nextParagraphPrompt = nextParagraphPromptTextarea.value.trim();
+        const targetWordCount = targetWordCountInput ? (targetWordCountInput.value.trim() || '200') : '200';
 
         if (!apiKey) {
             showError('Please enter your DeepSeek API Key.');
@@ -279,9 +290,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let userPrompt = '';
         if (currentStory === '') {
-            userPrompt = `Start a new story. The first paragraph should be about: ${nextParagraphPrompt}`;
+            userPrompt = `Start a new story. The first paragraph should be about: ${nextParagraphPrompt}\n\n请注意：这一段的字数大概在 ${targetWordCount} 字左右。`;
         } else {
-            userPrompt = `Here is the story so far:\n\n${currentStory}\n\nWhat should happen next is: ${nextParagraphPrompt}\n\nContinue the story with ONE new paragraph, making sure it logically follows the previous text and incorporates the "what should happen next" prompt.`;
+            userPrompt = `Here is the story so far:\n\n${currentStory}\n\nWhat should happen next is: ${nextParagraphPrompt}\n\nContinue the story with ONE new paragraph of approximately ${targetWordCount} words (大约 ${targetWordCount} 字), making sure it logically follows the previous text and incorporates the "what should happen next" prompt.`;
         }
         
         const messages = [];
