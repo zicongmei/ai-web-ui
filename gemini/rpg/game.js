@@ -196,6 +196,25 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         }).join('\n\n');
     }
 
+    function getLastStorySession(history) {
+        history = history.trim();
+        if (!history) return '';
+        const lastUserActionIdx = history.lastIndexOf('\n>');
+        let lastTurnText = '';
+        if (lastUserActionIdx !== -1) {
+            lastTurnText = history.substring(lastUserActionIdx + 1);
+        } else if (history.startsWith('>')) {
+            lastTurnText = history;
+        } else {
+            return history;
+        }
+        const firstNewlineIdx = lastTurnText.indexOf('\n');
+        if (firstNewlineIdx === -1) {
+            return '';
+        }
+        return lastTurnText.substring(firstNewlineIdx).trim();
+    }
+
     function filterReactionsList(list) {
         const activeMemory = useMemoryCheckbox.checked;
         if (activeMemory) {
@@ -207,11 +226,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         } else {
             const history = gameHistoryTextarea.value.trim();
             if (!history) return [];
-            const paragraphs = history.split(/\n\n+/);
-            const lastParagraph = paragraphs[paragraphs.length - 1].toLowerCase();
+            const lastStory = getLastStorySession(history).toLowerCase();
             return list.filter(char => {
                 const name = (char.name || '').toLowerCase();
-                return name !== '' && lastParagraph.includes(name);
+                return name !== '' && lastStory.includes(name);
             });
         }
     }
