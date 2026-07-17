@@ -65,7 +65,7 @@ Keep responses relatively engaging.
 You should only simulate the world, not the player's action.
 Your response should be the consequence of the player's action.
 The response should be in the same language as the player's input.
-If there are other characters (NPCs, companions, adversaries, or sentient beings) present in the current scene, determine their structured reactions and include them in "CHARACTERS_REACTIONS" (with each entry containing "name", "internal_thought", and "view_of_the_player"). If no other characters are present in the scene, return an empty list [].
+If there are other characters (NPCs, companions, adversaries, or sentient beings) present in the current scene, determine their structured reactions and include them in "CHARACTERS_REACTIONS" (with each entry containing "name", "internal_thought", and "view_of_the_player").
 IMPORTANT: You must return your response in a valid JSON structure strictly matching the following format:
 {
   "STORY": "[Your description of what happens next]",
@@ -84,7 +84,7 @@ Keep responses relatively engaging.
 You should only simulate the world, not the player's action.
 Your response should be the consequence of the player's action.
 The response should be in the same language as the player's input.
-If there are other characters (NPCs, companions, adversaries, or sentient beings) present in the current scene, determine their structured reactions and include them in "CHARACTERS_REACTIONS" (with each entry containing "name", "internal_thought", and "view_of_the_player"). If no other characters are present in the scene, return an empty list [].
+If there are other characters (NPCs, companions, adversaries, or sentient beings) present in the current scene, determine their structured reactions and include them in "CHARACTERS_REACTIONS" (with each entry containing "name", "internal_thought", and "view_of_the_player").
 IMPORTANT: You must return your response in a valid JSON structure strictly matching the following format:
 {
   "STORY": "[Your description of what happens next]",

@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
-如果当前场景中有其他角色（NPC、同伴、敌人或有智慧的生物），请确定他们的结构化反应并将其放入 "CHARACTERS_REACTIONS" 列表中（每个元素必须包含 "name", "internal_thought" 和 "view_of_the_player"）。如果当前场景无其他角色，请返回空列表 []。
+如果当前场景中有其他角色（NPC、同伴、敌人或有智慧的生物），请确定他们的结构化反应并将其放入 "CHARACTERS_REACTIONS" 列表中（每个元素必须包含 "name", "internal_thought" 和 "view_of_the_player"）。
 重要：你必须严格返回合法的 JSON 对象结构，字段严格如下：
 {
   "STORY": "[对接下来发生事件的描述]",
@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', () => {
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
-如果当前场景中有其他角色（NPC、同伴、敌人或有智慧的生物），请确定他们的结构化反应并将其放入 "CHARACTERS_REACTIONS" 列表中（每个元素必须包含 "name", "internal_thought" 和 "view_of_the_player"）。如果当前场景无其他角色，请返回空列表 []。
+如果当前场景中有其他角色（NPC、同伴、敌人或有智慧的生物），请确定他们的结构化反应并将其放入 "CHARACTERS_REACTIONS" 列表中（每个元素必须包含 "name", "internal_thought" 和 "view_of_the_player"）。
 重要：你必须严格返回合法的 JSON 对象结构，字段严格如下：
 {
   "STORY": "[对接下来发生事件的描述]",
