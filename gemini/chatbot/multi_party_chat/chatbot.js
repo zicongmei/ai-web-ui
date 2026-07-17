@@ -622,15 +622,19 @@ async function generateResponseForRole(targetRole) {
         
         promptText += "## End of chat history\n\n";
         
+        const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
+
         if (activeReactions) {
-            promptText += `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.\n\n`;
+            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.`;
+            if (targetWordCount) {
+                msgInstruction += ` The target word count for the MESSAGE field in the JSON is around ${targetWordCount} words.`;
+            }
+            promptText += msgInstruction + "\n\n";
         } else {
             promptText += `Please write a response from role ${targetRole}\n\n`;
-        }
-
-        const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
-        if (targetWordCount) {
-            promptText += `Target word count for the response: around ${targetWordCount} words.\n\n`;
+            if (targetWordCount) {
+                promptText += `Target word count for the response: around ${targetWordCount} words.\n\n`;
+            }
         }
 
         promptText += `${targetRole}:`;

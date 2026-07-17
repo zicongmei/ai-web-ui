@@ -563,15 +563,19 @@ async function generateResponseForRole(targetRole) {
         
         promptText += "## End of chat history\n\n";
         
+        const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
+
         if (activeReactions) {
-            promptText += `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.\n\n`;
+            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.`;
+            if (targetWordCount) {
+                msgInstruction += ` JSON 中的 MESSAGE 字段的目标字数大约为 ${targetWordCount} 字。`;
+            }
+            promptText += msgInstruction + "\n\n";
         } else {
             promptText += `Please write a response from role ${targetRole}\n\n`;
-        }
-
-        const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
-        if (targetWordCount) {
-            promptText += `新回复的目标字数：大约 ${targetWordCount} 字。\n\n`;
+            if (targetWordCount) {
+                promptText += `新回复的目标字数：大约 ${targetWordCount} 字。\n\n`;
+            }
         }
 
         promptText += `${targetRole}:`;
