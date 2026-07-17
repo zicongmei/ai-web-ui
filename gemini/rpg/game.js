@@ -144,6 +144,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstructionNoMemory') || defaultSystemInstructionNoMemory;
             memorySection.classList.add('hidden');
         }
+        renderCharactersReactions(getCharactersReactionsFromDOM());
     });
 
     // Save active system instruction based on checkbox
@@ -195,17 +196,40 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         }).join('\n\n');
     }
 
+    function filterReactionsList(list) {
+        const activeMemory = useMemoryCheckbox.checked;
+        if (activeMemory) {
+            const shortTerm = shortTermMemoryTextarea.value.toLowerCase();
+            return list.filter(char => {
+                const name = (char.name || '').toLowerCase();
+                return name !== '' && shortTerm.includes(name);
+            });
+        } else {
+            const history = gameHistoryTextarea.value.trim();
+            if (!history) return [];
+            const paragraphs = history.split(/\n\n+/);
+            const lastParagraph = paragraphs[paragraphs.length - 1].toLowerCase();
+            return list.filter(char => {
+                const name = (char.name || '').toLowerCase();
+                return name !== '' && lastParagraph.includes(name);
+            });
+        }
+    }
+
     function renderCharactersReactions(list) {
         if (!charactersReactionsContainer) return;
+        
+        const filteredList = filterReactionsList(list);
+        
         charactersReactionsContainer.innerHTML = '';
-        if (!list || !Array.isArray(list) || list.length === 0) {
+        if (!filteredList || !Array.isArray(filteredList) || filteredList.length === 0) {
             charactersReactionsContainer.innerHTML = '<div class="no-characters-message">No other characters are present in the current scene.</div>';
             localStorage.setItem('geminiRpgCharactersReactionsList', '[]');
             if (charactersThoughtsTextarea) charactersThoughtsTextarea.value = 'No other characters are present in the current scene.';
             return;
         }
 
-        list.forEach((char, idx) => {
+        filteredList.forEach((char, idx) => {
             const card = document.createElement('div');
             card.className = 'character-reaction-card';
 
@@ -497,6 +521,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             localStorage.setItem('geminiRpgGameHistory', '');
             revertLastMoveBtn.disabled = true;
         }
+        renderCharactersReactions(getCharactersReactionsFromDOM());
     }
 
     function calculateRequestCost(model, inputTokens, outputTokens) {
@@ -598,6 +623,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                 longTermMemoryTextarea.value = longTermPart;
                 localStorage.setItem('geminiRpgLongTermMemory', longTermPart);
             }
+            renderCharactersReactions(getCharactersReactionsFromDOM());
 
         } catch (error) {
             console.error('Error:', error);

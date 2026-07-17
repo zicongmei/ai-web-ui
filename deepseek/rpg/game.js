@@ -146,6 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
             systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstructionNoMemory') || defaultSystemInstructionNoMemory;
             memorySection.classList.add('hidden');
         }
+        renderCharactersReactions(getCharactersReactionsFromDOM());
     });
 
     // Save active system instruction based on checkbox
@@ -197,17 +198,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('\n\n');
     }
 
+    function filterReactionsList(list) {
+        const activeMemory = useMemoryCheckbox.checked;
+        if (activeMemory) {
+            const shortTerm = shortTermMemoryTextarea.value.toLowerCase();
+            return list.filter(char => {
+                const name = (char.name || '').toLowerCase();
+                return name !== '' && shortTerm.includes(name);
+            });
+        } else {
+            const history = gameHistoryTextarea.value.trim();
+            if (!history) return [];
+            const paragraphs = history.split(/\n\n+/);
+            const lastParagraph = paragraphs[paragraphs.length - 1].toLowerCase();
+            return list.filter(char => {
+                const name = (char.name || '').toLowerCase();
+                return name !== '' && lastParagraph.includes(name);
+            });
+        }
+    }
+
     function renderCharactersReactions(list) {
         if (!charactersReactionsContainer) return;
+        
+        const filteredList = filterReactionsList(list);
+        
         charactersReactionsContainer.innerHTML = '';
-        if (!list || !Array.isArray(list) || list.length === 0) {
+        if (!filteredList || !Array.isArray(filteredList) || filteredList.length === 0) {
             charactersReactionsContainer.innerHTML = '<div class="no-characters-message">当前场景中无其他角色。</div>';
             localStorage.setItem(STORAGE_PREFIX + 'charactersReactionsList', '[]');
             if (charactersThoughtsTextarea) charactersThoughtsTextarea.value = '当前场景中无其他角色。';
             return;
         }
 
-        list.forEach((char, idx) => {
+        filteredList.forEach((char, idx) => {
             const card = document.createElement('div');
             card.className = 'character-reaction-card';
 
@@ -499,6 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(STORAGE_PREFIX + 'gameHistory', '');
             revertLastMoveBtn.disabled = true;
         }
+        renderCharactersReactions(getCharactersReactionsFromDOM());
     }
 
     function calculateRequestCost(model, inputTokens, outputTokens) {
@@ -603,6 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 longTermMemoryTextarea.value = longTermPart;
                 localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermPart);
             }
+            renderCharactersReactions(getCharactersReactionsFromDOM());
 
         } catch (error) {
             console.error('Error:', error);
