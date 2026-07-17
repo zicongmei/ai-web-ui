@@ -146,7 +146,6 @@ document.addEventListener('DOMContentLoaded', () => {
             systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstructionNoMemory') || defaultSystemInstructionNoMemory;
             memorySection.classList.add('hidden');
         }
-        renderCharactersReactions(getCharactersReactionsFromDOM());
     });
 
     // Save active system instruction based on checkbox
@@ -198,58 +197,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }).join('\n\n');
     }
 
-    function getLastStorySession(history) {
-        history = history.trim();
-        if (!history) return '';
-        const lastUserActionIdx = history.lastIndexOf('\n>');
-        let lastTurnText = '';
-        if (lastUserActionIdx !== -1) {
-            lastTurnText = history.substring(lastUserActionIdx + 1);
-        } else if (history.startsWith('>')) {
-            lastTurnText = history;
-        } else {
-            return history;
-        }
-        const firstNewlineIdx = lastTurnText.indexOf('\n');
-        if (firstNewlineIdx === -1) {
-            return '';
-        }
-        return lastTurnText.substring(firstNewlineIdx).trim();
-    }
-
-    function filterReactionsList(list) {
-        const activeMemory = useMemoryCheckbox.checked;
-        if (activeMemory) {
-            const shortTerm = shortTermMemoryTextarea.value.toLowerCase();
-            return list.filter(char => {
-                const name = (char.name || '').toLowerCase();
-                return name !== '' && shortTerm.includes(name);
-            });
-        } else {
-            const history = gameHistoryTextarea.value.trim();
-            if (!history) return [];
-            const lastStory = getLastStorySession(history).toLowerCase();
-            return list.filter(char => {
-                const name = (char.name || '').toLowerCase();
-                return name !== '' && lastStory.includes(name);
-            });
-        }
-    }
-
     function renderCharactersReactions(list) {
         if (!charactersReactionsContainer) return;
         
-        const filteredList = filterReactionsList(list);
-        
         charactersReactionsContainer.innerHTML = '';
-        if (!filteredList || !Array.isArray(filteredList) || filteredList.length === 0) {
+        if (!list || !Array.isArray(list) || list.length === 0) {
             charactersReactionsContainer.innerHTML = '<div class="no-characters-message">当前场景中无其他角色。</div>';
             localStorage.setItem(STORAGE_PREFIX + 'charactersReactionsList', '[]');
             if (charactersThoughtsTextarea) charactersThoughtsTextarea.value = '当前场景中无其他角色。';
             return;
         }
 
-        filteredList.forEach((char, idx) => {
+        list.forEach((char, idx) => {
             const card = document.createElement('div');
             card.className = 'character-reaction-card';
 
@@ -541,7 +500,6 @@ document.addEventListener('DOMContentLoaded', () => {
             localStorage.setItem(STORAGE_PREFIX + 'gameHistory', '');
             revertLastMoveBtn.disabled = true;
         }
-        renderCharactersReactions(getCharactersReactionsFromDOM());
     }
 
     function calculateRequestCost(model, inputTokens, outputTokens) {
@@ -641,12 +599,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (shortTermPart) {
                 shortTermMemoryTextarea.value = shortTermPart;
                 localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermPart);
+                
+                // Filter current reactions against the new short-term memory
+                const currentList = getCharactersReactionsFromDOM();
+                const filtered = currentList.filter(char => {
+                    const name = (char.name || '').toLowerCase();
+                    return name !== '' && shortTermPart.toLowerCase().includes(name);
+                });
+                renderCharactersReactions(filtered);
             }
             if (longTermPart) {
                 longTermMemoryTextarea.value = longTermPart;
                 localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermPart);
             }
-            renderCharactersReactions(getCharactersReactionsFromDOM());
 
         } catch (error) {
             console.error('Error:', error);
@@ -796,7 +761,19 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTokensAndCost(promptTokens, candidateTokens, requestCost);
 
             if (storyPart) {
-                renderCharactersReactions(charactersReactionsList);
+                let filteredList = [];
+                if (activeMemory) {
+                    filteredList = charactersReactionsList.filter(char => {
+                        const name = (char.name || '').toLowerCase();
+                        return name !== '' && shortTermPart.toLowerCase().includes(name);
+                    });
+                } else {
+                    filteredList = charactersReactionsList.filter(char => {
+                        const name = (char.name || '').toLowerCase();
+                        return name !== '' && storyPart.toLowerCase().includes(name);
+                    });
+                }
+                renderCharactersReactions(filteredList);
 
                 if (activeMemory) {
                     if (shortTermPart) {
