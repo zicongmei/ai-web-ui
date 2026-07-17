@@ -63,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const defaultSystemInstructionNoMemory = `您是一个文字 RPG 的游戏主持人 (DM)。
 生动地描述用户行动的结果，并保持世界观的一致性。
+保持回答引人入胜。
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
@@ -81,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const defaultSystemInstructionWithMemory = `您是一个文字 RPG 的游戏主持人 (DM)，具有短期和长期记忆功能。
 生动地描述用户行动的结果，并保持世界观的一致性。
+保持回答引人入胜。
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
