@@ -216,7 +216,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             card.innerHTML = `
                 <div class="collapsible-header character-header">
                     <div class="char-name-label">Character: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
-                    <span class="toggle-icon">▼</span>
+                    <div style="display: flex; align-items: center;">
+                        <button type="button" class="delete-char-btn" style="background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1.1em; padding: 2px 6px; font-weight: bold; margin-right: 8px;" title="Delete Character">✕</button>
+                        <span class="toggle-icon">▼</span>
+                    </div>
                 </div>
                 <div class="collapsible-content char-content">
                     <div class="char-subitem">
@@ -229,6 +232,21 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                     </div>
                 </div>
             `;
+
+            const deleteBtn = card.querySelector('.delete-char-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    card.remove();
+                    const currentList = getCharactersReactionsFromDOM();
+                    if (currentList.length === 0) {
+                        renderCharactersReactions([]);
+                    } else {
+                        localStorage.setItem('geminiRpgCharactersReactionsList', JSON.stringify(currentList));
+                        if (charactersThoughtsTextarea) charactersThoughtsTextarea.value = getCharactersReactionsTextForPrompt();
+                    }
+                });
+            }
 
             const headers = card.querySelectorAll('.collapsible-header');
             headers.forEach(header => {

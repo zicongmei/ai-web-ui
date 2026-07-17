@@ -218,7 +218,10 @@ document.addEventListener('DOMContentLoaded', () => {
             card.innerHTML = `
                 <div class="collapsible-header character-header">
                     <div class="char-name-label">角色: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
-                    <span class="toggle-icon">▼</span>
+                    <div style="display: flex; align-items: center;">
+                        <button type="button" class="delete-char-btn" style="background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1.1em; padding: 2px 6px; font-weight: bold; margin-right: 8px;" title="删除角色">✕</button>
+                        <span class="toggle-icon">▼</span>
+                    </div>
                 </div>
                 <div class="collapsible-content char-content">
                     <div class="char-subitem">
@@ -231,6 +234,21 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+
+            const deleteBtn = card.querySelector('.delete-char-btn');
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    card.remove();
+                    const currentList = getCharactersReactionsFromDOM();
+                    if (currentList.length === 0) {
+                        renderCharactersReactions([]);
+                    } else {
+                        localStorage.setItem(STORAGE_PREFIX + 'charactersReactionsList', JSON.stringify(currentList));
+                        if (charactersThoughtsTextarea) charactersThoughtsTextarea.value = getCharactersReactionsTextForPrompt();
+                    }
+                });
+            }
 
             const headers = card.querySelectorAll('.collapsible-header');
             headers.forEach(header => {
