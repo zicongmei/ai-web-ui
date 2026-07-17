@@ -601,7 +601,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         loadingIndicator.classList.remove('hidden');
         showError('');
 
-        const userPrompt = `Please read the following complete RPG game history and generate two memory summaries in a valid JSON object strictly with the keys "SHORT_TERM_MEMORY" and "LONG_TERM_MEMORY":\n\n${currentHistory}\n\nIMPORTANT: You must return ONLY a valid JSON object strictly matching the following format:\n{\n  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",\n  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Crucially, it must keep a short description of all previous key milestones and must not forget them. You can rephrase and combine previous milestones to keep the summary concise, but never remove key milestones from the long term memory]"\n}`;
+        const userPrompt = `Please read the following complete RPG game history and generate two memory summaries in a valid JSON object strictly with the keys "SHORT_TERM_MEMORY" and "LONG_TERM_MEMORY":\n\n${currentHistory}\n\nIMPORTANT: The memory summaries must be in the same language as the story/game history.\n\nYou must return ONLY a valid JSON object strictly matching the following format:\n{\n  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",\n  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Crucially, it must keep a short description of all previous key milestones and must not forget them. You can rephrase and combine previous milestones to keep the summary concise, but never remove key milestones from the long term memory]"\n}`;
 
         const requestBody = {
             contents: [{
@@ -664,8 +664,6 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                 longTermMemoryTextarea.value = longTermPart;
                 localStorage.setItem('geminiRpgImprovedLongTermMemory', longTermPart);
             }
-
-            alert('Memories successfully refreshed from game history!');
         } catch (error) {
             console.error('Error:', error);
             if (error.name === 'AbortError') {

@@ -592,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingIndicator.classList.remove('hidden');
         showError('');
 
-        const userPrompt = `请仔细阅读以下完整的 RPG 游戏历史记录，并在一个合法的 JSON 对象中严格返回两个键 "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY" 来生成记忆总结：\n\n${currentHistory}\n\n重要：你必须严格且仅返回以下格式的 JSON 对象：\n{\n  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",\n  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。至关重要的是，必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。你可以重新措辞或合并里程碑以保持精炼，但严禁从长期记忆中删除任何关键里程碑]"\n}`;
+        const userPrompt = `请仔细阅读以下完整的 RPG 游戏历史记录，并在一个合法的 JSON 对象中严格返回两个键 "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY" 来生成记忆总结：\n\n${currentHistory}\n\n重要：记忆总结的语言必须与游戏历史记录/故事的语言相同。\n\n你必须严格且仅返回以下格式的 JSON 对象：\n{\n  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",\n  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。至关重要的是，必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。你可以重新措辞或合并里程碑以保持精炼，但严禁从长期记忆中删除任何关键里程碑]"\n}`;
 
         const messages = [
             { role: 'user', content: userPrompt }
