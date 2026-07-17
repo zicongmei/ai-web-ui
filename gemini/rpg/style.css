@@ -347,7 +347,111 @@ button:disabled {
         margin-top: 10px;
     }
     
-    .action-buttons button:first-child {
-        margin-top: 0;
-    }
+}
+
+.collapsible-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    padding: 10px 12px;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    border: 1px solid #dee2e6;
+    user-select: text;
+}
+
+.collapsible-header label {
+    margin: 0;
+    cursor: pointer;
+    user-select: text;
+}
+
+.toggle-icon {
+    transition: transform 0.3s ease;
+    font-size: 0.9em;
+    color: #666;
+}
+
+.collapsible-content.collapsed {
+    display: none !important;
+}
+
+#charactersReactionsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 5px 0;
+}
+
+.character-reaction-card {
+    border: 1px solid #e0d8c2;
+    border-radius: 4px;
+    background-color: #fffdf9;
+    padding: 8px;
+}
+
+.character-header {
+    background-color: #f7f3e8;
+    border-color: #e0d8c2;
+    font-weight: bold;
+    color: #4a402e;
+}
+
+.character-header .char-name-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-grow: 1;
+}
+
+.char-name-display {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #2d261b;
+}
+
+.char-content {
+    padding: 10px 5px 5px 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.char-subitem {
+    border: 1px solid #eae5d8;
+    border-radius: 4px;
+    background-color: #ffffff;
+    padding: 6px;
+}
+
+.sub-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #5a503c;
+}
+
+.char-thought-input,
+.char-view-input {
+    width: 100%;
+    margin-top: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.no-characters-message {
+    padding: 15px;
+    color: #777;
+    font-style: italic;
+    background-color: #fffdf9;
+    border: 1px dashed #e0d8c2;
+    border-radius: 4px;
+    text-align: center;
 }

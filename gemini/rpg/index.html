@@ -12,20 +12,20 @@
 
         <div id="errorDisplay" class="error-message hidden"></div>
 
-        <div class="main-layout">
-            <div class="game-history">
-                <div class="input-group">
-                    <label for="gameHistory">Game History (editable):</label>
-                    <textarea id="gameHistory" rows="20" placeholder="Start your adventure here, or leave blank and provide a prompt for the first scene."></textarea>
-                </div>
+        <div class="input-group">
+            <div class="collapsible-header" id="toggleCharactersThoughts">
+                <label for="charactersThoughtsDisplay">Characters' reaction (Current Scene)</label>
+                <span class="toggle-icon">▼</span>
             </div>
-            
-            <div class="game-sidebar">
-                <div class="input-group">
-                    <label for="inventoryDisplay">Inventory:</label>
-                    <textarea id="inventoryDisplay" rows="10" placeholder="Your items will appear here..."></textarea>
-                </div>
+            <div id="charactersThoughtsContent" class="collapsible-content">
+                <div id="charactersReactionsContainer"></div>
+                <textarea id="charactersThoughtsDisplay" style="display: none;"></textarea>
             </div>
+        </div>
+
+        <div class="input-group">
+            <label for="gameHistory">Game History (editable):</label>
+            <textarea id="gameHistory" rows="20" placeholder="Start your adventure here, or leave blank and provide a prompt for the first scene."></textarea>
         </div>
 
         <div class="input-group">
@@ -46,9 +46,12 @@
         <input type="file" id="loadGameInput" accept=".json" style="display: none;">
         <div id="loadingIndicator" class="hidden">Gemini is thinking...</div>
 
-         <div class="input-group">
+        <div class="input-group">
             <label for="systemInstruction">System Instruction for Gemini:</label>
-            <textarea id="systemInstruction" rows="4" placeholder="You are a Dungeon Master for a text-based RPG. Describe the outcomes of the user's actions vividly. Maintain a consistent world."></textarea>
+            <div class="next-paragraph-input-controls">
+                <textarea id="systemInstruction" rows="7" placeholder="You are a Dungeon Master for a text-based RPG. Describe the outcomes of the user's actions vividly. Maintain a consistent world."></textarea>
+                <button id="resetSystemInstructionBtn" type="button" class="secondary-btn clear-prompt-btn">Reset</button>
+            </div>
         </div>
 
         <div class="input-group">
