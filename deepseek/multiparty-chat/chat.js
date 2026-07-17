@@ -66,6 +66,8 @@ const costStatsDiv = document.getElementById('costStats');
 const useReactionsCheckbox = document.getElementById('useReactionsCheckbox');
 const characterReactionContainer = document.getElementById('characterReactionContainer');
 
+const targetWordCountInput = document.getElementById('targetWordCount');
+
 const systemInstructionInput = document.getElementById('systemInstructionInput');
 const resetSystemInstructionButton = document.getElementById('resetSystemInstructionButton');
 const clearSystemInstructionButton = document.getElementById('clearSystemInstructionButton');
@@ -566,6 +568,12 @@ async function generateResponseForRole(targetRole) {
         } else {
             promptText += `Please write a response from role ${targetRole}\n\n`;
         }
+
+        const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
+        if (targetWordCount) {
+            promptText += `新回复的目标字数：大约 ${targetWordCount} 字。\n\n`;
+        }
+
         promptText += `${targetRole}:`;
 
         const stopSequences = [];
@@ -776,6 +784,7 @@ function downloadChat() {
         systemInstructionNoReactions: getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions,
         useReactions: useReactionsCheckbox.checked,
         lastCharacterReaction,
+        targetWordCount: targetWordCountInput.value.trim(),
         roles: botRoles, 
         chatHistory, 
         userName 
@@ -800,6 +809,10 @@ function handleFileLoad(e) {
             }
             if (typeof data.systemInstructionNoReactions === 'string') {
                 setLocalStorageItem('systemInstructionNoReactions', data.systemInstructionNoReactions);
+            }
+            if (typeof data.targetWordCount === 'string') {
+                targetWordCountInput.value = data.targetWordCount;
+                setLocalStorageItem('targetWordCount', data.targetWordCount);
             }
             if (data.lastCharacterReaction !== undefined) {
                 lastCharacterReaction = data.lastCharacterReaction;
@@ -942,6 +955,21 @@ userNameInput.addEventListener('input', setUserName);
 chatHistoryBox.addEventListener('blur', saveChatHistory);
 chatHistoryBox.addEventListener('input', adjustChatHistoryHeight);
 
+// Target Word Count config
+targetWordCountInput.addEventListener('input', () => {
+    const val = targetWordCountInput.value.trim();
+    setLocalStorageItem('targetWordCount', val);
+});
+
+function loadTargetWordCount() {
+    const stored = getLocalStorageItem('targetWordCount');
+    if (stored !== null) {
+        targetWordCountInput.value = stored;
+    } else {
+        targetWordCountInput.value = '200';
+    }
+}
+
 // --- Boot ---
 window.addEventListener('DOMContentLoaded', () => {
     loadApiKey();
@@ -949,6 +977,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadRolesFromLocalStorage();
     loadChatHistory(); 
     loadSelectedModel();
+    loadTargetWordCount();
     loadStats();
     loadChatFontSize();
     adjustChatHistoryHeight();

@@ -22,6 +22,14 @@
         <!-- Chat History Area (Editable & Auto-expanding) -->
         <textarea class="chat-history-box" id="chatHistoryBox" placeholder="聊天记录将显示在此处。您可以直接编辑此文本..."></textarea>
         <div id="errorMessage" class="error-message"></div>
+        <!-- Character Reaction Switch & Display -->
+        <div class="reaction-config-section" style="margin-top: 15px; margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                <input type="checkbox" id="useReactionsCheckbox">
+                启用角色反应 (Character Reactions)
+            </label>
+            <div id="characterReactionContainer" class="hidden"></div>
+        </div>
 
         <!-- User Input Area -->
         <div class="chat-input-area">
@@ -35,18 +43,13 @@
             <button id="sendNarratorMessageButton">作为旁白添加</button>
         </div>
 
-        <!-- Character Reaction Switch & Display -->
-        <div class="reaction-config-section" style="margin-top: 15px; margin-bottom: 10px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
-                <input type="checkbox" id="useReactionsCheckbox">
-                启用角色反应 (Character Reactions)
-            </label>
-            <div id="characterReactionContainer" class="hidden"></div>
-        </div>
-
         <!-- Response Generation Section (Dynamic Buttons) -->
         <div class="section-box bot-actions-section">
             <h3>生成回复</h3>
+            <div class="input-group" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <label for="targetWordCount" style="font-weight: bold; font-size: 0.95em;">目标字数 (可选)：</label>
+                <input type="number" id="targetWordCount" value="200" min="1" placeholder="例如: 200" style="width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;">
+            </div>
             <div id="responseGenerationButtonsContainer" class="bot-buttons-container">
                 <!-- Buttons like "Generate as User", "Generate as Mike" will appear here -->
             </div>
