@@ -843,6 +843,14 @@ function handleFileLoad(e) {
     reader.readAsText(file);
 }
 
+function toggleApiDebug() {
+    apiDebugContent.classList.toggle('hidden');
+    if (!apiDebugContent.classList.contains('hidden')) {
+        apiRequestBody.textContent = lastRawRequestBody || 'None';
+        apiResponseBody.textContent = lastRawResponseData || 'None';
+    }
+}
+
 // --- Event Listeners ---
 useReactionsCheckbox.addEventListener('change', () => {
     const active = useReactionsCheckbox.checked;
