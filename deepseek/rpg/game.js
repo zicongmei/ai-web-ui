@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameHistoryTextarea = document.getElementById('gameHistory');
     const charactersThoughtsTextarea = document.getElementById('charactersThoughtsDisplay');
     const charactersReactionsContainer = document.getElementById('charactersReactionsContainer');
+    const targetWordCountInput = document.getElementById('targetWordCount');
     const generateBtn = document.getElementById('generateBtn');
     const stopBtn = document.getElementById('stopBtn');
     const revertLastMoveBtn = document.getElementById('revertLastMoveBtn'); 
@@ -62,7 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const defaultSystemInstructionNoMemory = `您是一个文字 RPG 的游戏主持人 (DM)。
 生动地描述用户行动的结果，并保持世界观的一致性。
-保持回答相对简短但引人入胜。
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const defaultSystemInstructionWithMemory = `您是一个文字 RPG 的游戏主持人 (DM)，具有短期和长期记忆功能。
 生动地描述用户行动的结果，并保持世界观的一致性。
-保持回答相对简短但引人入胜。
 你只能模拟世界，不能模拟玩家的行动。
 你的回答应该是玩家行动的后果。
 回答应与玩家输入的语言相同（默认为中文）。
@@ -107,6 +106,10 @@ document.addEventListener('DOMContentLoaded', () => {
     gameHistoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'gameHistory') || ''; 
     shortTermMemoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'shortTermMemory') || '';
     longTermMemoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'longTermMemory') || '';
+
+    // Load target word count, default to 200 if never set
+    const savedWordCount = localStorage.getItem(STORAGE_PREFIX + 'targetWordCount');
+    targetWordCountInput.value = savedWordCount !== null ? savedWordCount : '200';
 
     // Initialize Memory Mode Checkbox
     const useMemory = localStorage.getItem(STORAGE_PREFIX + 'useMemory') === 'true';
@@ -158,6 +161,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     longTermMemoryTextarea.addEventListener('input', () => {
         localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermMemoryTextarea.value);
+    });
+
+    targetWordCountInput.addEventListener('input', () => {
+        localStorage.setItem(STORAGE_PREFIX + 'targetWordCount', targetWordCountInput.value);
     });
     
     function getCharactersReactionsFromDOM() {
@@ -403,6 +410,7 @@ document.addEventListener('DOMContentLoaded', () => {
         gameHistoryTextarea.value = '';
         shortTermMemoryTextarea.value = '';
         longTermMemoryTextarea.value = '';
+        targetWordCountInput.value = '200';
         renderCharactersReactions([]);
 
         revertLastMoveBtn.disabled = true;
@@ -424,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem(STORAGE_PREFIX + 'longTermMemory');
         localStorage.removeItem(STORAGE_PREFIX + 'shortTermMemoryCollapsed');
         localStorage.removeItem(STORAGE_PREFIX + 'longTermMemoryCollapsed');
+        localStorage.setItem(STORAGE_PREFIX + 'targetWordCount', '200');
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedInputTokens'); 
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedOutputTokens'); 
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedCost');
@@ -597,6 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const charactersThoughts = getCharactersReactionsTextForPrompt();
         const nextMove = nextMovePromptTextarea.value.trim();
         const activeMemory = useMemoryCheckbox.checked;
+        const targetWordCount = targetWordCountInput.value.trim();
 
         if (!apiKey) {
             showError('请先输入您的 DeepSeek API Key。');
@@ -637,6 +647,10 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 userPrompt = `完整游戏历史记录：\n\n${currentHistory}\n\n当前场景角色反应：\n${charactersThoughts}\n\n我的下一步行动：${nextMove}\n\n接下来会发生什么？请务必且仅输出一个合法的 JSON 对象，严格包含键 "STORY" 和 "CHARACTERS_REACTIONS"。`;
             }
+        }
+
+        if (targetWordCount) {
+            userPrompt += `\n\n重要：生成的故事 (STORY) 长度大约应为 ${targetWordCount} 字左右。`;
         }
         
         const messages = [];
@@ -817,7 +831,8 @@ document.addEventListener('DOMContentLoaded', () => {
             model: modelSelect.value,
             useMemory: useMemoryCheckbox.checked,
             shortTermMemory: shortTermMemoryTextarea.value,
-            longTermMemory: longTermMemoryTextarea.value
+            longTermMemory: longTermMemoryTextarea.value,
+            targetWordCount: targetWordCountInput.value
         };
 
         const jsonString = JSON.stringify(gameState, null, 2);
@@ -872,6 +887,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 longTermMemoryTextarea.value = gameState.longTermMemory || '';
                 localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermMemoryTextarea.value);
                 localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermMemoryTextarea.value);
+
+                const loadTargetWordCount = gameState.targetWordCount !== undefined ? gameState.targetWordCount : '200';
+                targetWordCountInput.value = loadTargetWordCount;
+                localStorage.setItem(STORAGE_PREFIX + 'targetWordCount', loadTargetWordCount);
 
                 if (loadUseMemory) {
                     memorySection.classList.remove('hidden');

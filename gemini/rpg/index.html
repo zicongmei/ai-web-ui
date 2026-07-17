@@ -61,6 +61,11 @@
             <label for="nextMovePrompt">What is your next move?</label>
             <textarea id="nextMovePrompt" rows="3" placeholder="e.g., I explore the dark cave to the north."></textarea>
         </div>
+
+        <div class="input-group">
+            <label for="targetWordCount">Target word count for next story generation (optional, default: 100):</label>
+            <input type="number" id="targetWordCount" min="1" placeholder="e.g., 100" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
         
         <div class="action-buttons">
             <button id="generateBtn">Submit Move</button>

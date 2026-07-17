@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gameHistoryTextarea = document.getElementById('gameHistory');
     const charactersThoughtsTextarea = document.getElementById('charactersThoughtsDisplay');
     const charactersReactionsContainer = document.getElementById('charactersReactionsContainer');
+    const targetWordCountInput = document.getElementById('targetWordCount');
     const generateBtn = document.getElementById('generateBtn');
     const stopBtn = document.getElementById('stopBtn');
     const revertLastMoveBtn = document.getElementById('revertLastMoveBtn'); 
@@ -60,7 +61,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const defaultSystemInstructionNoMemory = `You are a Game Master for a text-based RPG.
 Describe the outcomes of the user's actions vividly and maintain a consistent world.
-Keep responses relatively concise but engaging.
 You should only simulate the world, not the player's action.
 Your response should be the consequence of the player's action.
 The response should be in the same language as the player's input.
@@ -79,7 +79,6 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
 
     const defaultSystemInstructionWithMemory = `You are a Game Master for a text-based RPG with short-term and long-term memory.
 Describe the outcomes of the user's actions vividly and maintain a consistent world.
-Keep responses relatively concise but engaging.
 You should only simulate the world, not the player's action.
 Your response should be the consequence of the player's action.
 The response should be in the same language as the player's input.
@@ -105,6 +104,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
     gameHistoryTextarea.value = localStorage.getItem('geminiRpgGameHistory') || ''; 
     shortTermMemoryTextarea.value = localStorage.getItem('geminiRpgShortTermMemory') || '';
     longTermMemoryTextarea.value = localStorage.getItem('geminiRpgLongTermMemory') || '';
+
+    // Load target word count, default to 100 if never set
+    const savedWordCount = localStorage.getItem('geminiRpgTargetWordCount');
+    targetWordCountInput.value = savedWordCount !== null ? savedWordCount : '100';
 
     // Initialize Memory Mode Checkbox
     const useMemory = localStorage.getItem('geminiRpgUseMemory') === 'true';
@@ -156,6 +159,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
 
     longTermMemoryTextarea.addEventListener('input', () => {
         localStorage.setItem('geminiRpgLongTermMemory', longTermMemoryTextarea.value);
+    });
+
+    targetWordCountInput.addEventListener('input', () => {
+        localStorage.setItem('geminiRpgTargetWordCount', targetWordCountInput.value);
     });
     
     function getCharactersReactionsFromDOM() {
@@ -401,6 +408,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         gameHistoryTextarea.value = '';
         shortTermMemoryTextarea.value = '';
         longTermMemoryTextarea.value = '';
+        targetWordCountInput.value = '100';
         renderCharactersReactions([]);
 
         revertLastMoveBtn.disabled = true;
@@ -422,6 +430,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         localStorage.removeItem('geminiRpgLongTermMemory');
         localStorage.removeItem('geminiRpgShortTermMemoryCollapsed');
         localStorage.removeItem('geminiRpgLongTermMemoryCollapsed');
+        localStorage.setItem('geminiRpgTargetWordCount', '100');
         localStorage.removeItem('geminiRpgAccumulatedInputTokens'); 
         localStorage.removeItem('geminiRpgAccumulatedOutputTokens'); 
         localStorage.removeItem('geminiRpgAccumulatedCost');
@@ -592,6 +601,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         const charactersThoughts = getCharactersReactionsTextForPrompt();
         const nextMove = nextMovePromptTextarea.value.trim();
         const activeMemory = useMemoryCheckbox.checked;
+        const targetWordCount = targetWordCountInput.value.trim();
 
         if (!apiKey) {
             showError('Please enter your Gemini API Key.');
@@ -632,6 +642,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             } else {
                 userPrompt = `Complete game history log so far:\n\n${currentHistory}\n\nCharacters' reaction in current scene:\n${charactersThoughts}\n\nMy next move: ${nextMove}\n\nWhat happens next? Remember to output ONLY a valid JSON object strictly with keys "STORY" and "CHARACTERS_REACTIONS".`;
             }
+        }
+
+        if (targetWordCount) {
+            userPrompt += `\n\nIMPORTANT: The generated STORY should approximately be around ${targetWordCount} words.`;
         }
         
         const requestBody = {
@@ -829,7 +843,8 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             model: modelSelect.value,
             useMemory: useMemoryCheckbox.checked,
             shortTermMemory: shortTermMemoryTextarea.value,
-            longTermMemory: longTermMemoryTextarea.value
+            longTermMemory: longTermMemoryTextarea.value,
+            targetWordCount: targetWordCountInput.value
         };
 
         const jsonString = JSON.stringify(gameState, null, 2);
@@ -884,6 +899,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                 longTermMemoryTextarea.value = gameState.longTermMemory || '';
                 localStorage.setItem('geminiRpgShortTermMemory', shortTermMemoryTextarea.value);
                 localStorage.setItem('geminiRpgLongTermMemory', longTermMemoryTextarea.value);
+
+                const loadTargetWordCount = gameState.targetWordCount !== undefined ? gameState.targetWordCount : '100';
+                targetWordCountInput.value = loadTargetWordCount;
+                localStorage.setItem('geminiRpgTargetWordCount', loadTargetWordCount);
 
                 if (loadUseMemory) {
                     memorySection.classList.remove('hidden');

@@ -61,6 +61,11 @@
             <label for="nextMovePrompt">您的下一步行动是什么？</label>
             <textarea id="nextMovePrompt" rows="3" placeholder="例如：我探索北边黑暗的洞穴。"></textarea>
         </div>
+
+        <div class="input-group">
+            <label for="targetWordCount">单次故事生成的字数目标 (可选，默认值: 200):</label>
+            <input type="number" id="targetWordCount" min="1" placeholder="例如：200" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+        </div>
         
         <div class="action-buttons">
             <button id="generateBtn">提交行动</button>
