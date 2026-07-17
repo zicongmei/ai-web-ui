@@ -18,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearNextMovePromptBtn = document.getElementById('clearNextMovePromptBtn');
     const resetSystemInstructionBtn = document.getElementById('resetSystemInstructionBtn');
 
+    // Memory elements
+    const useMemoryCheckbox = document.getElementById('useMemoryCheckbox');
+    const memorySection = document.getElementById('memorySection');
+    const shortTermMemoryTextarea = document.getElementById('shortTermMemoryDisplay');
+    const longTermMemoryTextarea = document.getElementById('longTermMemoryDisplay');
+    const refreshMemoriesBtn = document.getElementById('refreshMemoriesBtn');
+
     // Token display elements
     const currentRequestInputTokensDisplay = document.getElementById('currentRequestInputTokens');
     const currentRequestOutputTokensDisplay = document.getElementById('currentRequestOutputTokens');
@@ -53,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const DEEPSEEK_API_BASE_URL = 'https://api.deepseek.com/chat/completions';
 
-    const defaultSystemInstruction = `您是一个文字 RPG 的游戏主持人 (DM)。
+    const defaultSystemInstructionNoMemory = `您是一个文字 RPG 的游戏主持人 (DM)。
 生动地描述用户行动的结果，并保持世界观的一致性。
 保持回答相对简短但引人入胜。
 你只能模拟世界，不能模拟玩家的行动。
@@ -72,12 +79,86 @@ document.addEventListener('DOMContentLoaded', () => {
   ]
 }`;
 
+    const defaultSystemInstructionWithMemory = `您是一个文字 RPG 的游戏主持人 (DM)，具有短期和长期记忆功能。
+生动地描述用户行动的结果，并保持世界观的一致性。
+保持回答相对简短但引人入胜。
+你只能模拟世界，不能模拟玩家的行动。
+你的回答应该是玩家行动的后果。
+回答应与玩家输入的语言相同（默认为中文）。
+如果当前场景中有其他角色（NPC、同伴、敌人或有智慧的生物），请确定他们的结构化反应并将其放入 "CHARACTERS_REACTIONS" 列表中（每个元素必须包含 "name", "internal_thought" 和 "view_of_the_player"）。如果当前场景无其他角色，请返回空列表 []。
+重要：你必须严格返回合法的 JSON 对象结构，字段严格如下：
+{
+  "STORY": "[对接下来发生事件的描述]",
+  "CHARACTERS_REACTIONS": [
+    {
+      "name": "[角色名字]",
+      "internal_thought": "[该角色对其刚才发生事件的内心真实想法或秘密反应]",
+      "view_of_the_player": "[该角色当前对玩家的看法、态度或认知]"
+    }
+  ],
+  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",
+  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。不要将焦点放在最近的历史（这由短期记忆覆盖）。相反，它必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。严禁从长期记忆中删除任何关键里程碑]"
+}`;
+
     // Load saved settings from localStorage
     apiKeyInput.value = localStorage.getItem('deepseekApiKey') || '';
     modelSelect.value = localStorage.getItem(STORAGE_PREFIX + 'model') || 'deepseek-chat';
-    systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstruction') || defaultSystemInstruction;
     nextMovePromptTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'nextMovePrompt') || '';
     gameHistoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'gameHistory') || ''; 
+    shortTermMemoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'shortTermMemory') || '';
+    longTermMemoryTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'longTermMemory') || '';
+
+    // Initialize Memory Mode Checkbox
+    const useMemory = localStorage.getItem(STORAGE_PREFIX + 'useMemory') === 'true';
+    useMemoryCheckbox.checked = useMemory;
+
+    if (useMemory) {
+        memorySection.classList.remove('hidden');
+        systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstruction') || defaultSystemInstructionWithMemory;
+    } else {
+        memorySection.classList.add('hidden');
+        systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstructionNoMemory') || defaultSystemInstructionNoMemory;
+    }
+
+    useMemoryCheckbox.addEventListener('change', () => {
+        const active = useMemoryCheckbox.checked;
+        localStorage.setItem(STORAGE_PREFIX + 'useMemory', active);
+        if (active) {
+            // Save no-memory instruction edits
+            localStorage.setItem(STORAGE_PREFIX + 'systemInstructionNoMemory', systemInstructionTextarea.value);
+            // Load memory instructions
+            systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstruction') || defaultSystemInstructionWithMemory;
+            memorySection.classList.remove('hidden');
+
+            // If memories are empty but history exists, automatically fetch memories
+            if (gameHistoryTextarea.value.trim() && !shortTermMemoryTextarea.value.trim() && !longTermMemoryTextarea.value.trim()) {
+                refreshMemories();
+            }
+        } else {
+            // Save memory instruction edits
+            localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', systemInstructionTextarea.value);
+            // Load no-memory instructions
+            systemInstructionTextarea.value = localStorage.getItem(STORAGE_PREFIX + 'systemInstructionNoMemory') || defaultSystemInstructionNoMemory;
+            memorySection.classList.add('hidden');
+        }
+    });
+
+    // Save active system instruction based on checkbox
+    systemInstructionTextarea.addEventListener('input', () => {
+        if (useMemoryCheckbox.checked) {
+            localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', systemInstructionTextarea.value);
+        } else {
+            localStorage.setItem(STORAGE_PREFIX + 'systemInstructionNoMemory', systemInstructionTextarea.value);
+        }
+    });
+
+    shortTermMemoryTextarea.addEventListener('input', () => {
+        localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermMemoryTextarea.value);
+    });
+
+    longTermMemoryTextarea.addEventListener('input', () => {
+        localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermMemoryTextarea.value);
+    });
     
     function getCharactersReactionsFromDOM() {
         if (!charactersReactionsContainer) return [];
@@ -200,7 +281,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save settings to localStorage on change
     apiKeyInput.addEventListener('input', () => localStorage.setItem('deepseekApiKey', apiKeyInput.value));
     modelSelect.addEventListener('change', () => localStorage.setItem(STORAGE_PREFIX + 'model', modelSelect.value));
-    systemInstructionTextarea.addEventListener('input', () => localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', systemInstructionTextarea.value));
     nextMovePromptTextarea.addEventListener('input', () => localStorage.setItem(STORAGE_PREFIX + 'nextMovePrompt', nextMovePromptTextarea.value));
     
     gameHistoryTextarea.addEventListener('input', () => {
@@ -223,6 +303,37 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Collapsible elements for memory
+    const toggleShortTermMemory = document.getElementById('toggleShortTermMemory');
+    const shortTermMemoryContent = document.getElementById('shortTermMemoryContent');
+    if (toggleShortTermMemory && shortTermMemoryContent) {
+        if (localStorage.getItem(STORAGE_PREFIX + 'shortTermMemoryCollapsed') === 'true') {
+            shortTermMemoryContent.classList.add('collapsed');
+            toggleShortTermMemory.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+        }
+        toggleShortTermMemory.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const isCollapsed = shortTermMemoryContent.classList.toggle('collapsed');
+            toggleShortTermMemory.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            localStorage.setItem(STORAGE_PREFIX + 'shortTermMemoryCollapsed', isCollapsed);
+        });
+    }
+
+    const toggleLongTermMemory = document.getElementById('toggleLongTermMemory');
+    const longTermMemoryContent = document.getElementById('longTermMemoryContent');
+    if (toggleLongTermMemory && longTermMemoryContent) {
+        if (localStorage.getItem(STORAGE_PREFIX + 'longTermMemoryCollapsed') === 'true') {
+            longTermMemoryContent.classList.add('collapsed');
+            toggleLongTermMemory.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+        }
+        toggleLongTermMemory.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const isCollapsed = longTermMemoryContent.classList.toggle('collapsed');
+            toggleLongTermMemory.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            localStorage.setItem(STORAGE_PREFIX + 'longTermMemoryCollapsed', isCollapsed);
+        });
+    }
+
     clearNextMovePromptBtn.addEventListener('click', () => {
         nextMovePromptTextarea.value = '';
         localStorage.removeItem(STORAGE_PREFIX + 'nextMovePrompt');
@@ -231,13 +342,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (resetSystemInstructionBtn) {
         resetSystemInstructionBtn.addEventListener('click', () => {
             if (confirm('确定要将系统指令重置为默认值吗？')) {
-                systemInstructionTextarea.value = defaultSystemInstruction;
-                localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', defaultSystemInstruction);
+                if (useMemoryCheckbox.checked) {
+                    systemInstructionTextarea.value = defaultSystemInstructionWithMemory;
+                    localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', defaultSystemInstructionWithMemory);
+                } else {
+                    systemInstructionTextarea.value = defaultSystemInstructionNoMemory;
+                    localStorage.setItem(STORAGE_PREFIX + 'systemInstructionNoMemory', defaultSystemInstructionNoMemory);
+                }
             }
         });
     }
 
     generateBtn.addEventListener('click', submitMove);
+    refreshMemoriesBtn.addEventListener('click', refreshMemories);
     revertLastMoveBtn.addEventListener('click', removeLastTurn);
     clearAllBtn.addEventListener('click', clearAllContents);
     saveGameBtn.addEventListener('click', saveGame);
@@ -271,6 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
         generateBtn.classList.remove('hidden');
         stopBtn.classList.add('hidden');
         loadingIndicator.classList.add('hidden');
+        refreshMemoriesBtn.disabled = false;
         abortController = null;
         revertLastMoveBtn.disabled = !gameHistoryTextarea.value.trim();
     }
@@ -281,19 +399,31 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         modelSelect.value = 'deepseek-chat'; 
-        systemInstructionTextarea.value = defaultSystemInstruction; 
         nextMovePromptTextarea.value = '';
         gameHistoryTextarea.value = '';
+        shortTermMemoryTextarea.value = '';
+        longTermMemoryTextarea.value = '';
         renderCharactersReactions([]);
 
         revertLastMoveBtn.disabled = true;
 
+        if (useMemoryCheckbox.checked) {
+            systemInstructionTextarea.value = defaultSystemInstructionWithMemory;
+        } else {
+            systemInstructionTextarea.value = defaultSystemInstructionNoMemory;
+        }
+
         localStorage.removeItem(STORAGE_PREFIX + 'model');
         localStorage.removeItem(STORAGE_PREFIX + 'systemInstruction');
+        localStorage.removeItem(STORAGE_PREFIX + 'systemInstructionNoMemory');
         localStorage.removeItem(STORAGE_PREFIX + 'nextMovePrompt');
         localStorage.removeItem(STORAGE_PREFIX + 'gameHistory'); 
         localStorage.removeItem(STORAGE_PREFIX + 'charactersReactionsList');
         localStorage.removeItem(STORAGE_PREFIX + 'charactersCollapsed');
+        localStorage.removeItem(STORAGE_PREFIX + 'shortTermMemory');
+        localStorage.removeItem(STORAGE_PREFIX + 'longTermMemory');
+        localStorage.removeItem(STORAGE_PREFIX + 'shortTermMemoryCollapsed');
+        localStorage.removeItem(STORAGE_PREFIX + 'longTermMemoryCollapsed');
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedInputTokens'); 
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedOutputTokens'); 
         localStorage.removeItem(STORAGE_PREFIX + 'accumulatedCost');
@@ -349,6 +479,116 @@ document.addEventListener('DOMContentLoaded', () => {
         return (inputTokens * inputRate) + (outputTokens * outputRate);
     }
 
+    async function refreshMemories() {
+        const apiKey = apiKeyInput.value.trim();
+        const selectedModel = modelSelect.value;
+        const currentHistory = gameHistoryTextarea.value.trim();
+
+        if (!apiKey) {
+            showError('请先输入您的 DeepSeek API Key。');
+            return;
+        }
+
+        if (!currentHistory) {
+            showError('游戏历史记录为空，无法生成记忆总结。');
+            return;
+        }
+
+        if (abortController) {
+            showError('另一个生成任务已在进行中。');
+            return;
+        }
+
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
+        refreshMemoriesBtn.disabled = true;
+        generateBtn.disabled = true;
+        loadingIndicator.textContent = '正在根据历史记录总结记忆...';
+        loadingIndicator.classList.remove('hidden');
+        showError('');
+
+        const userPrompt = `请仔细阅读以下完整的 RPG 游戏历史记录，并在一个合法的 JSON 对象中严格返回两个键 "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY" 来生成记忆总结：\n\n${currentHistory}\n\n重要：记忆总结的语言必须与游戏历史记录/故事的语言相同。\n\n你必须严格且仅返回以下格式 of JSON 对象：\n{\n  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",\n  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。不要将焦点放在最近的历史（这由短期记忆覆盖）。相反，它必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。严禁从长期记忆中删除任何关键里程碑]"\n}`;
+
+        const messages = [
+            { role: 'user', content: userPrompt }
+        ];
+
+        const requestBody = {
+            model: selectedModel,
+            messages: messages,
+            temperature: 0.5,
+            response_format: { type: 'json_object' }
+        };
+
+        const requestBodyString = JSON.stringify(requestBody);
+        const apiUrl = DEEPSEEK_API_BASE_URL;
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: requestBodyString,
+                signal: signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                appendDebugLog(apiUrl, requestBodyString, errorData);
+                throw new Error(errorData.error ? errorData.error.message : response.statusText);
+            }
+
+            const data = await response.json();
+            appendDebugLog(apiUrl, requestBodyString, data);
+
+            const responseText = data.choices?.[0]?.message?.content || '{}';
+
+            let shortTermPart = '';
+            let longTermPart = '';
+
+            try {
+                const parsedJson = JSON.parse(responseText.trim().replace(/^```json\s*|```$/g, ''));
+                shortTermPart = (parsedJson.SHORT_TERM_MEMORY || parsedJson.short_term_memory || parsedJson.shortTermMemory || '').trim();
+                longTermPart = (parsedJson.LONG_TERM_MEMORY || parsedJson.long_term_memory || parsedJson.longTermMemory || '').trim();
+            } catch (jsonError) {
+                console.warn('Failed to parse JSON response directly in refreshMemories, falling back to regex parsing:', jsonError);
+                const shortTermMatch = responseText.match(/"SHORT_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/SHORT_TERM_MEMORY:\s*([\s\S]*?)(?=LONG_TERM_MEMORY:|$)/i);
+                const longTermMatch = responseText.match(/"LONG_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/LONG_TERM_MEMORY:\s*([\s\S]*?)(?=SHORT_TERM_MEMORY:|$)/i);
+                if (shortTermMatch) shortTermPart = shortTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                if (longTermMatch) longTermPart = longTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+            }
+
+            const promptTokens = data.usage?.prompt_tokens || 0;
+            const candidateTokens = data.usage?.completion_tokens || 0; 
+            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
+            updateTokensAndCost(promptTokens, candidateTokens, requestCost);
+
+            if (shortTermPart) {
+                shortTermMemoryTextarea.value = shortTermPart;
+                localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermPart);
+            }
+            if (longTermPart) {
+                longTermMemoryTextarea.value = longTermPart;
+                localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermPart);
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            if (error.name === 'AbortError') {
+                showError('操作已被用户中止。');
+            } else {
+                showError(`总结记忆失败: ${error.message}`);
+                appendDebugLog(apiUrl, requestBodyString, error);
+            }
+        } finally {
+            resetUI();
+            loadingIndicator.textContent = 'DeepSeek 正在思考...';
+        }
+    }
+
     async function submitMove() {
         const apiKey = apiKeyInput.value.trim();
         const selectedModel = modelSelect.value;
@@ -356,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentHistory = gameHistoryTextarea.value.trim();
         const charactersThoughts = getCharactersReactionsTextForPrompt();
         const nextMove = nextMovePromptTextarea.value.trim();
+        const activeMemory = useMemoryCheckbox.checked;
 
         if (!apiKey) {
             showError('请先输入您的 DeepSeek API Key。');
@@ -382,10 +623,20 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRequestCostDisplay.textContent = '计算中...';
         
         let userPrompt = '';
-        if (currentHistory === '') {
-            userPrompt = `开始新的冒险。设定为：${nextMove || '神秘的幻境。'}`;
+        if (activeMemory) {
+            const shortTermMemory = shortTermMemoryTextarea.value.trim();
+            const longTermMemory = longTermMemoryTextarea.value.trim();
+            if (currentHistory === '' && shortTermMemory === '' && longTermMemory === '') {
+                userPrompt = `开始新的冒险。设定为：${nextMove || '神秘的幻境。'}`;
+            } else {
+                userPrompt = `长期记忆 (全局以往总结):\n${longTermMemory || '暂无。'}\n\n短期记忆 (近期几轮总结):\n${shortTermMemory || '暂无。'}\n\n当前场景角色反应：\n${charactersThoughts}\n\n我的下一步行动：${nextMove}\n\n接下来会发生什么？请务必且仅输出一个合法的 JSON 对象，严格包含键 "STORY", "CHARACTERS_REACTIONS", "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY"。`;
+            }
         } else {
-            userPrompt = `完整游戏历史记录：\n\n${currentHistory}\n\n当前场景角色反应：\n${charactersThoughts}\n\n我的下一步行动：${nextMove}\n\n接下来会发生什么？请务必且仅输出一个合法的 JSON 对象，严格包含键 "STORY" 和 "CHARACTERS_REACTIONS"。`;
+            if (currentHistory === '') {
+                userPrompt = `开始新的冒险。设定为：${nextMove || '神秘的幻境。'}`;
+            } else {
+                userPrompt = `完整游戏历史记录：\n\n${currentHistory}\n\n当前场景角色反应：\n${charactersThoughts}\n\n我的下一步行动：${nextMove}\n\n接下来会发生什么？请务必且仅输出一个合法的 JSON 对象，严格包含键 "STORY" 和 "CHARACTERS_REACTIONS"。`;
+            }
         }
         
         const messages = [];
@@ -428,21 +679,36 @@ document.addEventListener('DOMContentLoaded', () => {
             
             let storyPart = '';
             let charactersReactionsList = [];
+            let shortTermPart = '';
+            let longTermPart = '';
 
             try {
                 const parsedJson = JSON.parse(responseText.trim().replace(/^```json\s*|```$/g, ''));
                 storyPart = (parsedJson.STORY || parsedJson.story || '').trim();
+                
                 const rawReactions = parsedJson.CHARACTERS_REACTIONS || parsedJson.characters_reactions || parsedJson.charactersReactions || parsedJson.CHARACTERS_THOUGHTS || parsedJson.characters_thoughts || parsedJson.charactersThoughts;
                 if (Array.isArray(rawReactions)) {
                     charactersReactionsList = rawReactions;
                 } else if (typeof rawReactions === 'string') {
                     charactersReactionsList = [{ name: '角色', internal_thought: rawReactions, view_of_the_player: '中立' }];
                 }
+
+                if (activeMemory) {
+                    shortTermPart = (parsedJson.SHORT_TERM_MEMORY || parsedJson.short_term_memory || parsedJson.shortTermMemory || '').trim();
+                    longTermPart = (parsedJson.LONG_TERM_MEMORY || parsedJson.long_term_memory || parsedJson.longTermMemory || '').trim();
+                }
             } catch (jsonError) {
                 console.warn('Failed to parse JSON response directly in submitMove, falling back to regex parsing:', jsonError);
                 const storyMatch = responseText.match(/"STORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/STORY:\s*([\s\S]*?)(?=CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|SHORT_TERM_MEMORY:|LONG_TERM_MEMORY:|$)/i);
                 if (storyMatch) storyPart = storyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
                 else storyPart = responseText.trim();
+
+                if (activeMemory) {
+                    const shortTermMatch = responseText.match(/"SHORT_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/SHORT_TERM_MEMORY:\s*([\s\S]*?)(?=STORY:|CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|LONG_TERM_MEMORY:|$)/i);
+                    const longTermMatch = responseText.match(/"LONG_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/LONG_TERM_MEMORY:\s*([\s\S]*?)(?=STORY:|CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|SHORT_TERM_MEMORY:|$)/i);
+                    if (shortTermMatch) shortTermPart = shortTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                    if (longTermMatch) longTermPart = longTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                }
             }
 
             const promptTokens = data.usage?.prompt_tokens || 0;
@@ -453,6 +719,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (storyPart) {
                 renderCharactersReactions(charactersReactionsList);
+
+                if (activeMemory) {
+                    if (shortTermPart) {
+                        shortTermMemoryTextarea.value = shortTermPart;
+                        localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermPart);
+                    }
+                    if (longTermPart) {
+                        longTermMemoryTextarea.value = longTermPart;
+                        localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermPart);
+                    }
+                }
 
                 const movePrefix = nextMove ? `> ${nextMove}\n\n` : '';
                 if (gameHistoryTextarea.value.trim() === '') {
@@ -537,7 +814,10 @@ document.addEventListener('DOMContentLoaded', () => {
             gameHistory: gameHistoryTextarea.value,
             charactersReactions: getCharactersReactionsFromDOM(),
             systemInstruction: systemInstructionTextarea.value,
-            model: modelSelect.value
+            model: modelSelect.value,
+            useMemory: useMemoryCheckbox.checked,
+            shortTermMemory: shortTermMemoryTextarea.value,
+            longTermMemory: longTermMemoryTextarea.value
         };
 
         const jsonString = JSON.stringify(gameState, null, 2);
@@ -584,20 +864,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     renderCharactersReactions([]);
                 }
                 
-                if (gameState.systemInstruction !== undefined) {
-                    systemInstructionTextarea.value = gameState.systemInstruction;
+                const loadUseMemory = gameState.useMemory === true;
+                useMemoryCheckbox.checked = loadUseMemory;
+                localStorage.setItem(STORAGE_PREFIX + 'useMemory', loadUseMemory);
+
+                shortTermMemoryTextarea.value = gameState.shortTermMemory || '';
+                longTermMemoryTextarea.value = gameState.longTermMemory || '';
+                localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermMemoryTextarea.value);
+                localStorage.setItem(STORAGE_PREFIX + 'longTermMemory', longTermMemoryTextarea.value);
+
+                if (loadUseMemory) {
+                    memorySection.classList.remove('hidden');
+                    systemInstructionTextarea.value = gameState.systemInstruction || defaultSystemInstructionWithMemory;
+                    localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', systemInstructionTextarea.value);
+                } else {
+                    memorySection.classList.add('hidden');
+                    systemInstructionTextarea.value = gameState.systemInstruction || defaultSystemInstructionNoMemory;
+                    localStorage.setItem(STORAGE_PREFIX + 'systemInstructionNoMemory', systemInstructionTextarea.value);
                 }
+
                 if (gameState.model !== undefined) {
                     modelSelect.value = gameState.model;
+                    localStorage.setItem(STORAGE_PREFIX + 'model', modelSelect.value);
                 }
 
                 localStorage.setItem(STORAGE_PREFIX + 'gameHistory', gameHistoryTextarea.value);
-                if (gameState.systemInstruction !== undefined) {
-                    localStorage.setItem(STORAGE_PREFIX + 'systemInstruction', systemInstructionTextarea.value);
-                }
-                if (gameState.model !== undefined) {
-                    localStorage.setItem(STORAGE_PREFIX + 'model', modelSelect.value);
-                }
 
                 revertLastMoveBtn.disabled = !gameHistoryTextarea.value.trim();
                 showError('');

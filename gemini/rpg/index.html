@@ -23,6 +23,35 @@
             </div>
         </div>
 
+        <div class="input-group checkbox-group" style="margin-bottom: 20px; display: flex; align-items: center;">
+            <input type="checkbox" id="useMemoryCheckbox" style="width: auto; margin-right: 8px; cursor: pointer;">
+            <label for="useMemoryCheckbox" style="margin-bottom: 0; cursor: pointer; user-select: none;">Use Short-term and Long-term Memory</label>
+        </div>
+
+        <div id="memorySection" class="hidden">
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleShortTermMemory">
+                    <label for="shortTermMemoryDisplay">Short Term Memory (Recent 3-5 turns)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="shortTermMemoryContent" class="collapsible-content">
+                    <textarea id="shortTermMemoryDisplay" rows="3" placeholder="Summary of recent events..."></textarea>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleLongTermMemory">
+                    <label for="longTermMemoryDisplay">Long Term Memory (Milestones & World State)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="longTermMemoryContent" class="collapsible-content">
+                    <textarea id="longTermMemoryDisplay" rows="5" placeholder="Summary of key historical milestones..."></textarea>
+                </div>
+            </div>
+
+            <button id="refreshMemoriesBtn" class="secondary-btn" style="margin-bottom: 20px;">Refresh Memory from History</button>
+        </div>
+
         <div class="input-group">
             <label for="gameHistory">Game History (editable):</label>
             <textarea id="gameHistory" rows="20" placeholder="Start your adventure here, or leave blank and provide a prompt for the first scene."></textarea>

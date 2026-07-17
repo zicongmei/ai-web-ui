@@ -23,6 +23,35 @@
             </div>
         </div>
 
+        <div class="input-group checkbox-group" style="margin-bottom: 20px; display: flex; align-items: center;">
+            <input type="checkbox" id="useMemoryCheckbox" style="width: auto; margin-right: 8px; cursor: pointer;">
+            <label for="useMemoryCheckbox" style="margin-bottom: 0; cursor: pointer; user-select: none;">启用短期与长期记忆功能</label>
+        </div>
+
+        <div id="memorySection" class="hidden">
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleShortTermMemory">
+                    <label for="shortTermMemoryDisplay">短期记忆 (近期 3-5 轮总结)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="shortTermMemoryContent" class="collapsible-content">
+                    <textarea id="shortTermMemoryDisplay" rows="3" placeholder="近期发生事件的简短总结..."></textarea>
+                </div>
+            </div>
+
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleLongTermMemory">
+                    <label for="longTermMemoryDisplay">长期记忆 (核心剧情要点与里程碑)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div id="longTermMemoryContent" class="collapsible-content">
+                    <textarea id="longTermMemoryDisplay" rows="5" placeholder="全局关键历史里程碑总结..."></textarea>
+                </div>
+            </div>
+
+            <button id="refreshMemoriesBtn" class="secondary-btn" style="margin-bottom: 20px;">根据历史记录刷新记忆</button>
+        </div>
+
         <div class="input-group">
             <label for="gameHistory">游戏历史 (可编辑):</label>
             <textarea id="gameHistory" rows="20" placeholder="在此处开始您的冒险，或留空并为第一幕提供提示。"></textarea>

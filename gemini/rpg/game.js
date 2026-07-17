@@ -18,6 +18,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearNextMovePromptBtn = document.getElementById('clearNextMovePromptBtn');
     const resetSystemInstructionBtn = document.getElementById('resetSystemInstructionBtn');
 
+    // Memory elements
+    const useMemoryCheckbox = document.getElementById('useMemoryCheckbox');
+    const memorySection = document.getElementById('memorySection');
+    const shortTermMemoryTextarea = document.getElementById('shortTermMemoryDisplay');
+    const longTermMemoryTextarea = document.getElementById('longTermMemoryDisplay');
+    const refreshMemoriesBtn = document.getElementById('refreshMemoriesBtn');
+
     // Token display elements
     const currentRequestInputTokensDisplay = document.getElementById('currentRequestInputTokens');
     const currentRequestOutputTokensDisplay = document.getElementById('currentRequestOutputTokens');
@@ -51,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const GEMINI_API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
-    const defaultSystemInstruction = `You are a Game Master for a text-based RPG.
+    const defaultSystemInstructionNoMemory = `You are a Game Master for a text-based RPG.
 Describe the outcomes of the user's actions vividly and maintain a consistent world.
 Keep responses relatively concise but engaging.
 You should only simulate the world, not the player's action.
@@ -70,12 +77,86 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
   ]
 }`;
 
+    const defaultSystemInstructionWithMemory = `You are a Game Master for a text-based RPG with short-term and long-term memory.
+Describe the outcomes of the user's actions vividly and maintain a consistent world.
+Keep responses relatively concise but engaging.
+You should only simulate the world, not the player's action.
+Your response should be the consequence of the player's action.
+The response should be in the same language as the player's input.
+If there are other characters (NPCs, companions, adversaries, or sentient beings) present in the current scene, determine their structured reactions and include them in "CHARACTERS_REACTIONS" (with each entry containing "name", "internal_thought", and "view_of_the_player"). If no other characters are present in the scene, return an empty list [].
+IMPORTANT: You must return your response in a valid JSON structure strictly matching the following format:
+{
+  "STORY": "[Your description of what happens next]",
+  "CHARACTERS_REACTIONS": [
+    {
+      "name": "[Character Name]",
+      "internal_thought": "[Their secret internal thought or reaction to what just happened]",
+      "view_of_the_player": "[Their current view, attitude, or perception of the player]"
+    }
+  ],
+  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",
+  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Do NOT focus on the most recent history (which is covered by short term memory). Instead, it must keep a short description of all previous key milestones and must not forget them. Never remove key milestones from the long term memory]"
+}`;
+
     // Load saved settings from localStorage
     apiKeyInput.value = localStorage.getItem('geminiApiKey') || ''; // Reuse API key from other tools
     modelSelect.value = localStorage.getItem('geminiRpgModel') || 'gemini-3-flash-preview';
-    systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstruction') || defaultSystemInstruction;
     nextMovePromptTextarea.value = localStorage.getItem('geminiRpgNextMovePrompt') || '';
     gameHistoryTextarea.value = localStorage.getItem('geminiRpgGameHistory') || ''; 
+    shortTermMemoryTextarea.value = localStorage.getItem('geminiRpgShortTermMemory') || '';
+    longTermMemoryTextarea.value = localStorage.getItem('geminiRpgLongTermMemory') || '';
+
+    // Initialize Memory Mode Checkbox
+    const useMemory = localStorage.getItem('geminiRpgUseMemory') === 'true';
+    useMemoryCheckbox.checked = useMemory;
+
+    if (useMemory) {
+        memorySection.classList.remove('hidden');
+        systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstruction') || defaultSystemInstructionWithMemory;
+    } else {
+        memorySection.classList.add('hidden');
+        systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstructionNoMemory') || defaultSystemInstructionNoMemory;
+    }
+
+    useMemoryCheckbox.addEventListener('change', () => {
+        const active = useMemoryCheckbox.checked;
+        localStorage.setItem('geminiRpgUseMemory', active);
+        if (active) {
+            // Save no-memory instruction edits
+            localStorage.setItem('geminiRpgSystemInstructionNoMemory', systemInstructionTextarea.value);
+            // Load memory instructions
+            systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstruction') || defaultSystemInstructionWithMemory;
+            memorySection.classList.remove('hidden');
+
+            // If memories are empty but history exists, automatically fetch memories
+            if (gameHistoryTextarea.value.trim() && !shortTermMemoryTextarea.value.trim() && !longTermMemoryTextarea.value.trim()) {
+                refreshMemories();
+            }
+        } else {
+            // Save memory instruction edits
+            localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value);
+            // Load no-memory instructions
+            systemInstructionTextarea.value = localStorage.getItem('geminiRpgSystemInstructionNoMemory') || defaultSystemInstructionNoMemory;
+            memorySection.classList.add('hidden');
+        }
+    });
+
+    // Save active system instruction based on checkbox
+    systemInstructionTextarea.addEventListener('input', () => {
+        if (useMemoryCheckbox.checked) {
+            localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value);
+        } else {
+            localStorage.setItem('geminiRpgSystemInstructionNoMemory', systemInstructionTextarea.value);
+        }
+    });
+
+    shortTermMemoryTextarea.addEventListener('input', () => {
+        localStorage.setItem('geminiRpgShortTermMemory', shortTermMemoryTextarea.value);
+    });
+
+    longTermMemoryTextarea.addEventListener('input', () => {
+        localStorage.setItem('geminiRpgLongTermMemory', longTermMemoryTextarea.value);
+    });
     
     function getCharactersReactionsFromDOM() {
         if (!charactersReactionsContainer) return [];
@@ -198,7 +279,6 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
     // Save settings to localStorage on change
     apiKeyInput.addEventListener('input', () => localStorage.setItem('geminiApiKey', apiKeyInput.value));
     modelSelect.addEventListener('change', () => localStorage.setItem('geminiRpgModel', modelSelect.value));
-    systemInstructionTextarea.addEventListener('input', () => localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value));
     nextMovePromptTextarea.addEventListener('input', () => localStorage.setItem('geminiRpgNextMovePrompt', nextMovePromptTextarea.value));
     
     gameHistoryTextarea.addEventListener('input', () => {
@@ -221,6 +301,37 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         });
     }
 
+    // Collapsible elements for memory
+    const toggleShortTermMemory = document.getElementById('toggleShortTermMemory');
+    const shortTermMemoryContent = document.getElementById('shortTermMemoryContent');
+    if (toggleShortTermMemory && shortTermMemoryContent) {
+        if (localStorage.getItem('geminiRpgShortTermMemoryCollapsed') === 'true') {
+            shortTermMemoryContent.classList.add('collapsed');
+            toggleShortTermMemory.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+        }
+        toggleShortTermMemory.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const isCollapsed = shortTermMemoryContent.classList.toggle('collapsed');
+            toggleShortTermMemory.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            localStorage.setItem('geminiRpgShortTermMemoryCollapsed', isCollapsed);
+        });
+    }
+
+    const toggleLongTermMemory = document.getElementById('toggleLongTermMemory');
+    const longTermMemoryContent = document.getElementById('longTermMemoryContent');
+    if (toggleLongTermMemory && longTermMemoryContent) {
+        if (localStorage.getItem('geminiRpgLongTermMemoryCollapsed') === 'true') {
+            longTermMemoryContent.classList.add('collapsed');
+            toggleLongTermMemory.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+        }
+        toggleLongTermMemory.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const isCollapsed = longTermMemoryContent.classList.toggle('collapsed');
+            toggleLongTermMemory.querySelector('.toggle-icon').style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            localStorage.setItem('geminiRpgLongTermMemoryCollapsed', isCollapsed);
+        });
+    }
+
     clearNextMovePromptBtn.addEventListener('click', () => {
         nextMovePromptTextarea.value = '';
         localStorage.removeItem('geminiRpgNextMovePrompt');
@@ -229,13 +340,19 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
     if (resetSystemInstructionBtn) {
         resetSystemInstructionBtn.addEventListener('click', () => {
             if (confirm('Reset System Instruction to default?')) {
-                systemInstructionTextarea.value = defaultSystemInstruction;
-                localStorage.setItem('geminiRpgSystemInstruction', defaultSystemInstruction);
+                if (useMemoryCheckbox.checked) {
+                    systemInstructionTextarea.value = defaultSystemInstructionWithMemory;
+                    localStorage.setItem('geminiRpgSystemInstruction', defaultSystemInstructionWithMemory);
+                } else {
+                    systemInstructionTextarea.value = defaultSystemInstructionNoMemory;
+                    localStorage.setItem('geminiRpgSystemInstructionNoMemory', defaultSystemInstructionNoMemory);
+                }
             }
         });
     }
 
     generateBtn.addEventListener('click', submitMove);
+    refreshMemoriesBtn.addEventListener('click', refreshMemories);
     revertLastMoveBtn.addEventListener('click', removeLastTurn);
     clearAllBtn.addEventListener('click', clearAllContents);
     saveGameBtn.addEventListener('click', saveGame);
@@ -269,6 +386,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         generateBtn.classList.remove('hidden');
         stopBtn.classList.add('hidden');
         loadingIndicator.classList.add('hidden');
+        refreshMemoriesBtn.disabled = false;
         abortController = null;
         revertLastMoveBtn.disabled = !gameHistoryTextarea.value.trim();
     }
@@ -279,19 +397,31 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         }
 
         modelSelect.value = 'gemini-3-flash-preview'; 
-        systemInstructionTextarea.value = defaultSystemInstruction; 
         nextMovePromptTextarea.value = '';
         gameHistoryTextarea.value = '';
+        shortTermMemoryTextarea.value = '';
+        longTermMemoryTextarea.value = '';
         renderCharactersReactions([]);
 
         revertLastMoveBtn.disabled = true;
 
+        if (useMemoryCheckbox.checked) {
+            systemInstructionTextarea.value = defaultSystemInstructionWithMemory;
+        } else {
+            systemInstructionTextarea.value = defaultSystemInstructionNoMemory;
+        }
+
         localStorage.removeItem('geminiRpgModel');
         localStorage.removeItem('geminiRpgSystemInstruction');
+        localStorage.removeItem('geminiRpgSystemInstructionNoMemory');
         localStorage.removeItem('geminiRpgNextMovePrompt');
         localStorage.removeItem('geminiRpgGameHistory'); 
         localStorage.removeItem('geminiRpgCharactersReactionsList');
         localStorage.removeItem('geminiRpgCharactersCollapsed');
+        localStorage.removeItem('geminiRpgShortTermMemory');
+        localStorage.removeItem('geminiRpgLongTermMemory');
+        localStorage.removeItem('geminiRpgShortTermMemoryCollapsed');
+        localStorage.removeItem('geminiRpgLongTermMemoryCollapsed');
         localStorage.removeItem('geminiRpgAccumulatedInputTokens'); 
         localStorage.removeItem('geminiRpgAccumulatedOutputTokens'); 
         localStorage.removeItem('geminiRpgAccumulatedCost');
@@ -347,6 +477,113 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         return (inputTokens * inputRate) + (outputTokens * outputRate);
     }
 
+    async function refreshMemories() {
+        const apiKey = apiKeyInput.value.trim();
+        const selectedModel = modelSelect.value;
+        const currentHistory = gameHistoryTextarea.value.trim();
+
+        if (!apiKey) {
+            showError('Please enter your Gemini API Key first.');
+            return;
+        }
+
+        if (!currentHistory) {
+            showError('Game History is empty. No history to generate memory from.');
+            return;
+        }
+
+        if (abortController) {
+            showError('Another action is already in progress.');
+            return;
+        }
+
+        abortController = new AbortController();
+        const signal = abortController.signal;
+
+        refreshMemoriesBtn.disabled = true;
+        generateBtn.disabled = true;
+        loadingIndicator.textContent = 'Summarizing history to memories...';
+        loadingIndicator.classList.remove('hidden');
+        showError('');
+
+        const userPrompt = `Please read the following complete RPG game history and generate two memory summaries in a valid JSON object strictly with the keys "SHORT_TERM_MEMORY" and "LONG_TERM_MEMORY":\n\n${currentHistory}\n\nIMPORTANT: The memory summaries must be in the same language as the story/game history.\n\nYou must return ONLY a valid JSON object strictly matching the following format:\n{\n  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",\n  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Do NOT focus on the most recent history (which is covered by short term memory). Instead, it must keep a short description of all previous key milestones and must not forget them. Never remove key milestones from the long term memory]"\n}`;
+
+        const requestBody = {
+            contents: [{
+                role: 'user',
+                parts: [{ text: userPrompt }]
+            }],
+            generationConfig: {
+                temperature: 0.5,
+                responseMimeType: "application/json"
+            }
+        };
+
+        const requestBodyString = JSON.stringify(requestBody);
+        const apiUrl = `${GEMINI_API_BASE_URL}${selectedModel}:generateContent?key=${apiKey}`;
+
+        try {
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: requestBodyString,
+                signal: signal
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                appendDebugLog(apiUrl, requestBodyString, errorData);
+                throw new Error(errorData.error ? errorData.error.message : response.statusText);
+            }
+
+            const data = await response.json();
+            appendDebugLog(apiUrl, requestBodyString, data);
+
+            const responseText = data.candidates[0]?.content?.parts[0]?.text || '{}';
+
+            let shortTermPart = '';
+            let longTermPart = '';
+
+            try {
+                const parsedJson = JSON.parse(responseText.trim().replace(/^```json\s*|```$/g, ''));
+                shortTermPart = (parsedJson.SHORT_TERM_MEMORY || parsedJson.short_term_memory || parsedJson.shortTermMemory || '').trim();
+                longTermPart = (parsedJson.LONG_TERM_MEMORY || parsedJson.long_term_memory || parsedJson.longTermMemory || '').trim();
+            } catch (jsonError) {
+                console.warn('Failed to parse JSON response directly in refreshMemories, falling back to regex parsing:', jsonError);
+                const shortTermMatch = responseText.match(/"SHORT_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/SHORT_TERM_MEMORY:\s*([\s\S]*?)(?=LONG_TERM_MEMORY:|$)/i);
+                const longTermMatch = responseText.match(/"LONG_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/LONG_TERM_MEMORY:\s*([\s\S]*?)(?=SHORT_TERM_MEMORY:|$)/i);
+                if (shortTermMatch) shortTermPart = shortTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                if (longTermMatch) longTermPart = longTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+            }
+
+            const promptTokens = data.usageMetadata?.promptTokenCount || 0;
+            const candidateTokens = data.usageMetadata?.candidatesTokenCount || 0;
+            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
+            updateTokensAndCost(promptTokens, candidateTokens, requestCost);
+
+            if (shortTermPart) {
+                shortTermMemoryTextarea.value = shortTermPart;
+                localStorage.setItem('geminiRpgShortTermMemory', shortTermPart);
+            }
+            if (longTermPart) {
+                longTermMemoryTextarea.value = longTermPart;
+                localStorage.setItem('geminiRpgLongTermMemory', longTermPart);
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            if (error.name === 'AbortError') {
+                showError('Stopped by user.');
+            } else {
+                showError(`Error refreshing memories: ${error.message}`);
+                appendDebugLog(apiUrl, requestBodyString, error);
+            }
+        } finally {
+            resetUI();
+            loadingIndicator.textContent = 'Gemini is thinking...';
+        }
+    }
+
     async function submitMove() {
         const apiKey = apiKeyInput.value.trim();
         const selectedModel = modelSelect.value;
@@ -354,6 +591,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         const currentHistory = gameHistoryTextarea.value.trim();
         const charactersThoughts = getCharactersReactionsTextForPrompt();
         const nextMove = nextMovePromptTextarea.value.trim();
+        const activeMemory = useMemoryCheckbox.checked;
 
         if (!apiKey) {
             showError('Please enter your Gemini API Key.');
@@ -380,10 +618,20 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         currentRequestCostDisplay.textContent = 'Calculating...';
         
         let userPrompt = '';
-        if (currentHistory === '') {
-            userPrompt = `Start a new adventure. The setting is: ${nextMove || 'A mysterious fantasy world.'}`;
+        if (activeMemory) {
+            const shortTermMemory = shortTermMemoryTextarea.value.trim();
+            const longTermMemory = longTermMemoryTextarea.value.trim();
+            if (currentHistory === '' && shortTermMemory === '' && longTermMemory === '') {
+                userPrompt = `Start a new adventure. The setting is: ${nextMove || 'A mysterious fantasy world.'}`;
+            } else {
+                userPrompt = `Long Term Memory (Summary of the whole previous game):\n${longTermMemory || 'None yet.'}\n\nShort Term Memory (Summary of recent few iterations):\n${shortTermMemory || 'None yet.'}\n\nCharacters' reaction (Current Scene):\n${charactersThoughts}\n\nMy next move: ${nextMove}\n\nWhat happens next? Remember to output ONLY a valid JSON object strictly with keys "STORY", "CHARACTERS_REACTIONS", "SHORT_TERM_MEMORY", and "LONG_TERM_MEMORY".`;
+            }
         } else {
-            userPrompt = `Complete game history log so far:\n\n${currentHistory}\n\nCharacters' reaction in current scene:\n${charactersThoughts}\n\nMy next move: ${nextMove}\n\nWhat happens next? Remember to output ONLY a valid JSON object strictly with keys "STORY" and "CHARACTERS_REACTIONS".`;
+            if (currentHistory === '') {
+                userPrompt = `Start a new adventure. The setting is: ${nextMove || 'A mysterious fantasy world.'}`;
+            } else {
+                userPrompt = `Complete game history log so far:\n\n${currentHistory}\n\nCharacters' reaction in current scene:\n${charactersThoughts}\n\nMy next move: ${nextMove}\n\nWhat happens next? Remember to output ONLY a valid JSON object strictly with keys "STORY" and "CHARACTERS_REACTIONS".`;
+            }
         }
         
         const requestBody = {
@@ -432,21 +680,36 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             
             let storyPart = '';
             let charactersReactionsList = [];
+            let shortTermPart = '';
+            let longTermPart = '';
 
             try {
                 const parsedJson = JSON.parse(responseText.trim().replace(/^```json\s*|```$/g, ''));
                 storyPart = (parsedJson.STORY || parsedJson.story || '').trim();
+                
                 const rawReactions = parsedJson.CHARACTERS_REACTIONS || parsedJson.characters_reactions || parsedJson.charactersReactions || parsedJson.CHARACTERS_THOUGHTS || parsedJson.characters_thoughts || parsedJson.charactersThoughts;
                 if (Array.isArray(rawReactions)) {
                     charactersReactionsList = rawReactions;
                 } else if (typeof rawReactions === 'string') {
                     charactersReactionsList = [{ name: 'Character', internal_thought: rawReactions, view_of_the_player: 'Neutral' }];
                 }
+
+                if (activeMemory) {
+                    shortTermPart = (parsedJson.SHORT_TERM_MEMORY || parsedJson.short_term_memory || parsedJson.shortTermMemory || '').trim();
+                    longTermPart = (parsedJson.LONG_TERM_MEMORY || parsedJson.long_term_memory || parsedJson.longTermMemory || '').trim();
+                }
             } catch (jsonError) {
                 console.warn('Failed to parse JSON response directly in submitMove, falling back to regex parsing:', jsonError);
                 const storyMatch = responseText.match(/"STORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/STORY:\s*([\s\S]*?)(?=CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|SHORT_TERM_MEMORY:|LONG_TERM_MEMORY:|$)/i);
                 if (storyMatch) storyPart = storyMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
                 else storyPart = responseText.trim();
+
+                if (activeMemory) {
+                    const shortTermMatch = responseText.match(/"SHORT_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/SHORT_TERM_MEMORY:\s*([\s\S]*?)(?=STORY:|CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|LONG_TERM_MEMORY:|$)/i);
+                    const longTermMatch = responseText.match(/"LONG_TERM_MEMORY"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i) || responseText.match(/LONG_TERM_MEMORY:\s*([\s\S]*?)(?=STORY:|CHARACTERS_REACTIONS:|CHARACTERS_THOUGHTS:|SHORT_TERM_MEMORY:|$)/i);
+                    if (shortTermMatch) shortTermPart = shortTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                    if (longTermMatch) longTermPart = longTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                }
             }
 
             const promptTokens = data.usageMetadata?.promptTokenCount || 0;
@@ -457,6 +720,17 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
 
             if (storyPart) {
                 renderCharactersReactions(charactersReactionsList);
+
+                if (activeMemory) {
+                    if (shortTermPart) {
+                        shortTermMemoryTextarea.value = shortTermPart;
+                        localStorage.setItem('geminiRpgShortTermMemory', shortTermPart);
+                    }
+                    if (longTermPart) {
+                        longTermMemoryTextarea.value = longTermPart;
+                        localStorage.setItem('geminiRpgLongTermMemory', longTermPart);
+                    }
+                }
 
                 const movePrefix = nextMove ? `> ${nextMove}\n\n` : '';
                 if (gameHistoryTextarea.value.trim() === '') {
@@ -552,7 +826,10 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             gameHistory: gameHistoryTextarea.value,
             charactersReactions: getCharactersReactionsFromDOM(),
             systemInstruction: systemInstructionTextarea.value,
-            model: modelSelect.value
+            model: modelSelect.value,
+            useMemory: useMemoryCheckbox.checked,
+            shortTermMemory: shortTermMemoryTextarea.value,
+            longTermMemory: longTermMemoryTextarea.value
         };
 
         const jsonString = JSON.stringify(gameState, null, 2);
@@ -599,20 +876,31 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                     renderCharactersReactions([]);
                 }
                 
-                if (gameState.systemInstruction !== undefined) {
-                    systemInstructionTextarea.value = gameState.systemInstruction;
+                const loadUseMemory = gameState.useMemory === true;
+                useMemoryCheckbox.checked = loadUseMemory;
+                localStorage.setItem('geminiRpgUseMemory', loadUseMemory);
+
+                shortTermMemoryTextarea.value = gameState.shortTermMemory || '';
+                longTermMemoryTextarea.value = gameState.longTermMemory || '';
+                localStorage.setItem('geminiRpgShortTermMemory', shortTermMemoryTextarea.value);
+                localStorage.setItem('geminiRpgLongTermMemory', longTermMemoryTextarea.value);
+
+                if (loadUseMemory) {
+                    memorySection.classList.remove('hidden');
+                    systemInstructionTextarea.value = gameState.systemInstruction || defaultSystemInstructionWithMemory;
+                    localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value);
+                } else {
+                    memorySection.classList.add('hidden');
+                    systemInstructionTextarea.value = gameState.systemInstruction || defaultSystemInstructionNoMemory;
+                    localStorage.setItem('geminiRpgSystemInstructionNoMemory', systemInstructionTextarea.value);
                 }
+
                 if (gameState.model !== undefined) {
                     modelSelect.value = gameState.model;
+                    localStorage.setItem('geminiRpgModel', modelSelect.value);
                 }
 
                 localStorage.setItem('geminiRpgGameHistory', gameHistoryTextarea.value);
-                if (gameState.systemInstruction !== undefined) {
-                    localStorage.setItem('geminiRpgSystemInstruction', systemInstructionTextarea.value);
-                }
-                if (gameState.model !== undefined) {
-                    localStorage.setItem('geminiRpgModel', modelSelect.value);
-                }
 
                 revertLastMoveBtn.disabled = !gameHistoryTextarea.value.trim();
                 showError('');
