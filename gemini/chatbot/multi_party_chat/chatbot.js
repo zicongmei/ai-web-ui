@@ -5,7 +5,28 @@ let botRoles = []; // Array of strings representing role names
 let userName = 'User'; // Default user name
 let currentApiKey = '';
 let selectedModel = 'gemini-2.5-flash-lite';
-let systemInstruction = 'Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language (Chinese , English, etc.) as input or previous diaglog. Do not include the thought in repsonse text.'; 
+
+const defaultSystemInstructionNoReactions = 'Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language (Chinese , English, etc.) as input or previous diaglog. Do not include the thought in repsonse text.'; 
+
+const defaultSystemInstructionWithReactions = `Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions.
+NEVER try to "wrap up" the roleplay. This is a never-ending roleplay.
+Multi-line messages are not allowed - the message must be a single paragraph.
+Avoid unnecessary and unoriginal repetition of previous messages.
+Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative.
+Use the same language as input or previous dialog.
+You must also determine the character's internal thought and current view of the player.
+IMPORTANT: You must return your response in a valid JSON structure strictly matching the following format:
+{
+  "MESSAGE": "[The message spoken by the character]",
+  "CHARACTER_REACTION": {
+    "name": "[Character Name]",
+    "internal_thought": "[Their secret internal thought or reaction to the conversation so far]",
+    "view_of_the_player": "[Their current view, attitude, or perception of the user]"
+  }
+}`;
+
+let systemInstruction = defaultSystemInstructionNoReactions;
+let lastCharacterReaction = null; // { name: string, internal_thought: string, view_of_the_player: string }
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
@@ -47,9 +68,12 @@ const errorMessageDiv = document.getElementById('errorMessage');
 const tokenStatsDiv = document.getElementById('tokenStats');
 const costStatsDiv = document.getElementById('costStats');
 
-// JSON Editor elements removed
+// Character Reaction elements
+const useReactionsCheckbox = document.getElementById('useReactionsCheckbox');
+const characterReactionContainer = document.getElementById('characterReactionContainer');
 
 const systemInstructionInput = document.getElementById('systemInstructionInput');
+const resetSystemInstructionButton = document.getElementById('resetSystemInstructionButton');
 const clearSystemInstructionButton = document.getElementById('clearSystemInstructionButton');
 
 const saveChatButton = document.getElementById('saveChatButton');
@@ -60,6 +84,7 @@ const removeLastEntryButton = document.getElementById('removeLastEntryButton');
 const regenerateLastLineButton = document.getElementById('regenerateLastLineButton');
 const clearAllHistoryButton = document.getElementById('clearAllHistoryButton');
 const cleanThinkingSignatureButton = document.getElementById('cleanThinkingSignatureButton');
+const cleanupAllThoughtSignaturesButton = document.getElementById('cleanupAllThoughtSignaturesButton');
 
 const showApiDebugButton = document.getElementById('showApiDebugButton');
 const apiDebugContent = document.getElementById('apiDebugContent');
@@ -71,7 +96,6 @@ const thinkingBudgetInput = document.getElementById('thinkingBudgetInput');
 const thinkingLevelSelect = document.getElementById('thinkingLevelSelect');
 
 const saveThoughtSignatureCheckbox = document.getElementById('saveThoughtSignatureCheckbox');
-const cleanupAllThoughtSignaturesButton = document.getElementById('cleanupAllThoughtSignaturesButton');
 
 const increaseFontSizeButton = document.getElementById('increaseFontSizeButton');
 const decreaseFontSizeButton = document.getElementById('decreaseFontSizeButton');
@@ -109,8 +133,9 @@ function setApiKey() {
     return true;
 }
 
+// Reuse API key from standard settings if possible
 function loadApiKey() {
-    const apiKey = getLocalStorageItem('geminiApiKey');
+    const apiKey = getLocalStorageItem('geminiApiKey') || localStorage.getItem('geminiApiKey');
     if (apiKey) {
         geminiApiKeyInput.value = apiKey;
         currentApiKey = apiKey;
@@ -200,21 +225,23 @@ function loadChatFontSize() {
     updateChatFontSize();
 }
 
-// --- Role Management ---
-function saveRolesToLocalStorage() {
-    setLocalStorageItem('botRoles', JSON.stringify(botRoles));
-}
-
+// --- Bot Roles (Party Members) ---
 function loadRolesFromLocalStorage() {
-    const stored = getLocalStorageItem('botRoles');
-    if (stored) {
+    const r = getLocalStorageItem('botRoles');
+    if (r) {
         try {
-            botRoles = JSON.parse(stored);
+            botRoles = JSON.parse(r);
             if (!Array.isArray(botRoles)) botRoles = [];
         } catch (e) { botRoles = []; }
+    } else {
+        botRoles = []; // Empty default
     }
     renderRolesList();
     renderBotResponseButtons();
+}
+
+function saveRolesToLocalStorage() {
+    setLocalStorageItem('botRoles', JSON.stringify(botRoles));
 }
 
 function addRole() {
@@ -270,7 +297,12 @@ function renderBotResponseButtons() {
     });
 }
 
-// --- Chat History Management ---
+// --- Textarea Height Adjustments ---
+function adjustTextareaHeight() {
+    messageInput.style.height = 'auto';
+    messageInput.style.height = (messageInput.scrollHeight) + 'px';
+    messageInput.style.overflowY = 'hidden';
+}
 
 function adjustChatHistoryHeight() {
     if (!chatHistoryBox) return;
@@ -278,40 +310,49 @@ function adjustChatHistoryHeight() {
     chatHistoryBox.style.height = (chatHistoryBox.scrollHeight + 10) + 'px';
 }
 
-// Syncs the content of the editable text area back into the chatHistory array
+function adjustSystemInstructionHeight() {
+    systemInstructionInput.style.height = 'auto';
+    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
+}
+
+function adjustNarratorTextareaHeight() {
+    narratorMessageInput.style.height = 'auto';
+    narratorMessageInput.style.height = (narratorMessageInput.scrollHeight) + 'px';
+    narratorMessageInput.style.overflowY = 'hidden';
+}
+
+// --- Chat History Parser & Manager ---
 function syncChatHistoryFromUI() {
-    const text = chatHistoryBox.value;
-    const lines = text.split('\n');
+    if (!chatHistoryBox) return;
+    const rawText = chatHistoryBox.value;
+    const lines = rawText.split('\n\n').map(line => line.trim()).filter(line => line !== '');
+    
     const newHistory = [];
+    const roleRegex = /^([^:]+):([\s\S]*)$/;
     
     let currentSpeaker = null;
     let buffer = [];
-
+    
     const flush = () => {
-        if (currentSpeaker) {
-            const entryText = buffer.join('\n').trim();
-            const newEntry = { speaker: currentSpeaker, text: entryText };
+        if (currentSpeaker && buffer.length > 0) {
+            const speakerText = buffer.join('\n\n').trim();
+            // Preserve thought signature if we already had one for this entry index
+            const originalEntry = chatHistory[newHistory.length];
+            const signature = (originalEntry && originalEntry.speaker === currentSpeaker) ? originalEntry.thoughtSignature : undefined;
             
-            // Try to preserve thoughtSignature if an existing entry matches
-            const existing = chatHistory.find(h => h.speaker === currentSpeaker && h.text === entryText && h.thoughtSignature);
-            if (existing) {
-                newEntry.thoughtSignature = existing.thoughtSignature;
-            }
-            
-            newHistory.push(newEntry);
+            const entry = { speaker: currentSpeaker, text: speakerText };
+            if (signature) entry.thoughtSignature = signature;
+            newHistory.push(entry);
         }
         buffer = [];
+        currentSpeaker = null;
     };
-
-    // Modified regex to support Chinese and other characters in role names
-    // It captures anything up to the first colon as the role name
-    const roleRegex = /^([^:\n]+):(.*)$/;
-
+    
     for (const line of lines) {
         const match = line.match(roleRegex);
         if (match) {
             const possibleRole = match[1].trim();
-            if (possibleRole.length < 50) { // Arbitrary limit to prevent matching long lines as roles
+            if (possibleRole.length < 50) { // Prevent matching long lines as roles
                 flush();
                 currentSpeaker = possibleRole;
                 buffer.push(match[2].trimStart()); // Trim start to remove leading space after colon
@@ -331,19 +372,39 @@ function syncChatHistoryFromUI() {
 function saveChatHistory() {
     syncChatHistoryFromUI(); // Ensure array matches text box
     setLocalStorageItem('chatHistory', JSON.stringify(chatHistory));
-    setLocalStorageItem('systemInstruction', systemInstruction);
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', systemInstruction);
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', systemInstruction);
+    }
 }
 
 function loadChatHistory() {
     const h = getLocalStorageItem('chatHistory');
-    const s = getLocalStorageItem('systemInstruction');
     
-    if (s) {
-        systemInstruction = s;
-        systemInstructionInput.value = s;
-    } else { 
-        systemInstructionInput.value = systemInstruction;
+    const useReactions = getLocalStorageItem('useReactions') === 'true';
+    useReactionsCheckbox.checked = useReactions;
+    
+    if (useReactions) {
+        systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
+        characterReactionContainer.classList.remove('hidden');
+    } else {
+        systemInstruction = getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions;
+        characterReactionContainer.classList.add('hidden');
     }
+    systemInstructionInput.value = systemInstruction;
+
+    const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
+    if (lastReactionStr) {
+        try {
+            lastCharacterReaction = JSON.parse(lastReactionStr);
+        } catch (e) {
+            lastCharacterReaction = null;
+        }
+    } else {
+        lastCharacterReaction = null;
+    }
+    renderLastCharacterReaction();
 
     if (h) {
         try {
@@ -438,6 +499,10 @@ function clearAllHistory() {
         setUserName(); // Save the default user name to local storage, and re-render buttons
         updateUserMessagePlaceholder(); // Update the placeholder text
         
+        lastCharacterReaction = null;
+        setLocalStorageItem('lastCharacterReaction', '');
+        renderLastCharacterReaction();
+
         totalInputTokens = 0; 
         totalOutputTokens = 0; 
         totalCost = 0;
@@ -453,8 +518,75 @@ function clearAllHistory() {
     }
 }
 
-// --- API Interaction ---
+// --- Character Reaction Render Helper ---
+function renderLastCharacterReaction() {
+    if (!characterReactionContainer) return;
+    characterReactionContainer.innerHTML = '';
+    
+    if (!useReactionsCheckbox.checked || !lastCharacterReaction) {
+        characterReactionContainer.classList.add('hidden');
+        return;
+    }
+    
+    characterReactionContainer.classList.remove('hidden');
+    
+    const card = document.createElement('div');
+    card.className = 'character-reaction-card';
+    
+    const name = lastCharacterReaction.name || 'Character';
+    const thought = lastCharacterReaction.internal_thought || '';
+    const view = lastCharacterReaction.view_of_the_player || '';
+    
+    card.innerHTML = `
+        <div class="collapsible-header character-header">
+            <div class="char-name-label">Last Speaker Reaction: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <div class="collapsible-content char-content">
+            <div class="char-subitem">
+                <label class="sub-label">Internal Thought:</label>
+                <textarea rows="3" class="char-thought-input">${thought}</textarea>
+            </div>
+            <div class="char-subitem">
+                <label class="sub-label">View of the Player:</label>
+                <textarea rows="3" class="char-view-input">${view}</textarea>
+            </div>
+        </div>
+    `;
+    
+    const header = card.querySelector('.collapsible-header');
+    header.addEventListener('click', (e) => {
+        if (window.getSelection().toString().trim().length > 0) return;
+        const content = header.nextElementSibling;
+        if (content && content.classList.contains('collapsible-content')) {
+            const isCollapsed = content.classList.toggle('collapsed');
+            const icon = header.querySelector('.toggle-icon');
+            if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            setLocalStorageItem('reactionCollapsed', isCollapsed);
+        }
+    });
+    
+    const isCollapsed = getLocalStorageItem('reactionCollapsed') === 'true';
+    if (isCollapsed) {
+        card.querySelector('.collapsible-content').classList.add('collapsed');
+        card.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+    }
+    
+    const inputs = card.querySelectorAll('textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', () => {
+            const thoughtInput = card.querySelector('.char-thought-input');
+            const viewInput = card.querySelector('.char-view-input');
+            lastCharacterReaction.internal_thought = thoughtInput.value;
+            lastCharacterReaction.view_of_the_player = viewInput.value;
+            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+        });
+    });
+    
+    characterReactionContainer.appendChild(card);
+}
 
+// --- API Interaction ---
 async function generateResponseForRole(targetRole) {
     if (!currentApiKey) {
         errorMessageDiv.textContent = 'Set API Key first.';
@@ -472,6 +604,8 @@ async function generateResponseForRole(targetRole) {
 
     abortController = new AbortController();
 
+    const activeReactions = useReactionsCheckbox.checked;
+
     try {
         let promptText = "";
         if (systemInstruction) {
@@ -485,7 +619,12 @@ async function generateResponseForRole(targetRole) {
         });
         
         promptText += "## End of chat history\n\n";
-        promptText += `Please write a response from role ${targetRole}\n\n`;
+        
+        if (activeReactions) {
+            promptText += `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.\n\n`;
+        } else {
+            promptText += `Please write a response from role ${targetRole}\n\n`;
+        }
         promptText += `${targetRole}:`;
 
         // Ensure stop_sequences does not exceed 5
@@ -496,19 +635,18 @@ async function generateResponseForRole(targetRole) {
         const allPossibleSpeakers = new Set();
         allPossibleSpeakers.add(userName);
         allPossibleSpeakers.add('Narrator');
-        allPossibleSpeakers.add('System'); // System is not a speaker in chatHistory but good for stop sequence
+        allPossibleSpeakers.add('System');
         botRoles.forEach(role => allPossibleSpeakers.add(role));
         
         // Add speakers as stop sequences, excluding the targetRole
-        // Prioritize System, Narrator, then User, then botRoles alphabetically
         const sortedSpeakers = Array.from(allPossibleSpeakers).sort((a, b) => {
             if (a === 'System') return -1;
             if (b === 'System') return 1;
             if (a === 'Narrator') return -1;
             if (b === 'Narrator') return 1;
-            if (a === userName && b !== 'System' && b !== 'Narrator') return -1; // User is next priority
+            if (a === userName && b !== 'System' && b !== 'Narrator') return -1;
             if (b === userName && a !== 'System' && a !== 'Narrator') return 1;
-            return a.localeCompare(b); // Alphabetical for other roles
+            return a.localeCompare(b);
         });
 
         for (const speaker of sortedSpeakers) {
@@ -534,6 +672,26 @@ async function generateResponseForRole(targetRole) {
                     : { thinkingBudget: thinkingBudget }
             }
         };
+
+        if (activeReactions) {
+            requestBody.generationConfig.responseMimeType = "application/json";
+            requestBody.generationConfig.responseSchema = {
+                type: "OBJECT",
+                properties: {
+                    MESSAGE: { type: "STRING" },
+                    CHARACTER_REACTION: {
+                        type: "OBJECT",
+                        properties: {
+                            name: { type: "STRING" },
+                            internal_thought: { type: "STRING" },
+                            view_of_the_player: { type: "STRING" }
+                        },
+                        required: ["name", "internal_thought", "view_of_the_player"]
+                    }
+                },
+                required: ["MESSAGE", "CHARACTER_REACTION"]
+            };
+        }
 
         lastRawRequestBody = JSON.stringify(requestBody, null, 2);
 
@@ -577,13 +735,56 @@ async function generateResponseForRole(targetRole) {
         }
 
         responseText = responseText.trim();
-        // Remove leading "Role Name:" if the model added it
-        if (responseText.startsWith(targetRole + ':')) {
-            responseText = responseText.substring(targetRole.length + 1).trim();
+
+        let generatedMessage = '';
+        if (activeReactions) {
+            let msgPart = '';
+            let reactionPart = null;
+            try {
+                const parsedJson = JSON.parse(responseText.replace(/^```json\s*|```$/g, ''));
+                msgPart = (parsedJson.MESSAGE || parsedJson.message || '').trim();
+                const rawReaction = parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
+                if (rawReaction && typeof rawReaction === 'object') {
+                    reactionPart = rawReaction;
+                }
+            } catch (jsonError) {
+                console.warn('Failed to parse JSON response, falling back to regex:', jsonError);
+                const msgMatch = responseText.match(/"MESSAGE"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i);
+                if (msgMatch) msgPart = msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                else msgPart = responseText.trim();
+            }
+
+            generatedMessage = msgPart;
+            
+            if (reactionPart) {
+                lastCharacterReaction = {
+                    name: targetRole,
+                    internal_thought: reactionPart.internal_thought || reactionPart.internalThought || '',
+                    view_of_the_player: reactionPart.view_of_the_player || reactionPart.viewOfThePlayer || ''
+                };
+            } else {
+                lastCharacterReaction = {
+                    name: targetRole,
+                    internal_thought: '',
+                    view_of_the_player: ''
+                };
+            }
+            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+            renderLastCharacterReaction();
+        } else {
+            generatedMessage = responseText;
+            lastCharacterReaction = null;
+            setLocalStorageItem('lastCharacterReaction', '');
+            renderLastCharacterReaction();
         }
 
-        if (responseText) {
-            const newEntry = { speaker: targetRole, text: responseText };
+        // Remove leading "Role Name:" if the model added it
+        if (generatedMessage.startsWith(targetRole + ':')) {
+            generatedMessage = generatedMessage.substring(targetRole.length + 1).trim();
+        }
+
+        if (generatedMessage) {
+            const newEntry = { speaker: targetRole, text: generatedMessage };
             if (thoughtSignature) newEntry.thoughtSignature = thoughtSignature;
             chatHistory.push(newEntry);
             
@@ -610,10 +811,10 @@ async function generateResponseForRole(targetRole) {
 }
 
 function toggleInputs(enable) {
-    messageInput.disabled = !enable; // Added: disable user message input
+    messageInput.disabled = !enable;
     sendUserMessageButton.disabled = !enable;
-    narratorMessageInput.disabled = !enable; // New
-    sendNarratorMessageButton.disabled = !enable; // New
+    narratorMessageInput.disabled = !enable;
+    sendNarratorMessageButton.disabled = !enable;
     const botButtons = document.querySelectorAll('.bot-action-button');
     botButtons.forEach(b => b.disabled = !enable);
     if (chatHistoryBox) chatHistoryBox.disabled = !enable;
@@ -622,7 +823,6 @@ function toggleInputs(enable) {
 }
 
 // --- Utils & Stats ---
-
 function calculateCost() {
     const prices = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
     if (prices) {
@@ -650,29 +850,27 @@ function saveStats() {
 }
 
 function loadStats() {
-    totalInputTokens = parseInt(getLocalStorageItem('totalInputTokens')) || 0;
-    totalOutputTokens = parseInt(getLocalStorageItem('totalOutputTokens')) || 0;
-    totalCost = parseFloat(getLocalStorageItem('totalCost')) || 0;
+    const i = getLocalStorageItem('totalInputTokens');
+    if (i !== null) totalInputTokens = parseInt(i, 10);
+    const o = getLocalStorageItem('totalOutputTokens');
+    if (o !== null) totalOutputTokens = parseInt(o, 10);
+    const c = getLocalStorageItem('totalCost');
+    if (c !== null) totalCost = parseFloat(c);
     renderStats();
 }
 
-function adjustTextareaHeight() {
-    messageInput.style.height = 'auto';
-    messageInput.style.height = (messageInput.scrollHeight) + 'px';
-    messageInput.style.overflowY = 'hidden';
-}
-
-function adjustNarratorTextareaHeight() {
-    narratorMessageInput.style.height = 'auto';
-    narratorMessageInput.style.height = (narratorMessageInput.scrollHeight) + 'px';
-    narratorMessageInput.style.overflowY = 'hidden';
-}
-
 // --- File I/O ---
-
 function downloadChat() {
     syncChatHistoryFromUI();
-    const data = { systemInstruction, roles: botRoles, chatHistory, userName }; // Include userName in save
+    const data = { 
+        systemInstruction, 
+        systemInstructionNoReactions: getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions,
+        useReactions: useReactionsCheckbox.checked,
+        lastCharacterReaction,
+        roles: botRoles, 
+        chatHistory, 
+        userName 
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -687,6 +885,23 @@ function handleFileLoad(e) {
     reader.onload = (evt) => {
         try {
             const data = JSON.parse(evt.target.result);
+            if (typeof data.useReactions === 'boolean') {
+                useReactionsCheckbox.checked = data.useReactions;
+                setLocalStorageItem('useReactions', data.useReactions);
+            }
+            if (typeof data.systemInstructionNoReactions === 'string') {
+                setLocalStorageItem('systemInstructionNoReactions', data.systemInstructionNoReactions);
+            }
+            if (data.lastCharacterReaction !== undefined) {
+                lastCharacterReaction = data.lastCharacterReaction;
+                if (lastCharacterReaction) {
+                    setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+                } else {
+                    setLocalStorageItem('lastCharacterReaction', '');
+                }
+            }
+            renderLastCharacterReaction();
+
             if (typeof data.systemInstruction === 'string') {
                 systemInstruction = data.systemInstruction;
                 systemInstructionInput.value = systemInstruction;
@@ -703,9 +918,6 @@ function handleFileLoad(e) {
                 updateUserMessagePlaceholder();
             }
             
-            // Fix: Render UI first so that the UI state matches the loaded data.
-            // saveChatHistory calls syncChatHistoryFromUI, which reads from the UI.
-            // If we save before rendering, we overwrite the loaded data with the old UI state.
             renderRolesList();
             renderBotResponseButtons();
             renderChatHistory();
@@ -755,6 +967,7 @@ function cleanupAllThoughtSignatures() {
     setTimeout(() => errorMessageDiv.textContent = '', 3000);
 }
 
+// --- Debugging and Events ---
 function toggleApiDebug() {
     apiDebugContent.classList.toggle('hidden');
     if (!apiDebugContent.classList.contains('hidden')) {
@@ -763,12 +976,29 @@ function toggleApiDebug() {
     }
 }
 
-function adjustSystemInstructionHeight() {
-    systemInstructionInput.style.height = 'auto';
-    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
-}
-
 // --- Event Listeners ---
+useReactionsCheckbox.addEventListener('change', () => {
+    const active = useReactionsCheckbox.checked;
+    setLocalStorageItem('useReactions', active);
+    if (active) {
+        // Save current instruction edits to NoReactions key
+        setLocalStorageItem('systemInstructionNoReactions', systemInstructionInput.value);
+        // Load reactions instruction
+        systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
+        systemInstructionInput.value = systemInstruction;
+        characterReactionContainer.classList.remove('hidden');
+        renderLastCharacterReaction();
+    } else {
+        // Save current instruction edits to Reactions key
+        setLocalStorageItem('systemInstruction', systemInstructionInput.value);
+        // Load no-reactions instruction
+        systemInstruction = getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions;
+        systemInstructionInput.value = systemInstruction;
+        characterReactionContainer.classList.add('hidden');
+    }
+    adjustSystemInstructionHeight();
+});
+
 setApiKeyButton.addEventListener('click', setApiKey);
 geminiModelSelect.addEventListener('change', updateSelectedModel);
 thinkingBudgetInput.addEventListener('input', () => {
@@ -801,13 +1031,37 @@ stopMessageButton.addEventListener('click', () => abortController?.abort());
 
 systemInstructionInput.addEventListener('input', () => {
     systemInstruction = systemInstructionInput.value;
-    setLocalStorageItem('systemInstruction', systemInstruction);
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', systemInstruction);
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', systemInstruction);
+    }
     adjustSystemInstructionHeight();
 });
+
+resetSystemInstructionButton.addEventListener('click', () => {
+    if (confirm('Reset System Instruction to default?')) {
+        if (useReactionsCheckbox.checked) {
+            systemInstruction = defaultSystemInstructionWithReactions;
+            setLocalStorageItem('systemInstruction', defaultSystemInstructionWithReactions);
+        } else {
+            systemInstruction = defaultSystemInstructionNoReactions;
+            setLocalStorageItem('systemInstructionNoReactions', defaultSystemInstructionNoReactions);
+        }
+        systemInstructionInput.value = systemInstruction;
+        adjustSystemInstructionHeight();
+    }
+});
+
 clearSystemInstructionButton.addEventListener('click', () => {
     systemInstruction = '';
     systemInstructionInput.value = '';
-    setLocalStorageItem('systemInstruction', '');
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', '');
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', '');
+    }
+    adjustSystemInstructionHeight();
 });
 
 saveChatButton.addEventListener('click', downloadChat);

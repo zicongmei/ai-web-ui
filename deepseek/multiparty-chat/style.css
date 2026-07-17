@@ -336,3 +336,56 @@ body {
         flex-wrap: wrap;
     }
 }
+
+/* Character Reactions styling matching RPG */
+.character-reaction-card {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-top: 10px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.character-header {
+    background-color: #f7f7f7;
+    font-weight: bold;
+    border-bottom: 1px solid #ddd;
+    padding: 8px 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+.char-content {
+    padding: 12px;
+}
+.char-content.collapsed {
+    display: none;
+}
+.char-subitem {
+    margin-bottom: 10px;
+}
+.char-subitem:last-child {
+    margin-bottom: 0;
+}
+.sub-label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 4px;
+    font-size: 0.9em;
+    color: #555;
+}
+.char-thought-input, .char-view-input {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-family: inherit;
+    font-size: 0.9em;
+    resize: vertical;
+}
+.toggle-icon {
+    font-size: 0.8em;
+    transition: transform 0.2s ease;
+}

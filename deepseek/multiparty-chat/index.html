@@ -35,6 +35,15 @@
             <button id="sendNarratorMessageButton">作为旁白添加</button>
         </div>
 
+        <!-- Character Reaction Switch & Display -->
+        <div class="reaction-config-section" style="margin-top: 15px; margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                <input type="checkbox" id="useReactionsCheckbox">
+                启用角色反应 (Character Reactions)
+            </label>
+            <div id="characterReactionContainer" class="hidden"></div>
+        </div>
+
         <!-- Response Generation Section (Dynamic Buttons) -->
         <div class="section-box bot-actions-section">
             <h3>生成回复</h3>
@@ -72,7 +81,10 @@
         <div class="system-instruction-section">
             <label for="systemInstructionInput">背景 / 系统上下文：</label>
             <textarea id="systemInstructionInput" placeholder="定义所有角色的设定、场景或共享上下文..." autocomplete="off">你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。</textarea>
-            <button id="clearSystemInstructionButton">清除上下文</button>
+            <div style="display: flex; gap: 8px; margin-top: 5px; align-self: flex-end;">
+                <button id="resetSystemInstructionButton" type="button">重置上下文</button>
+                <button id="clearSystemInstructionButton" type="button">清除上下文</button>
+            </div>
         </div>
 
 

@@ -35,6 +35,15 @@
             <button id="sendNarratorMessageButton">Add as Narrator</button>
         </div>
 
+        <!-- Character Reaction Switch & Display -->
+        <div class="reaction-config-section" style="margin-top: 15px; margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                <input type="checkbox" id="useReactionsCheckbox">
+                Use Character Reactions
+            </label>
+            <div id="characterReactionContainer" class="hidden"></div>
+        </div>
+
         <!-- Response Generation Section (Dynamic Buttons) -->
         <div class="section-box bot-actions-section">
             <h3>Generate Response</h3>
@@ -72,7 +81,10 @@
         <div class="system-instruction-section">
             <label for="systemInstructionInput">Background / System Context:</label>
             <textarea id="systemInstructionInput" placeholder="Define the setting, scenario, or shared context for all characters..." autocomplete="off">Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language as input or previous diaglog. Do not include the thought in repsonse text.</textarea>
-            <button id="clearSystemInstructionButton">Clear Context</button>
+            <div style="display: flex; gap: 8px; margin-top: 5px; align-self: flex-end;">
+                <button id="resetSystemInstructionButton" type="button">Reset Context</button>
+                <button id="clearSystemInstructionButton" type="button">Clear Context</button>
+            </div>
         </div>
 
 

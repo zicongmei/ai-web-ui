@@ -4,8 +4,29 @@ let chatHistory = []; // Array of { speaker: string, text: string }
 let botRoles = []; // Array of strings representing role names
 let userName = 'User'; // Default user name
 let currentApiKey = '';
-let selectedModel = 'deepseek-v4-flash';
-let systemInstruction = '你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。'; 
+let selectedModel = 'deepseek-chat';
+
+const defaultSystemInstructionNoReactions = '你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作，使用 (括号) 表示角色的内心想法。永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。不允许发送多行消息 - 每条独立消息必须是一个段落。避免不必要且无新意的重复。编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。使用与输入或之前对话相同的语言。不要在回复文本中包含想法。'; 
+
+const defaultSystemInstructionWithReactions = `你的任务是编写此聊天/角色扮演中的消息。使用 *星号* 表示动作。
+永远不要尝试“结束”角色扮演。这是一个永无止境的角色扮演。
+不允许发送多行消息 - 每条独立消息必须是一个段落。
+避免不必要且无新意的重复。
+编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。
+使用与输入或之前对话相同的语言。
+你还必须确定该角色的内心真实想法以及当前对玩家（用户）的看法。
+重要：你必须严格返回合法的 JSON 对象结构，字段严格如下：
+{
+  "MESSAGE": "[该角色说出的聊天回复消息]",
+  "CHARACTER_REACTION": {
+    "name": "[角色名字]",
+    "internal_thought": "[该角色对其刚才对话的内心真实想法或秘密反应]",
+    "view_of_the_player": "[该角色当前对玩家（用户）的看法、态度或认知]"
+  }
+}`;
+
+let systemInstruction = defaultSystemInstructionNoReactions;
+let lastCharacterReaction = null; // { name: string, internal_thought: string, view_of_the_player: string }
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
@@ -41,7 +62,12 @@ const errorMessageDiv = document.getElementById('errorMessage');
 const tokenStatsDiv = document.getElementById('tokenStats');
 const costStatsDiv = document.getElementById('costStats');
 
+// Character Reaction elements
+const useReactionsCheckbox = document.getElementById('useReactionsCheckbox');
+const characterReactionContainer = document.getElementById('characterReactionContainer');
+
 const systemInstructionInput = document.getElementById('systemInstructionInput');
+const resetSystemInstructionButton = document.getElementById('resetSystemInstructionButton');
 const clearSystemInstructionButton = document.getElementById('clearSystemInstructionButton');
 
 const saveChatButton = document.getElementById('saveChatButton');
@@ -77,7 +103,7 @@ function getLocalStorageItem(name) {
     try { return localStorage.getItem(STORAGE_PREFIX + name); } catch (e) { return null; }
 }
 
-// --- Initialization & Config ---
+// --- Config & Init ---
 function setApiKey() {
     const apiKey = deepseekApiKeyInput.value.trim();
     if (!apiKey) {
@@ -92,7 +118,7 @@ function setApiKey() {
 }
 
 function loadApiKey() {
-    const apiKey = getLocalStorageItem('deepseekApiKey');
+    const apiKey = getLocalStorageItem('deepseekApiKey') || localStorage.getItem('deepseekApiKey');
     if (apiKey) {
         deepseekApiKeyInput.value = apiKey;
         currentApiKey = apiKey;
@@ -207,12 +233,14 @@ function renderRolesList() {
 function renderBotResponseButtons() {
     responseGenerationButtonsContainer.innerHTML = '';
 
+    // Add User response button
     const userBtn = document.createElement('button');
     userBtn.textContent = `${userName || 'User'}`;
     userBtn.className = 'bot-action-button';
     userBtn.onclick = () => generateResponseForRole(userName);
     responseGenerationButtonsContainer.appendChild(userBtn);
 
+    // Add Bot roles response buttons
     botRoles.forEach(role => {
         const btn = document.createElement('button');
         btn.textContent = `${role}`; 
@@ -222,7 +250,12 @@ function renderBotResponseButtons() {
     });
 }
 
-// --- Chat History Management ---
+// --- UI Adjustments ---
+function adjustTextareaHeight() {
+    messageInput.style.height = 'auto';
+    messageInput.style.height = (messageInput.scrollHeight) + 'px';
+    messageInput.style.overflowY = 'hidden';
+}
 
 function adjustChatHistoryHeight() {
     if (!chatHistoryBox) return;
@@ -230,24 +263,37 @@ function adjustChatHistoryHeight() {
     chatHistoryBox.style.height = (chatHistoryBox.scrollHeight + 10) + 'px';
 }
 
+function adjustSystemInstructionHeight() {
+    systemInstructionInput.style.height = 'auto';
+    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
+}
+
+function adjustNarratorTextareaHeight() {
+    narratorMessageInput.style.height = 'auto';
+    narratorMessageInput.style.height = (narratorMessageInput.scrollHeight) + 'px';
+    narratorMessageInput.style.overflowY = 'hidden';
+}
+
+// --- History Parsing & LocalStorage Sync ---
 function syncChatHistoryFromUI() {
-    const text = chatHistoryBox.value;
-    const lines = text.split('\n');
+    if (!chatHistoryBox) return;
+    const rawText = chatHistoryBox.value;
+    const lines = rawText.split('\n\n').map(line => line.trim()).filter(line => line !== '');
+    
     const newHistory = [];
+    const roleRegex = /^([^:]+):([\s\S]*)$/;
     
     let currentSpeaker = null;
     let buffer = [];
-
+    
     const flush = () => {
-        if (currentSpeaker) {
-            const entryText = buffer.join('\n').trim();
-            newHistory.push({ speaker: currentSpeaker, text: entryText });
+        if (currentSpeaker && buffer.length > 0) {
+            newHistory.push({ speaker: currentSpeaker, text: buffer.join('\n\n').trim() });
         }
         buffer = [];
+        currentSpeaker = null;
     };
-
-    const roleRegex = /^([^:\n]+):(.*)$/;
-
+    
     for (const line of lines) {
         const match = line.match(roleRegex);
         if (match) {
@@ -272,28 +318,44 @@ function syncChatHistoryFromUI() {
 function saveChatHistory() {
     syncChatHistoryFromUI(); 
     setLocalStorageItem('chatHistory', JSON.stringify(chatHistory));
-    setLocalStorageItem('systemInstruction', systemInstruction);
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', systemInstruction);
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', systemInstruction);
+    }
 }
 
 function loadChatHistory() {
     const h = getLocalStorageItem('chatHistory');
-    const s = getLocalStorageItem('systemInstruction');
     
-    if (s) {
-        systemInstruction = s;
-        systemInstructionInput.value = s;
-    } else { 
-        systemInstructionInput.value = systemInstruction;
+    const useReactions = getLocalStorageItem('useReactions') === 'true';
+    useReactionsCheckbox.checked = useReactions;
+    
+    if (useReactions) {
+        systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
+        characterReactionContainer.classList.remove('hidden');
+    } else {
+        systemInstruction = getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions;
+        characterReactionContainer.classList.add('hidden');
     }
+    systemInstructionInput.value = systemInstruction;
+
+    const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
+    if (lastReactionStr) {
+        try {
+            lastCharacterReaction = JSON.parse(lastReactionStr);
+        } catch (e) {
+            lastCharacterReaction = null;
+        }
+    } else {
+        lastCharacterReaction = null;
+    }
+    renderLastCharacterReaction();
 
     if (h) {
         try {
             chatHistory = JSON.parse(h);
             if (!Array.isArray(chatHistory)) chatHistory = [];
-            // Migrate legacy 'Narrator' to '旁白'
-            chatHistory.forEach(entry => {
-                if (entry.speaker === 'Narrator') entry.speaker = '旁白';
-            });
         } catch (e) { chatHistory = []; }
     }
 
@@ -364,13 +426,13 @@ async function regenerateLastLine() {
         saveChatHistory();
         await generateResponseForRole(lastEntry.speaker);
     } else {
-        errorMessageDiv.textContent = 'Cannot regenerate: Last message is not from a generatable role.';
+        errorMessageDiv.textContent = '无法重新生成：最后一行消息的发言角色不可自动生成。';
         setTimeout(() => errorMessageDiv.textContent = '', 3000);
     }
 }
 
 function clearAllHistory() {
-    if (confirm('Clear all chat history and remove all roles?')) {
+    if (confirm('确定要清空所有聊天记录和角色吗？')) {
         chatHistory = [];
         botRoles = []; 
         userName = 'User'; 
@@ -378,6 +440,10 @@ function clearAllHistory() {
         setUserName(); 
         updateUserMessagePlaceholder(); 
         
+        lastCharacterReaction = null;
+        setLocalStorageItem('lastCharacterReaction', '');
+        renderLastCharacterReaction();
+
         totalInputTokens = 0; 
         totalOutputTokens = 0; 
         totalCost = 0;
@@ -393,8 +459,75 @@ function clearAllHistory() {
     }
 }
 
-// --- API Interaction ---
+// --- Character Reaction Render Helper ---
+function renderLastCharacterReaction() {
+    if (!characterReactionContainer) return;
+    characterReactionContainer.innerHTML = '';
+    
+    if (!useReactionsCheckbox.checked || !lastCharacterReaction) {
+        characterReactionContainer.classList.add('hidden');
+        return;
+    }
+    
+    characterReactionContainer.classList.remove('hidden');
+    
+    const card = document.createElement('div');
+    card.className = 'character-reaction-card';
+    
+    const name = lastCharacterReaction.name || '角色';
+    const thought = lastCharacterReaction.internal_thought || '';
+    const view = lastCharacterReaction.view_of_the_player || '';
+    
+    card.innerHTML = `
+        <div class="collapsible-header character-header">
+            <div class="char-name-label">上一个发言角色反应: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
+            <span class="toggle-icon">▼</span>
+        </div>
+        <div class="collapsible-content char-content">
+            <div class="char-subitem">
+                <label class="sub-label">内心想法:</label>
+                <textarea rows="3" class="char-thought-input">${thought}</textarea>
+            </div>
+            <div class="char-subitem">
+                <label class="sub-label">对玩家看法:</label>
+                <textarea rows="3" class="char-view-input">${view}</textarea>
+            </div>
+        </div>
+    `;
+    
+    const header = card.querySelector('.collapsible-header');
+    header.addEventListener('click', (e) => {
+        if (window.getSelection().toString().trim().length > 0) return;
+        const content = header.nextElementSibling;
+        if (content && content.classList.contains('collapsible-content')) {
+            const isCollapsed = content.classList.toggle('collapsed');
+            const icon = header.querySelector('.toggle-icon');
+            if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            setLocalStorageItem('reactionCollapsed', isCollapsed);
+        }
+    });
+    
+    const isCollapsed = getLocalStorageItem('reactionCollapsed') === 'true';
+    if (isCollapsed) {
+        card.querySelector('.collapsible-content').classList.add('collapsed');
+        card.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
+    }
+    
+    const inputs = card.querySelectorAll('textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', () => {
+            const thoughtInput = card.querySelector('.char-thought-input');
+            const viewInput = card.querySelector('.char-view-input');
+            lastCharacterReaction.internal_thought = thoughtInput.value;
+            lastCharacterReaction.view_of_the_player = viewInput.value;
+            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+        });
+    });
+    
+    characterReactionContainer.appendChild(card);
+}
 
+// --- API Interaction ---
 async function generateResponseForRole(targetRole) {
     if (!currentApiKey) {
         errorMessageDiv.textContent = 'Set API Key first.';
@@ -406,39 +539,81 @@ async function generateResponseForRole(targetRole) {
     syncChatHistoryFromUI();
 
     toggleInputs(false);
-    errorMessageDiv.textContent = `Thinking for ${targetRole}...`;
+    errorMessageDiv.textContent = `正在为 ${targetRole} 生成回复...`;
     stopMessageButton.disabled = false;
     stopMessageButton.classList.remove('hidden');
 
     abortController = new AbortController();
 
+    const activeReactions = useReactionsCheckbox.checked;
+
     try {
-        let historyStr = "";
-        chatHistory.forEach(entry => {
-            historyStr += `${entry.speaker}: ${entry.text}\n\n`;
-        });
-        
-        const messages = [];
+        let promptText = "";
         if (systemInstruction) {
-            messages.push({ role: 'system', content: systemInstruction });
+            promptText += systemInstruction + "\n\n";
         }
         
-        messages.push({ 
-            role: 'user', 
-            content: `Current chat history:\n\n${historyStr}\n\nPlease write the next message as ${targetRole}. Return only the message text, starting immediately with the content of the message.` 
+        promptText += "## Begin of chat history\n\n";
+
+        chatHistory.forEach(entry => {
+            promptText += `${entry.speaker}: ${entry.text}\n\n`;
         });
+        
+        promptText += "## End of chat history\n\n";
+        
+        if (activeReactions) {
+            promptText += `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.\n\n`;
+        } else {
+            promptText += `Please write a response from role ${targetRole}\n\n`;
+        }
+        promptText += `${targetRole}:`;
+
+        const stopSequences = [];
+        const MAX_STOP_SEQUENCES = 5;
+
+        const allPossibleSpeakers = new Set();
+        allPossibleSpeakers.add(userName);
+        allPossibleSpeakers.add('旁白');
+        allPossibleSpeakers.add('System');
+        botRoles.forEach(role => allPossibleSpeakers.add(role));
+        
+        const sortedSpeakers = Array.from(allPossibleSpeakers).sort((a, b) => {
+            if (a === 'System') return -1;
+            if (b === 'System') return 1;
+            if (a === '旁白') return -1;
+            if (b === '旁白') return 1;
+            if (a === userName && b !== 'System' && b !== '旁白') return -1;
+            if (b === userName && a !== 'System' && a !== '旁白') return 1;
+            return a.localeCompare(b);
+        });
+
+        for (const speaker of sortedSpeakers) {
+            if (speaker !== targetRole) {
+                if (stopSequences.length < MAX_STOP_SEQUENCES) {
+                    stopSequences.push(`\n${speaker}:`);
+                } else {
+                    break; 
+                }
+            }
+        }
+        
+        const messages = [];
+        messages.push({ role: 'user', content: promptText });
 
         const requestBody = {
             model: selectedModel,
             messages: messages,
             temperature: 0.7,
-            max_tokens: 2048,
-            stop: [`\n${userName}:`, `\n旁白:`, `\nSystem:`].concat(botRoles.filter(r => r !== targetRole).map(r => `\n${r}:`))
+            stop: stopSequences
         };
+
+        if (activeReactions && selectedModel !== 'deepseek-reasoner') {
+            requestBody.response_format = { type: "json_object" };
+        }
 
         lastRawRequestBody = JSON.stringify(requestBody, null, 2);
 
-        const API_ENDPOINT = `https://api.deepseek.com/chat/completions`;
+        const API_ENDPOINT = 'https://api.deepseek.com/chat/completions';
 
         currentInputTokens = 0; currentOutputTokens = 0; currentRequestCost = 0;
 
@@ -470,17 +645,58 @@ async function generateResponseForRole(targetRole) {
             saveStats();
         }
 
-        let responseText = '';
-        if (data.choices?.[0]?.message?.content) {
-            responseText = data.choices[0].message.content.trim();
+        let responseText = data.choices?.[0]?.message?.content || '';
+        responseText = responseText.trim();
+
+        let generatedMessage = '';
+        if (activeReactions) {
+            let msgPart = '';
+            let reactionPart = null;
+            try {
+                const parsedJson = JSON.parse(responseText.replace(/^```json\s*|```$/g, ''));
+                msgPart = (parsedJson.MESSAGE || parsedJson.message || '').trim();
+                const rawReaction = parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
+                if (rawReaction && typeof rawReaction === 'object') {
+                    reactionPart = rawReaction;
+                }
+            } catch (jsonError) {
+                console.warn('Failed to parse JSON response, falling back to regex:', jsonError);
+                const msgMatch = responseText.match(/"MESSAGE"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i);
+                if (msgMatch) msgPart = msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                else msgPart = responseText.trim();
+            }
+
+            generatedMessage = msgPart;
+            
+            if (reactionPart) {
+                lastCharacterReaction = {
+                    name: targetRole,
+                    internal_thought: reactionPart.internal_thought || reactionPart.internalThought || '',
+                    view_of_the_player: reactionPart.view_of_the_player || reactionPart.viewOfThePlayer || ''
+                };
+            } else {
+                lastCharacterReaction = {
+                    name: targetRole,
+                    internal_thought: '',
+                    view_of_the_player: ''
+                };
+            }
+            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+            renderLastCharacterReaction();
+        } else {
+            generatedMessage = responseText;
+            lastCharacterReaction = null;
+            setLocalStorageItem('lastCharacterReaction', '');
+            renderLastCharacterReaction();
         }
 
-        if (responseText.startsWith(targetRole + ':')) {
-            responseText = responseText.substring(targetRole.length + 1).trim();
+        // Remove leading "Role Name:" if the model added it
+        if (generatedMessage.startsWith(targetRole + ':')) {
+            generatedMessage = generatedMessage.substring(targetRole.length + 1).trim();
         }
 
-        if (responseText) {
-            chatHistory.push({ speaker: targetRole, text: responseText });
+        if (generatedMessage) {
+            chatHistory.push({ speaker: targetRole, text: generatedMessage });
             renderChatHistory();
             saveChatHistory();
         }
@@ -492,22 +708,22 @@ async function generateResponseForRole(targetRole) {
             errorMessageDiv.textContent = `Error: ${e.message}`;
             console.error(e);
         } else {
-            errorMessageDiv.textContent = 'Cancelled.';
+            errorMessageDiv.textContent = '已取消';
         }
     } finally {
         toggleInputs(true);
         stopMessageButton.disabled = true;
         stopMessageButton.classList.add('hidden');
         abortController = null;
-        setTimeout(() => { if (errorMessageDiv.textContent === 'Cancelled.') errorMessageDiv.textContent = ''; }, 3000);
+        setTimeout(() => { if (errorMessageDiv.textContent === '已取消') errorMessageDiv.textContent = ''; }, 3000);
     }
 }
 
 function toggleInputs(enable) {
-    messageInput.disabled = !enable; 
+    messageInput.disabled = !enable;
     sendUserMessageButton.disabled = !enable;
-    narratorMessageInput.disabled = !enable; 
-    sendNarratorMessageButton.disabled = !enable; 
+    narratorMessageInput.disabled = !enable;
+    sendNarratorMessageButton.disabled = !enable;
     const botButtons = document.querySelectorAll('.bot-action-button');
     botButtons.forEach(b => b.disabled = !enable);
     if (chatHistoryBox) chatHistoryBox.disabled = !enable;
@@ -515,12 +731,11 @@ function toggleInputs(enable) {
     regenerateLastLineButton.disabled = !enable;
 }
 
-// --- Utils & Stats ---
-
+// --- Stats & Costs ---
 function calculateCost() {
-    const modelConfig = DEEPSEEK_PRICING_CONFIG.TEXT[selectedModel];
-    if (modelConfig) {
-        const { inputRate, outputRate } = modelConfig.getPricing(currentInputTokens);
+    const prices = DEEPSEEK_PRICING_CONFIG.TEXT[selectedModel];
+    if (prices) {
+        const { inputRate, outputRate } = prices.getPricing(currentInputTokens);
         currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);
         totalCost += currentRequestCost;
     }
@@ -544,31 +759,31 @@ function saveStats() {
 }
 
 function loadStats() {
-    totalInputTokens = parseInt(getLocalStorageItem('totalInputTokens')) || 0;
-    totalOutputTokens = parseInt(getLocalStorageItem('totalOutputTokens')) || 0;
-    totalCost = parseFloat(getLocalStorageItem('totalCost')) || 0;
+    const i = getLocalStorageItem('totalInputTokens');
+    if (i !== null) totalInputTokens = parseInt(i, 10);
+    const o = getLocalStorageItem('totalOutputTokens');
+    if (o !== null) totalOutputTokens = parseInt(o, 10);
+    const c = getLocalStorageItem('totalCost');
+    if (c !== null) totalCost = parseFloat(c);
     renderStats();
 }
 
-function adjustTextareaHeight() {
-    messageInput.style.height = 'auto';
-    messageInput.style.height = (messageInput.scrollHeight) + 'px';
-}
-
-function adjustNarratorTextareaHeight() {
-    narratorMessageInput.style.height = 'auto';
-    narratorMessageInput.style.height = (narratorMessageInput.scrollHeight) + 'px';
-}
-
 // --- File I/O ---
-
 function downloadChat() {
     syncChatHistoryFromUI();
-    const data = { systemInstruction, roles: botRoles, chatHistory, userName }; 
+    const data = { 
+        systemInstruction, 
+        systemInstructionNoReactions: getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions,
+        useReactions: useReactionsCheckbox.checked,
+        lastCharacterReaction,
+        roles: botRoles, 
+        chatHistory, 
+        userName 
+    };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `deepseek_chat_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
+    a.download = `chat_history_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.json`;
     a.click();
 }
 
@@ -579,13 +794,34 @@ function handleFileLoad(e) {
     reader.onload = (evt) => {
         try {
             const data = JSON.parse(evt.target.result);
+            if (typeof data.useReactions === 'boolean') {
+                useReactionsCheckbox.checked = data.useReactions;
+                setLocalStorageItem('useReactions', data.useReactions);
+            }
+            if (typeof data.systemInstructionNoReactions === 'string') {
+                setLocalStorageItem('systemInstructionNoReactions', data.systemInstructionNoReactions);
+            }
+            if (data.lastCharacterReaction !== undefined) {
+                lastCharacterReaction = data.lastCharacterReaction;
+                if (lastCharacterReaction) {
+                    setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+                } else {
+                    setLocalStorageItem('lastCharacterReaction', '');
+                }
+            }
+            renderLastCharacterReaction();
+
             if (typeof data.systemInstruction === 'string') {
                 systemInstruction = data.systemInstruction;
                 systemInstructionInput.value = systemInstruction;
             }
-            if (Array.isArray(data.roles)) botRoles = data.roles;
-            if (Array.isArray(data.chatHistory)) chatHistory = data.chatHistory;
-            if (typeof data.userName === 'string') {
+            if (Array.isArray(data.roles)) {
+                botRoles = data.roles;
+            }
+            if (Array.isArray(data.chatHistory)) {
+                chatHistory = data.chatHistory;
+            }
+            if (typeof data.userName === 'string') { 
                 userName = data.userName;
                 userNameInput.value = userName;
                 updateUserMessagePlaceholder();
@@ -599,7 +835,7 @@ function handleFileLoad(e) {
             saveChatHistory();
             setUserName(); 
         } catch (err) {
-            errorMessageDiv.textContent = 'Error loading file: ' + err.message;
+            errorMessageDiv.textContent = '加载文件失败: ' + err.message;
             setTimeout(() => errorMessageDiv.textContent = '', 3000);
         }
         loadChatFileInput.value = '';
@@ -607,20 +843,25 @@ function handleFileLoad(e) {
     reader.readAsText(file);
 }
 
-function toggleApiDebug() {
-    apiDebugContent.classList.toggle('hidden');
-    if (!apiDebugContent.classList.contains('hidden')) {
-        apiRequestBody.textContent = lastRawRequestBody || 'None';
-        apiResponseBody.textContent = lastRawResponseData || 'None';
-    }
-}
-
-function adjustSystemInstructionHeight() {
-    systemInstructionInput.style.height = 'auto';
-    systemInstructionInput.style.height = (systemInstructionInput.scrollHeight) + 'px';
-}
-
 // --- Event Listeners ---
+useReactionsCheckbox.addEventListener('change', () => {
+    const active = useReactionsCheckbox.checked;
+    setLocalStorageItem('useReactions', active);
+    if (active) {
+        setLocalStorageItem('systemInstructionNoReactions', systemInstructionInput.value);
+        systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
+        systemInstructionInput.value = systemInstruction;
+        characterReactionContainer.classList.remove('hidden');
+        renderLastCharacterReaction();
+    } else {
+        setLocalStorageItem('systemInstruction', systemInstructionInput.value);
+        systemInstruction = getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions;
+        systemInstructionInput.value = systemInstruction;
+        characterReactionContainer.classList.add('hidden');
+    }
+    adjustSystemInstructionHeight();
+});
+
 setApiKeyButton.addEventListener('click', setApiKey);
 deepseekModelSelect.addEventListener('change', updateSelectedModel);
 
@@ -641,13 +882,37 @@ stopMessageButton.addEventListener('click', () => abortController?.abort());
 
 systemInstructionInput.addEventListener('input', () => {
     systemInstruction = systemInstructionInput.value;
-    setLocalStorageItem('systemInstruction', systemInstruction);
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', systemInstruction);
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', systemInstruction);
+    }
     adjustSystemInstructionHeight();
 });
+
+resetSystemInstructionButton.addEventListener('click', () => {
+    if (confirm('确定要重置系统指令为默认值吗？')) {
+        if (useReactionsCheckbox.checked) {
+            systemInstruction = defaultSystemInstructionWithReactions;
+            setLocalStorageItem('systemInstruction', defaultSystemInstructionWithReactions);
+        } else {
+            systemInstruction = defaultSystemInstructionNoReactions;
+            setLocalStorageItem('systemInstructionNoReactions', defaultSystemInstructionNoReactions);
+        }
+        systemInstructionInput.value = systemInstruction;
+        adjustSystemInstructionHeight();
+    }
+});
+
 clearSystemInstructionButton.addEventListener('click', () => {
     systemInstruction = '';
     systemInstructionInput.value = '';
-    setLocalStorageItem('systemInstruction', '');
+    if (useReactionsCheckbox.checked) {
+        setLocalStorageItem('systemInstruction', '');
+    } else {
+        setLocalStorageItem('systemInstructionNoReactions', '');
+    }
+    adjustSystemInstructionHeight();
 });
 
 saveChatButton.addEventListener('click', downloadChat);
