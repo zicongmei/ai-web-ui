@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   ],
   "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",
-  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。不要将焦点放在最近的历史（这由短期记忆覆盖）。相反，它必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。严禁从长期记忆中删除任何关键里程碑]"
+  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。绝不能从长期记忆中删除或丢弃任何内容；只能以追加、修正或丰富细节的方式修改长期记忆。自游戏开始以来的所有关键里程碑必须全部保留在此总结中，绝不能遗忘。]"
 }`;
 
     // Load saved settings from localStorage
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadingIndicator.classList.remove('hidden');
         showError('');
 
-        const userPrompt = `请仔细阅读以下完整的 RPG 游戏历史记录，并在一个合法的 JSON 对象中严格返回两个键 "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY" 来生成记忆总结：\n\n${currentHistory}\n\n重要：记忆总结的语言必须与游戏历史记录/故事的语言相同。\n\n你必须严格且仅返回以下格式 of JSON 对象：\n{\n  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势和最近细节]",\n  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。不要将焦点放在最近的历史（这由短期记忆覆盖）。相反，它必须保留过往所有关键里程碑的简短描述，绝不能遗忘或删去。严禁从长期记忆中删除任何关键里程碑]"\n}`;
+        const userPrompt = `请仔细阅读以下完整的 RPG 游戏历史记录，并在一个合法的 JSON 对象中严格返回两个键 "SHORT_TERM_MEMORY" 和 "LONG_TERM_MEMORY" 来生成记忆总结：\n\n${currentHistory}\n\n重要：记忆总结的语言必须与游戏历史记录/故事的语言相同。\n\n你必须严格且仅返回以下格式 of JSON 对象：\n{\n  "SHORT_TERM_MEMORY": "[对近期几轮（过去3-5轮）局势的简要总结，捕获当前直接事件、局势 and 最近细节]",\n  "LONG_TERM_MEMORY": "[对整个以往游戏的全面总结，捕获核心剧情要点、世界状态、人际关系和关键里程碑。绝不能从长期记忆中删除或丢弃任何内容；只能以追加、修正或丰富细节的方式修改长期记忆。自游戏开始以来的所有关键里程碑必须全部保留在此总结中，绝不能遗忘。]"\n}`;
 
         const messages = [
             { role: 'user', content: userPrompt }
