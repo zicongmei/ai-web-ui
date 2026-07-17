@@ -12,6 +12,11 @@
 
         <div id="errorDisplay" class="error-message hidden"></div>
 
+        <div class="input-group checkbox-group" style="margin-bottom: 20px; display: flex; align-items: center;">
+            <input type="checkbox" id="useMemoryCheckbox" style="width: auto; margin-right: 8px; cursor: pointer;">
+            <label for="useMemoryCheckbox" style="margin-bottom: 0; cursor: pointer; user-select: none;">Use Short-term and Long-term Memory</label>
+        </div>
+
         <div class="input-group">
             <div class="collapsible-header" id="toggleCharactersThoughts">
                 <label for="charactersThoughtsDisplay">Characters' reaction (Current Scene)</label>
@@ -21,11 +26,6 @@
                 <div id="charactersReactionsContainer"></div>
                 <textarea id="charactersThoughtsDisplay" style="display: none;"></textarea>
             </div>
-        </div>
-
-        <div class="input-group checkbox-group" style="margin-bottom: 20px; display: flex; align-items: center;">
-            <input type="checkbox" id="useMemoryCheckbox" style="width: auto; margin-right: 8px; cursor: pointer;">
-            <label for="useMemoryCheckbox" style="margin-bottom: 0; cursor: pointer; user-select: none;">Use Short-term and Long-term Memory</label>
         </div>
 
         <div id="memorySection" class="hidden">
