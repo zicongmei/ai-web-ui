@@ -64,9 +64,12 @@
         <input type="file" id="loadGameInput" accept=".json" style="display: none;">
         <div id="loadingIndicator" class="hidden">Gemini is thinking...</div>
 
-         <div class="input-group">
+          <div class="input-group">
             <label for="systemInstruction">System Instruction for Gemini:</label>
-            <textarea id="systemInstruction" rows="7" placeholder='You are a Game Master for a text-based RPG with short-term and long-term memory. Describe the outcomes of the user&#39;s actions vividly and maintain a consistent world. Keep responses relatively concise but engaging. You should only simulate the world, not the player&#39;s action. Your response should be the consequence of the player&#39;s action. The response should be in the same language as the player&#39;s input. If there are other characters in short term memory, include their structured reactions. IMPORTANT: You must return your response strictly in JSON structure of {"STORY": "[Your description of what happens next]", "CHARACTERS_REACTIONS": [{"name": "[Character Name]", "internal_thought": "[Internal thought]", "view_of_the_player": "[View of the player]"}], "SHORT_TERM_MEMORY": "[A concise summary of recent iterations]", "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game]"}'></textarea>
+            <div class="next-paragraph-input-controls">
+                <textarea id="systemInstruction" rows="7" placeholder='You are a Game Master for a text-based RPG with short-term and long-term memory. Describe the outcomes of the user&#39;s actions vividly and maintain a consistent world. Keep responses relatively concise but engaging. You should only simulate the world, not the player&#39;s action. Your response should be the consequence of the player&#39;s action. The response should be in the same language as the player&#39;s input. If there are other characters in short term memory, include their structured reactions. IMPORTANT: You must return your response strictly in JSON structure of {"STORY": "[Your description of what happens next]", "CHARACTERS_REACTIONS": [{"name": "[Character Name]", "internal_thought": "[Internal thought]", "view_of_the_player": "[View of the player]"}], "SHORT_TERM_MEMORY": "[A concise summary of recent iterations]", "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game including all key milestones without removing them]"}'></textarea>
+                <button id="resetSystemInstructionBtn" type="button" class="secondary-btn clear-prompt-btn">Reset</button>
+            </div>
         </div>
 
         <div class="input-group">

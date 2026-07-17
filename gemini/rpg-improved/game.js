@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingIndicator = document.getElementById('loadingIndicator');
     const errorDisplay = document.getElementById('errorDisplay');
     const clearNextMovePromptBtn = document.getElementById('clearNextMovePromptBtn');
+    const resetSystemInstructionBtn = document.getElementById('resetSystemInstructionBtn');
 
     // Token display elements
     const currentRequestInputTokensDisplay = document.getElementById('currentRequestInputTokens');
@@ -71,7 +72,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
     }
   ],
   "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",
-  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones]"
+  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Crucially, it must keep a short description of all previous key milestones and must not forget them. You can rephrase and combine previous milestones to keep the summary concise, but never remove key milestones from the long term memory]"
 }`;
 
     // Load saved settings from localStorage
@@ -278,6 +279,15 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         nextMovePromptTextarea.value = '';
         localStorage.removeItem('geminiRpgImprovedNextMovePrompt');
     });
+
+    if (resetSystemInstructionBtn) {
+        resetSystemInstructionBtn.addEventListener('click', () => {
+            if (confirm('Reset System Instruction to default?')) {
+                systemInstructionTextarea.value = defaultSystemInstruction;
+                localStorage.setItem('geminiRpgImprovedSystemInstruction', defaultSystemInstruction);
+            }
+        });
+    }
 
     generateBtn.addEventListener('click', submitMove);
     refreshMemoriesBtn.addEventListener('click', refreshMemories);
@@ -591,7 +601,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         loadingIndicator.classList.remove('hidden');
         showError('');
 
-        const userPrompt = `Please read the following complete RPG game history and generate two memory summaries in a valid JSON object strictly with the keys "SHORT_TERM_MEMORY" and "LONG_TERM_MEMORY":\n\n${currentHistory}\n\nIMPORTANT: You must return ONLY a valid JSON object strictly matching the following format:\n{\n  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",\n  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones]"\n}`;
+        const userPrompt = `Please read the following complete RPG game history and generate two memory summaries in a valid JSON object strictly with the keys "SHORT_TERM_MEMORY" and "LONG_TERM_MEMORY":\n\n${currentHistory}\n\nIMPORTANT: You must return ONLY a valid JSON object strictly matching the following format:\n{\n  "SHORT_TERM_MEMORY": "[A concise summary of the recent few iterations (last 3-5 turns), capturing key immediate events, current situation, and recent details]",\n  "LONG_TERM_MEMORY": "[A comprehensive summary of the whole previous game so far, capturing overarching plot points, world state, relationships, and key milestones. Crucially, it must keep a short description of all previous key milestones and must not forget them. You can rephrase and combine previous milestones to keep the summary concise, but never remove key milestones from the long term memory]"\n}`;
 
         const requestBody = {
             contents: [{
@@ -646,13 +656,11 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
             updateTokensAndCost(promptTokens, candidateTokens, requestCost);
 
-            if (shortTermMatch) {
-                const shortTermPart = shortTermMatch[1].trim();
+            if (shortTermPart) {
                 shortTermMemoryTextarea.value = shortTermPart;
                 localStorage.setItem('geminiRpgImprovedShortTermMemory', shortTermPart);
             }
-            if (longTermMatch) {
-                const longTermPart = longTermMatch[1].trim();
+            if (longTermPart) {
                 longTermMemoryTextarea.value = longTermPart;
                 localStorage.setItem('geminiRpgImprovedLongTermMemory', longTermPart);
             }
