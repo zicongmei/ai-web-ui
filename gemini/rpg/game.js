@@ -594,14 +594,6 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             if (shortTermPart) {
                 shortTermMemoryTextarea.value = shortTermPart;
                 localStorage.setItem('geminiRpgShortTermMemory', shortTermPart);
-                
-                // Filter current reactions against the new short-term memory
-                const currentList = getCharactersReactionsFromDOM();
-                const filtered = currentList.filter(char => {
-                    const name = (char.name || '').toLowerCase();
-                    return name !== '' && shortTermPart.toLowerCase().includes(name);
-                });
-                renderCharactersReactions(filtered);
             }
             if (longTermPart) {
                 longTermMemoryTextarea.value = longTermPart;
@@ -762,19 +754,7 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
             updateTokensAndCost(promptTokens, candidateTokens, requestCost);
 
             if (storyPart) {
-                let filteredList = [];
-                if (activeMemory) {
-                    filteredList = charactersReactionsList.filter(char => {
-                        const name = (char.name || '').toLowerCase();
-                        return name !== '' && shortTermPart.toLowerCase().includes(name);
-                    });
-                } else {
-                    filteredList = charactersReactionsList.filter(char => {
-                        const name = (char.name || '').toLowerCase();
-                        return name !== '' && storyPart.toLowerCase().includes(name);
-                    });
-                }
-                renderCharactersReactions(filteredList);
+                renderCharactersReactions(charactersReactionsList);
 
                 if (activeMemory) {
                     if (shortTermPart) {

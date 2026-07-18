@@ -599,14 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (shortTermPart) {
                 shortTermMemoryTextarea.value = shortTermPart;
                 localStorage.setItem(STORAGE_PREFIX + 'shortTermMemory', shortTermPart);
-                
-                // Filter current reactions against the new short-term memory
-                const currentList = getCharactersReactionsFromDOM();
-                const filtered = currentList.filter(char => {
-                    const name = (char.name || '').toLowerCase();
-                    return name !== '' && shortTermPart.toLowerCase().includes(name);
-                });
-                renderCharactersReactions(filtered);
             }
             if (longTermPart) {
                 longTermMemoryTextarea.value = longTermPart;
@@ -761,19 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             updateTokensAndCost(promptTokens, candidateTokens, requestCost);
 
             if (storyPart) {
-                let filteredList = [];
-                if (activeMemory) {
-                    filteredList = charactersReactionsList.filter(char => {
-                        const name = (char.name || '').toLowerCase();
-                        return name !== '' && shortTermPart.toLowerCase().includes(name);
-                    });
-                } else {
-                    filteredList = charactersReactionsList.filter(char => {
-                        const name = (char.name || '').toLowerCase();
-                        return name !== '' && storyPart.toLowerCase().includes(name);
-                    });
-                }
-                renderCharactersReactions(filteredList);
+                renderCharactersReactions(charactersReactionsList);
 
                 if (activeMemory) {
                     if (shortTermPart) {
