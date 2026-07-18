@@ -14,19 +14,21 @@ Multi-line messages are not allowed - the message must be a single paragraph.
 Avoid unnecessary and unoriginal repetition of previous messages.
 Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative.
 Use the same language as input or previous dialog.
-You must also determine the character's internal thought and current view of the player.
+If there are other characters present in the scene, determine their structured reactions.
 IMPORTANT: You must return your response in a valid JSON structure strictly matching the following format:
 {
   "MESSAGE": "[The message spoken by the character]",
-  "CHARACTER_REACTION": {
-    "name": "[Character Name]",
-    "internal_thought": "[Their secret internal thought or reaction to the conversation so far]",
-    "view_of_the_player": "[Their current view, attitude, or perception of the user]"
-  }
+  "CHARACTERS_REACTIONS": [
+    {
+      "name": "[Character Name]",
+      "internal_thought": "[Their secret internal thought or reaction to the conversation so far]",
+      "view_of_the_player": "[Their current view, attitude, or perception of the user]"
+    }
+  ]
 }`;
 
 let systemInstruction = defaultSystemInstructionNoReactions;
-let lastCharacterReaction = null; // { name: string, internal_thought: string, view_of_the_player: string }
+let characterReactionsList = []; // Array of { name: string, internal_thought: string, view_of_the_player: string }
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
@@ -396,17 +398,24 @@ function loadChatHistory() {
     }
     systemInstructionInput.value = systemInstruction;
 
-    const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
-    if (lastReactionStr) {
+    const savedListStr = getLocalStorageItem('characterReactionsList');
+    if (savedListStr) {
         try {
-            lastCharacterReaction = JSON.parse(lastReactionStr);
-        } catch (e) {
-            lastCharacterReaction = null;
-        }
+            characterReactionsList = JSON.parse(savedListStr);
+            if (!Array.isArray(characterReactionsList)) characterReactionsList = [];
+        } catch (e) { characterReactionsList = []; }
     } else {
-        lastCharacterReaction = null;
+        const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
+        if (lastReactionStr) {
+            try {
+                const item = JSON.parse(lastReactionStr);
+                characterReactionsList = item ? [item] : [];
+            } catch (e) { characterReactionsList = []; }
+        } else {
+            characterReactionsList = [];
+        }
     }
-    renderLastCharacterReaction();
+    renderCharactersReactions(characterReactionsList);
 
     if (h) {
         try {
@@ -501,9 +510,10 @@ function clearAllHistory() {
         setUserName(); // Save the default user name to local storage, and re-render buttons
         updateUserMessagePlaceholder(); // Update the placeholder text
         
-        lastCharacterReaction = null;
+        characterReactionsList = [];
+        setLocalStorageItem('characterReactionsList', '[]');
         setLocalStorageItem('lastCharacterReaction', '');
-        renderLastCharacterReaction();
+        renderCharactersReactions([]);
 
         totalInputTokens = 0; 
         totalOutputTokens = 0; 
@@ -521,71 +531,98 @@ function clearAllHistory() {
 }
 
 // --- Character Reaction Render Helper ---
-function renderLastCharacterReaction() {
+function getCharactersReactionsFromDOM() {
+    if (!characterReactionContainer) return [];
+    const cards = characterReactionContainer.querySelectorAll('.character-reaction-card');
+    const list = [];
+    cards.forEach(card => {
+        const nameDisplay = card.querySelector('.char-name-display');
+        const thoughtInput = card.querySelector('.char-thought-input');
+        const viewInput = card.querySelector('.char-view-input');
+        list.push({
+            name: nameDisplay ? nameDisplay.textContent.trim() : 'Character',
+            internal_thought: thoughtInput ? thoughtInput.value.trim() : '',
+            view_of_the_player: viewInput ? viewInput.value.trim() : ''
+        });
+    });
+    return list;
+}
+
+function renderCharactersReactions(list) {
     if (!characterReactionContainer) return;
     characterReactionContainer.innerHTML = '';
     
-    if (!useReactionsCheckbox.checked || !lastCharacterReaction) {
+    if (!useReactionsCheckbox.checked || !list || !Array.isArray(list) || list.length === 0) {
         characterReactionContainer.classList.add('hidden');
         return;
     }
     
     characterReactionContainer.classList.remove('hidden');
     
-    const card = document.createElement('div');
-    card.className = 'character-reaction-card';
-    
-    const name = lastCharacterReaction.name || 'Character';
-    const thought = lastCharacterReaction.internal_thought || '';
-    const view = lastCharacterReaction.view_of_the_player || '';
-    
-    card.innerHTML = `
-        <div class="collapsible-header character-header">
-            <div class="char-name-label">Last Speaker Reaction: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
-            <span class="toggle-icon">▼</span>
-        </div>
-        <div class="collapsible-content char-content">
-            <div class="char-subitem">
-                <label class="sub-label">Internal Thought:</label>
-                <textarea rows="3" class="char-thought-input">${thought}</textarea>
+    list.forEach((char, idx) => {
+        const card = document.createElement('div');
+        card.className = 'character-reaction-card';
+        
+        const name = char.name || `Character ${idx + 1}`;
+        const thought = char.internal_thought || char.internalThought || char.thought || '';
+        const view = char.view_of_the_player || char.viewOfThePlayer || char.view || '';
+        
+        card.innerHTML = `
+            <div class="collapsible-header character-header">
+                <div class="char-name-label">Character: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
+                <div style="display: flex; align-items: center;">
+                    <button type="button" class="delete-char-btn" style="background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1.1em; padding: 2px 6px; font-weight: bold; margin-right: 8px;" title="Delete Character">✕</button>
+                    <span class="toggle-icon">▼</span>
+                </div>
             </div>
-            <div class="char-subitem">
-                <label class="sub-label">View of the Player:</label>
-                <textarea rows="3" class="char-view-input">${view}</textarea>
+            <div class="collapsible-content char-content">
+                <div class="char-subitem">
+                    <label class="sub-label">Internal Thought:</label>
+                    <textarea rows="3" class="char-thought-input">${thought}</textarea>
+                </div>
+                <div class="char-subitem">
+                    <label class="sub-label">View of the Player:</label>
+                    <textarea rows="3" class="char-view-input">${view}</textarea>
+                </div>
             </div>
-        </div>
-    `;
-    
-    const header = card.querySelector('.collapsible-header');
-    header.addEventListener('click', (e) => {
-        if (window.getSelection().toString().trim().length > 0) return;
-        const content = header.nextElementSibling;
-        if (content && content.classList.contains('collapsible-content')) {
-            const isCollapsed = content.classList.toggle('collapsed');
-            const icon = header.querySelector('.toggle-icon');
-            if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-            setLocalStorageItem('reactionCollapsed', isCollapsed);
+        `;
+        
+        const deleteBtn = card.querySelector('.delete-char-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.remove();
+                characterReactionsList = getCharactersReactionsFromDOM();
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+                if (characterReactionsList.length === 0) {
+                    characterReactionContainer.classList.add('hidden');
+                }
+            });
         }
-    });
-    
-    const isCollapsed = getLocalStorageItem('reactionCollapsed') === 'true';
-    if (isCollapsed) {
-        card.querySelector('.collapsible-content').classList.add('collapsed');
-        card.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
-    }
-    
-    const inputs = card.querySelectorAll('textarea');
-    inputs.forEach(input => {
-        input.addEventListener('input', () => {
-            const thoughtInput = card.querySelector('.char-thought-input');
-            const viewInput = card.querySelector('.char-view-input');
-            lastCharacterReaction.internal_thought = thoughtInput.value;
-            lastCharacterReaction.view_of_the_player = viewInput.value;
-            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+        
+        const header = card.querySelector('.collapsible-header');
+        header.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const content = header.nextElementSibling;
+            if (content && content.classList.contains('collapsible-content')) {
+                const isCollapsed = content.classList.toggle('collapsed');
+                const icon = header.querySelector('.toggle-icon');
+                if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            }
         });
+        
+        const inputs = card.querySelectorAll('textarea');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                characterReactionsList = getCharactersReactionsFromDOM();
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            });
+        });
+        
+        characterReactionContainer.appendChild(card);
     });
     
-    characterReactionContainer.appendChild(card);
+    setLocalStorageItem('characterReactionsList', JSON.stringify(getCharactersReactionsFromDOM()));
 }
 
 // --- API Interaction ---
@@ -625,7 +662,7 @@ async function generateResponseForRole(targetRole) {
         const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
 
         if (activeReactions) {
-            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.`;
+            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTERS_REACTIONS keys.`;
             if (targetWordCount) {
                 msgInstruction += ` The target word count for the MESSAGE field in the JSON is around ${targetWordCount} words.`;
             }
@@ -691,17 +728,20 @@ async function generateResponseForRole(targetRole) {
                 type: "OBJECT",
                 properties: {
                     MESSAGE: { type: "STRING" },
-                    CHARACTER_REACTION: {
-                        type: "OBJECT",
-                        properties: {
-                            name: { type: "STRING" },
-                            internal_thought: { type: "STRING" },
-                            view_of_the_player: { type: "STRING" }
-                        },
-                        required: ["name", "internal_thought", "view_of_the_player"]
+                    CHARACTERS_REACTIONS: {
+                        type: "ARRAY",
+                        items: {
+                            type: "OBJECT",
+                            properties: {
+                                name: { type: "STRING" },
+                                internal_thought: { type: "STRING" },
+                                view_of_the_player: { type: "STRING" }
+                            },
+                            required: ["name", "internal_thought", "view_of_the_player"]
+                        }
                     }
                 },
-                required: ["MESSAGE", "CHARACTER_REACTION"]
+                required: ["MESSAGE", "CHARACTERS_REACTIONS"]
             };
         }
 
@@ -751,14 +791,11 @@ async function generateResponseForRole(targetRole) {
         let generatedMessage = '';
         if (activeReactions) {
             let msgPart = '';
-            let reactionPart = null;
+            let rawReactions = null;
             try {
                 const parsedJson = JSON.parse(responseText.replace(/^```json\s*|```$/g, ''));
                 msgPart = (parsedJson.MESSAGE || parsedJson.message || '').trim();
-                const rawReaction = parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
-                if (rawReaction && typeof rawReaction === 'object') {
-                    reactionPart = rawReaction;
-                }
+                rawReactions = parsedJson.CHARACTERS_REACTIONS || parsedJson.characters_reactions || parsedJson.charactersReactions || parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
             } catch (jsonError) {
                 console.warn('Failed to parse JSON response, falling back to regex:', jsonError);
                 const msgMatch = responseText.match(/"MESSAGE"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i);
@@ -768,26 +805,26 @@ async function generateResponseForRole(targetRole) {
 
             generatedMessage = msgPart;
             
-            if (reactionPart) {
-                lastCharacterReaction = {
-                    name: targetRole,
-                    internal_thought: reactionPart.internal_thought || reactionPart.internalThought || '',
-                    view_of_the_player: reactionPart.view_of_the_player || reactionPart.viewOfThePlayer || ''
-                };
-            } else {
-                lastCharacterReaction = {
-                    name: targetRole,
-                    internal_thought: '',
-                    view_of_the_player: ''
-                };
+            let reactionsList = [];
+            if (Array.isArray(rawReactions)) {
+                reactionsList = rawReactions;
+            } else if (rawReactions && typeof rawReactions === 'object') {
+                reactionsList = [rawReactions];
             }
-            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
-            renderLastCharacterReaction();
+
+            characterReactionsList = reactionsList.map(r => ({
+                name: r.name || targetRole,
+                internal_thought: r.internal_thought || r.internalThought || r.thought || '',
+                view_of_the_player: r.view_of_the_player || r.viewOfThePlayer || r.view || ''
+            }));
+
+            setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            renderCharactersReactions(characterReactionsList);
         } else {
             generatedMessage = responseText;
-            lastCharacterReaction = null;
-            setLocalStorageItem('lastCharacterReaction', '');
-            renderLastCharacterReaction();
+            characterReactionsList = [];
+            setLocalStorageItem('characterReactionsList', '[]');
+            renderCharactersReactions([]);
         }
 
         // Remove leading "Role Name:" if the model added it
@@ -878,7 +915,7 @@ function downloadChat() {
         systemInstruction, 
         systemInstructionNoReactions: getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions,
         useReactions: useReactionsCheckbox.checked,
-        lastCharacterReaction,
+        characterReactionsList: getCharactersReactionsFromDOM(),
         targetWordCount: targetWordCountInput.value.trim(),
         roles: botRoles, 
         chatHistory, 
@@ -909,15 +946,14 @@ function handleFileLoad(e) {
                 targetWordCountInput.value = data.targetWordCount;
                 setLocalStorageItem('targetWordCount', data.targetWordCount);
             }
-            if (data.lastCharacterReaction !== undefined) {
-                lastCharacterReaction = data.lastCharacterReaction;
-                if (lastCharacterReaction) {
-                    setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
-                } else {
-                    setLocalStorageItem('lastCharacterReaction', '');
-                }
+            if (Array.isArray(data.characterReactionsList)) {
+                characterReactionsList = data.characterReactionsList;
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            } else if (data.lastCharacterReaction !== undefined) {
+                characterReactionsList = data.lastCharacterReaction ? [data.lastCharacterReaction] : [];
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
             }
-            renderLastCharacterReaction();
+            renderCharactersReactions(characterReactionsList);
 
             if (typeof data.systemInstruction === 'string') {
                 systemInstruction = data.systemInstruction;
@@ -1004,7 +1040,7 @@ useReactionsCheckbox.addEventListener('change', () => {
         systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
         systemInstructionInput.value = systemInstruction;
         characterReactionContainer.classList.remove('hidden');
-        renderLastCharacterReaction();
+        renderCharactersReactions(characterReactionsList);
     } else {
         // Save current instruction edits to Reactions key
         setLocalStorageItem('systemInstruction', systemInstructionInput.value);

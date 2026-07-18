@@ -14,19 +14,21 @@ const defaultSystemInstructionWithReactions = `你的任务是编写此聊天/�
 避免不必要且无新意的重复。
 编写下一条消息 - 记住要让它们有趣、真实、具描述性、自然、吸引人且富有创意。
 使用与输入或之前对话相同的语言。
-你还必须确定该角色的内心真实想法以及当前对玩家（用户）的看法。
+如果是场景中的角色，请确定他们的结构化反应。
 重要：你必须严格返回合法的 JSON 对象结构，字段严格如下：
 {
   "MESSAGE": "[该角色说出的聊天回复消息]",
-  "CHARACTER_REACTION": {
-    "name": "[角色名字]",
-    "internal_thought": "[该角色对其刚才对话的内心真实想法或秘密反应]",
-    "view_of_the_player": "[该角色当前对玩家（用户）的看法、态度或认知]"
-  }
+  "CHARACTERS_REACTIONS": [
+    {
+      "name": "[角色名字]",
+      "internal_thought": "[该角色对其刚才对话的内心真实想法或秘密反应]",
+      "view_of_the_player": "[该角色当前对玩家（用户）的看法、态度或认知]"
+    }
+  ]
 }`;
 
 let systemInstruction = defaultSystemInstructionNoReactions;
-let lastCharacterReaction = null; // { name: string, internal_thought: string, view_of_the_player: string }
+let characterReactionsList = []; // Array of { name: string, internal_thought: string, view_of_the_player: string }
 
 let totalInputTokens = 0;
 let totalOutputTokens = 0;
@@ -342,17 +344,24 @@ function loadChatHistory() {
     }
     systemInstructionInput.value = systemInstruction;
 
-    const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
-    if (lastReactionStr) {
+    const savedListStr = getLocalStorageItem('characterReactionsList');
+    if (savedListStr) {
         try {
-            lastCharacterReaction = JSON.parse(lastReactionStr);
-        } catch (e) {
-            lastCharacterReaction = null;
-        }
+            characterReactionsList = JSON.parse(savedListStr);
+            if (!Array.isArray(characterReactionsList)) characterReactionsList = [];
+        } catch (e) { characterReactionsList = []; }
     } else {
-        lastCharacterReaction = null;
+        const lastReactionStr = getLocalStorageItem('lastCharacterReaction');
+        if (lastReactionStr) {
+            try {
+                const item = JSON.parse(lastReactionStr);
+                characterReactionsList = item ? [item] : [];
+            } catch (e) { characterReactionsList = []; }
+        } else {
+            characterReactionsList = [];
+        }
     }
-    renderLastCharacterReaction();
+    renderCharactersReactions(characterReactionsList);
 
     if (h) {
         try {
@@ -442,9 +451,10 @@ function clearAllHistory() {
         setUserName(); 
         updateUserMessagePlaceholder(); 
         
-        lastCharacterReaction = null;
+        characterReactionsList = [];
+        setLocalStorageItem('characterReactionsList', '[]');
         setLocalStorageItem('lastCharacterReaction', '');
-        renderLastCharacterReaction();
+        renderCharactersReactions([]);
 
         totalInputTokens = 0; 
         totalOutputTokens = 0; 
@@ -462,71 +472,98 @@ function clearAllHistory() {
 }
 
 // --- Character Reaction Render Helper ---
-function renderLastCharacterReaction() {
+function getCharactersReactionsFromDOM() {
+    if (!characterReactionContainer) return [];
+    const cards = characterReactionContainer.querySelectorAll('.character-reaction-card');
+    const list = [];
+    cards.forEach(card => {
+        const nameDisplay = card.querySelector('.char-name-display');
+        const thoughtInput = card.querySelector('.char-thought-input');
+        const viewInput = card.querySelector('.char-view-input');
+        list.push({
+            name: nameDisplay ? nameDisplay.textContent.trim() : '角色',
+            internal_thought: thoughtInput ? thoughtInput.value.trim() : '',
+            view_of_the_player: viewInput ? viewInput.value.trim() : ''
+        });
+    });
+    return list;
+}
+
+function renderCharactersReactions(list) {
     if (!characterReactionContainer) return;
     characterReactionContainer.innerHTML = '';
     
-    if (!useReactionsCheckbox.checked || !lastCharacterReaction) {
+    if (!useReactionsCheckbox.checked || !list || !Array.isArray(list) || list.length === 0) {
         characterReactionContainer.classList.add('hidden');
         return;
     }
     
     characterReactionContainer.classList.remove('hidden');
     
-    const card = document.createElement('div');
-    card.className = 'character-reaction-card';
-    
-    const name = lastCharacterReaction.name || '角色';
-    const thought = lastCharacterReaction.internal_thought || '';
-    const view = lastCharacterReaction.view_of_the_player || '';
-    
-    card.innerHTML = `
-        <div class="collapsible-header character-header">
-            <div class="char-name-label">上一个发言角色反应: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
-            <span class="toggle-icon">▼</span>
-        </div>
-        <div class="collapsible-content char-content">
-            <div class="char-subitem">
-                <label class="sub-label">内心想法:</label>
-                <textarea rows="3" class="char-thought-input">${thought}</textarea>
+    list.forEach((char, idx) => {
+        const card = document.createElement('div');
+        card.className = 'character-reaction-card';
+        
+        const name = char.name || `角色 ${idx + 1}`;
+        const thought = char.internal_thought || char.internalThought || char.thought || '';
+        const view = char.view_of_the_player || char.viewOfThePlayer || char.view || '';
+        
+        card.innerHTML = `
+            <div class="collapsible-header character-header">
+                <div class="char-name-label">角色反应: <span class="char-name-display">${name.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span></div>
+                <div style="display: flex; align-items: center;">
+                    <button type="button" class="delete-char-btn" style="background: none; border: none; color: #d9534f; cursor: pointer; font-size: 1.1em; padding: 2px 6px; font-weight: bold; margin-right: 8px;" title="删除角色反应">✕</button>
+                    <span class="toggle-icon">▼</span>
+                </div>
             </div>
-            <div class="char-subitem">
-                <label class="sub-label">对玩家看法:</label>
-                <textarea rows="3" class="char-view-input">${view}</textarea>
+            <div class="collapsible-content char-content">
+                <div class="char-subitem">
+                    <label class="sub-label">内心想法:</label>
+                    <textarea rows="3" class="char-thought-input">${thought}</textarea>
+                </div>
+                <div class="char-subitem">
+                    <label class="sub-label">对玩家看法:</label>
+                    <textarea rows="3" class="char-view-input">${view}</textarea>
+                </div>
             </div>
-        </div>
-    `;
-    
-    const header = card.querySelector('.collapsible-header');
-    header.addEventListener('click', (e) => {
-        if (window.getSelection().toString().trim().length > 0) return;
-        const content = header.nextElementSibling;
-        if (content && content.classList.contains('collapsible-content')) {
-            const isCollapsed = content.classList.toggle('collapsed');
-            const icon = header.querySelector('.toggle-icon');
-            if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
-            setLocalStorageItem('reactionCollapsed', isCollapsed);
+        `;
+        
+        const deleteBtn = card.querySelector('.delete-char-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                card.remove();
+                characterReactionsList = getCharactersReactionsFromDOM();
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+                if (characterReactionsList.length === 0) {
+                    characterReactionContainer.classList.add('hidden');
+                }
+            });
         }
-    });
-    
-    const isCollapsed = getLocalStorageItem('reactionCollapsed') === 'true';
-    if (isCollapsed) {
-        card.querySelector('.collapsible-content').classList.add('collapsed');
-        card.querySelector('.toggle-icon').style.transform = 'rotate(-90deg)';
-    }
-    
-    const inputs = card.querySelectorAll('textarea');
-    inputs.forEach(input => {
-        input.addEventListener('input', () => {
-            const thoughtInput = card.querySelector('.char-thought-input');
-            const viewInput = card.querySelector('.char-view-input');
-            lastCharacterReaction.internal_thought = thoughtInput.value;
-            lastCharacterReaction.view_of_the_player = viewInput.value;
-            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
+        
+        const header = card.querySelector('.collapsible-header');
+        header.addEventListener('click', (e) => {
+            if (window.getSelection().toString().trim().length > 0) return;
+            const content = header.nextElementSibling;
+            if (content && content.classList.contains('collapsible-content')) {
+                const isCollapsed = content.classList.toggle('collapsed');
+                const icon = header.querySelector('.toggle-icon');
+                if (icon) icon.style.transform = isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)';
+            }
         });
+        
+        const inputs = card.querySelectorAll('textarea');
+        inputs.forEach(input => {
+            input.addEventListener('input', () => {
+                characterReactionsList = getCharactersReactionsFromDOM();
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            });
+        });
+        
+        characterReactionContainer.appendChild(card);
     });
     
-    characterReactionContainer.appendChild(card);
+    setLocalStorageItem('characterReactionsList', JSON.stringify(getCharactersReactionsFromDOM()));
 }
 
 // --- API Interaction ---
@@ -566,7 +603,7 @@ async function generateResponseForRole(targetRole) {
         const targetWordCount = targetWordCountInput ? targetWordCountInput.value.trim() : '';
 
         if (activeReactions) {
-            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTER_REACTION keys.`;
+            let msgInstruction = `Please write a response from role ${targetRole} and output strictly in valid JSON containing MESSAGE and CHARACTERS_REACTIONS keys.`;
             if (targetWordCount) {
                 msgInstruction += ` JSON 中的 MESSAGE 字段的目标字数大约为 ${targetWordCount} 字。`;
             }
@@ -663,14 +700,11 @@ async function generateResponseForRole(targetRole) {
         let generatedMessage = '';
         if (activeReactions) {
             let msgPart = '';
-            let reactionPart = null;
+            let rawReactions = null;
             try {
                 const parsedJson = JSON.parse(responseText.replace(/^```json\s*|```$/g, ''));
                 msgPart = (parsedJson.MESSAGE || parsedJson.message || '').trim();
-                const rawReaction = parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
-                if (rawReaction && typeof rawReaction === 'object') {
-                    reactionPart = rawReaction;
-                }
+                rawReactions = parsedJson.CHARACTERS_REACTIONS || parsedJson.characters_reactions || parsedJson.charactersReactions || parsedJson.CHARACTER_REACTION || parsedJson.character_reaction || parsedJson.reaction;
             } catch (jsonError) {
                 console.warn('Failed to parse JSON response, falling back to regex:', jsonError);
                 const msgMatch = responseText.match(/"MESSAGE"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"/i);
@@ -680,26 +714,26 @@ async function generateResponseForRole(targetRole) {
 
             generatedMessage = msgPart;
             
-            if (reactionPart) {
-                lastCharacterReaction = {
-                    name: targetRole,
-                    internal_thought: reactionPart.internal_thought || reactionPart.internalThought || '',
-                    view_of_the_player: reactionPart.view_of_the_player || reactionPart.viewOfThePlayer || ''
-                };
-            } else {
-                lastCharacterReaction = {
-                    name: targetRole,
-                    internal_thought: '',
-                    view_of_the_player: ''
-                };
+            let reactionsList = [];
+            if (Array.isArray(rawReactions)) {
+                reactionsList = rawReactions;
+            } else if (rawReactions && typeof rawReactions === 'object') {
+                reactionsList = [rawReactions];
             }
-            setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
-            renderLastCharacterReaction();
+
+            characterReactionsList = reactionsList.map(r => ({
+                name: r.name || targetRole,
+                internal_thought: r.internal_thought || r.internalThought || r.thought || '',
+                view_of_the_player: r.view_of_the_player || r.viewOfThePlayer || r.view || ''
+            }));
+
+            setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            renderCharactersReactions(characterReactionsList);
         } else {
             generatedMessage = responseText;
-            lastCharacterReaction = null;
-            setLocalStorageItem('lastCharacterReaction', '');
-            renderLastCharacterReaction();
+            characterReactionsList = [];
+            setLocalStorageItem('characterReactionsList', '[]');
+            renderCharactersReactions([]);
         }
 
         // Remove leading "Role Name:" if the model added it
@@ -787,7 +821,7 @@ function downloadChat() {
         systemInstruction, 
         systemInstructionNoReactions: getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions,
         useReactions: useReactionsCheckbox.checked,
-        lastCharacterReaction,
+        characterReactionsList: getCharactersReactionsFromDOM(),
         targetWordCount: targetWordCountInput.value.trim(),
         roles: botRoles, 
         chatHistory, 
@@ -818,15 +852,14 @@ function handleFileLoad(e) {
                 targetWordCountInput.value = data.targetWordCount;
                 setLocalStorageItem('targetWordCount', data.targetWordCount);
             }
-            if (data.lastCharacterReaction !== undefined) {
-                lastCharacterReaction = data.lastCharacterReaction;
-                if (lastCharacterReaction) {
-                    setLocalStorageItem('lastCharacterReaction', JSON.stringify(lastCharacterReaction));
-                } else {
-                    setLocalStorageItem('lastCharacterReaction', '');
-                }
+            if (Array.isArray(data.characterReactionsList)) {
+                characterReactionsList = data.characterReactionsList;
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
+            } else if (data.lastCharacterReaction !== undefined) {
+                characterReactionsList = data.lastCharacterReaction ? [data.lastCharacterReaction] : [];
+                setLocalStorageItem('characterReactionsList', JSON.stringify(characterReactionsList));
             }
-            renderLastCharacterReaction();
+            renderCharactersReactions(characterReactionsList);
 
             if (typeof data.systemInstruction === 'string') {
                 systemInstruction = data.systemInstruction;
@@ -877,7 +910,7 @@ useReactionsCheckbox.addEventListener('change', () => {
         systemInstruction = getLocalStorageItem('systemInstruction') || defaultSystemInstructionWithReactions;
         systemInstructionInput.value = systemInstruction;
         characterReactionContainer.classList.remove('hidden');
-        renderLastCharacterReaction();
+        renderCharactersReactions(characterReactionsList);
     } else {
         setLocalStorageItem('systemInstruction', systemInstructionInput.value);
         systemInstruction = getLocalStorageItem('systemInstructionNoReactions') || defaultSystemInstructionNoReactions;
