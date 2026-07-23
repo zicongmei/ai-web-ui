@@ -72,6 +72,9 @@ async function getFromDB(storeName, key) {
 
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
+    'gemini-3.1-flash-image': 'Gemini 3.1 Flash Image (GA)',
+    'gemini-3.1-flash-lite-image': 'Gemini 3.1 Flash-Lite Image (Nano Banana 2 Lite)',
+    'gemini-3-pro-image': 'Gemini 3 Pro Image (GA)',
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
     'gemini-3.1-flash-image-preview': 'Gemini 3.1 Flash Image Preview',
     'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image',
