@@ -12,17 +12,12 @@ let videoTotalTime = 0;
 let videoTotalCost = 0;
 
 const GEMINI_VIDEO_MODELS = {
-    'veo-3.1-generate-001': 'Veo 3.1 Standard (GA)',
-    'veo-3.1-fast-generate-001': 'Veo 3.1 Fast (GA)',
-    'veo-3.1-lite-generate-001': 'Veo 3.1 Lite (Preview)',
     'veo-3.1-generate-preview': 'Veo 3.1 Standard (Preview)',
     'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast (Preview)',
-    'veo-3.1': 'Veo 3.1 (Alias)',
-    'veo-3.0-generate-001': 'Veo 3 Standard (Deprecated)',
-    'veo-3.0-fast-generate-001': 'Veo 3 Fast (Deprecated)',
-    'veo-3': 'Veo 3 (Alias, Deprecated)',
-    'veo-2.0-generate-001': 'Veo 2 Standard (Deprecated)',
-    'veo-2': 'Veo 2 (Alias, Deprecated)'
+    'veo-3.1-lite-generate-preview': 'Veo 3.1 Lite (Preview)',
+    'veo-3.0-generate-001': 'Veo 3 Standard',
+    'veo-3.0-fast-generate-001': 'Veo 3 Fast',
+    'veo-2.0-generate-001': 'Veo 2 Standard'
 };
 
 // DOM Elements

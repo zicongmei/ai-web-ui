@@ -72,19 +72,16 @@ async function getFromDB(storeName, key) {
 
 // Model names and labels for image generation
 const GEMINI_IMAGE_MODELS = {
-    'gemini-3.1-flash-image': 'Gemini 3.1 Flash Image (GA)',
+    'gemini-3.1-flash-image': 'Gemini 3.1 Flash Image',
     'gemini-3.1-flash-lite-image': 'Gemini 3.1 Flash-Lite Image (Nano Banana 2 Lite)',
-    'gemini-3-pro-image': 'Gemini 3 Pro Image (GA)',
+    'gemini-3-pro-image': 'Gemini 3 Pro Image',
     'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
-    'gemini-3.1-flash-image-preview': 'Gemini 3.1 Flash Image Preview',
-    'gemini-3-pro-image-preview': 'Gemini 3 Pro Preview Image',
     'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
     'imagen-4.0-generate-001': 'Imagen 4 Standard',
-    'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra',
-    'imagen-4': 'Imagen 4 (Alias)'
+    'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra'
 };
 
-const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image-preview'; // Define the Gemini 3 model ID
+const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image'; // Define the Gemini 3 model ID
 
 const IMAGEN_STANDARD_RATIOS = [
     { ratio: '1:1', res: '1024x1024', tokens: 1000 },
@@ -107,7 +104,7 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '16:9', res: '1344x768', tokens: 1290 },
         { ratio: '21:9', res: '1536x672', tokens: 1290 }
     ],
-    'gemini-3.1-flash-image-preview': [
+    'gemini-3.1-flash-image': [
         { ratio: '1:1', res: { '512': '512x512', '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '512': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '2:3', res: { '512': '424x632', '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '512': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '3:2', res: { '512': '632x424', '1K': '1264x848', '2K': '2528x1696', '4K': '5056x3392' }, tokens: { '512': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
@@ -119,7 +116,19 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '16:9', res: { '512': '688x384', '1K': '1376x768', '2K': '2752x1536', '4K': '5504x3072' }, tokens: { '512': 500, '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '21:9', res: { '512': '792x336', '1K': '1584x672', '2K': '3168x1344', '4K': '6336x2688' }, tokens: { '512': 500, '1K': 1120, '2K': 1120, '4K': 2000 } }
     ],
-    'gemini-3-pro-image-preview': [
+    'gemini-3.1-flash-lite-image': [
+        { ratio: '1:1', res: { '512': '512x512', '1K': '1024x1024' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '2:3', res: { '512': '424x632', '1K': '848x1264' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '3:2', res: { '512': '632x424', '1K': '1264x848' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '3:4', res: { '512': '448x600', '1K': '896x1200' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '4:3', res: { '512': '600x448', '1K': '1200x896' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '4:5', res: { '512': '464x576', '1K': '928x1152' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '5:4', res: { '512': '576x464', '1K': '1152x928' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '9:16', res: { '512': '384x688', '1K': '768x1376' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '16:9', res: { '512': '688x384', '1K': '1376x768' }, tokens: { '512': 500, '1K': 1120 } },
+        { ratio: '21:9', res: { '512': '792x336', '1K': '1584x672' }, tokens: { '512': 500, '1K': 1120 } }
+    ],
+    'gemini-3-pro-image': [
         { ratio: '1:1', res: { '1K': '1024x1024', '2K': '2048x2048', '4K': '4096x4096' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '2:3', res: { '1K': '848x1264', '2K': '1696x2528', '4K': '3392x5056' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '3:2', res: { '1K': '1264x848', '2K': '2528x1696', '4K': '5056x3392' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
@@ -133,8 +142,7 @@ const IMAGE_RESOLUTION_DATA = {
     ],
     'imagen-4.0-fast-generate-001': IMAGEN_STANDARD_RATIOS,
     'imagen-4.0-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-4': IMAGEN_STANDARD_RATIOS
+    'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS
 };
 
 // Get DOM elements
@@ -573,12 +581,12 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
     const TOKENS_PER_MILLION = 1_000_000;
 
     // --- Input Cost Calculation ---
-    if (modelId === 'gemini-3-pro-image-preview') {
+    if (modelId === 'gemini-3-pro-image') {
         inputCost += (inputTextTokens / TOKENS_PER_MILLION) * modelPricing.input.text_per_m_tokens;
         if (inputImageCount > 0) {
             inputCost += inputImageCount * modelPricing.input.image_fixed_price;
         }
-    } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash') || modelId === 'gemini-3.1-flash-image-preview') {
+    } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash') || modelId === 'gemini-3.1-flash-image' || modelId === 'gemini-3.1-flash-lite-image') {
         if (inputImageCount > 0) {
             totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
@@ -590,7 +598,7 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
 
     // --- Output Cost Calculation ---
     if (outputImageCount > 0) {
-        if (modelId === 'gemini-3-pro-image-preview') {
+        if (modelId === 'gemini-3-pro-image') {
             if (imageOutputSize === '4K') {
                 outputCost += outputImageCount * modelPricing.output.image_4K_fixed_price;
             } else { // '1K' or '2K'
@@ -599,11 +607,11 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             
             // Update totalOutputTokensCalculated based on data table
             const data = IMAGE_RESOLUTION_DATA[modelId];
-            const item = data.find(i => i.ratio === selectedAspectRatio);
+            const item = data ? data.find(i => i.ratio === selectedAspectRatio) : null;
             if (item) {
-                totalOutputTokensCalculated = outputImageCount * item.tokens[imageOutputSize];
+                totalOutputTokensCalculated = outputImageCount * (item.tokens[imageOutputSize] || item.tokens['1K'] || 1120);
             }
-        } else if (modelId === 'gemini-3.1-flash-image-preview') {
+        } else if (modelId === 'gemini-3.1-flash-image') {
             if (imageOutputSize === '4K') {
                 outputCost += outputImageCount * modelPricing.output.image_4K_fixed_price;
             } else if (imageOutputSize === '2K') {
@@ -615,15 +623,27 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
             }
             
             const data = IMAGE_RESOLUTION_DATA[modelId];
-            const item = data.find(i => i.ratio === selectedAspectRatio);
+            const item = data ? data.find(i => i.ratio === selectedAspectRatio) : null;
             if (item) {
-                totalOutputTokensCalculated = outputImageCount * item.tokens[imageOutputSize];
+                totalOutputTokensCalculated = outputImageCount * (item.tokens[imageOutputSize] || item.tokens['1K'] || 1120);
+            }
+        } else if (modelId === 'gemini-3.1-flash-lite-image') {
+            if (imageOutputSize === '512') {
+                outputCost += outputImageCount * modelPricing.output.image_512_fixed_price;
+            } else {
+                outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
+            }
+            
+            const data = IMAGE_RESOLUTION_DATA[modelId];
+            const item = data ? data.find(i => i.ratio === selectedAspectRatio) : null;
+            if (item) {
+                totalOutputTokensCalculated = outputImageCount * (item.tokens[imageOutputSize] || item.tokens['1K'] || 1120);
             }
         } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash')) {
             outputCost += outputImageCount * modelPricing.output.image_1K_fixed_price;
             
             const data = IMAGE_RESOLUTION_DATA[modelId];
-            const item = data.find(i => i.ratio === selectedAspectRatio);
+            const item = data ? data.find(i => i.ratio === selectedAspectRatio) : null;
             if (item) {
                 totalOutputTokensCalculated = outputImageCount * item.tokens;
             } else {
@@ -632,7 +652,7 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
         } else if (modelId.startsWith('imagen-')) {
             outputCost += outputImageCount * modelPricing.output.image_fixed_price;
             const data = IMAGE_RESOLUTION_DATA[modelId];
-            const item = data.find(i => i.ratio === selectedAspectRatio);
+            const item = data ? data.find(i => i.ratio === selectedAspectRatio) : null;
             totalOutputTokensCalculated = outputImageCount * (item ? item.tokens : 1000);
         }
     }
