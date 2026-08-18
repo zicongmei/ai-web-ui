@@ -40,6 +40,48 @@
         <input type="file" id="loadStoryInput" accept=".json" style="display: none;">
         <div id="loadingIndicator" class="hidden">正在生成...</div>
 
+        <!-- Find & Replace Section (Collapsed by default) -->
+        <div class="find-replace-section">
+            <div class="collapsible-header find-replace-header" id="toggleFindReplace">
+                <span class="find-replace-title">
+                    <span class="find-icon">🔍</span> 故事查找与替换 (Find &amp; Replace)
+                </span>
+                <span class="toggle-icon" id="findReplaceToggleIcon" style="transform: rotate(-90deg);">▼</span>
+            </div>
+            <div id="findReplaceContent" class="collapsible-content collapsed">
+                <div class="find-replace-body">
+                    <div class="find-replace-row">
+                        <div class="find-replace-field">
+                            <label for="findInput">查找：</label>
+                            <input type="text" id="findInput" placeholder="输入要查找的文本..." autocomplete="off">
+                        </div>
+                        <div class="find-replace-field">
+                            <label for="replaceInput">替换为：</label>
+                            <input type="text" id="replaceInput" placeholder="输入替换文本..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="find-replace-options">
+                        <label>
+                            <input type="checkbox" id="findMatchCaseCheckbox"> 区分大小写 (Match Case)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="findWholeWordCheckbox"> 全字匹配 (Whole Word)
+                        </label>
+                        <label>
+                            <input type="checkbox" id="findRegexCheckbox"> 正则表达式 (Regex)
+                        </label>
+                        <span id="findReplaceStatus" class="find-replace-status"></span>
+                    </div>
+                    <div class="find-replace-actions">
+                        <button id="findPrevButton" type="button">◀ 上一个</button>
+                        <button id="findNextButton" type="button">下一个 ▶</button>
+                        <button id="replaceButton" type="button">替换</button>
+                        <button id="replaceAllButton" type="button">全部替换</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
          <div class="input-group">
             <label for="systemInstruction">给 DeepSeek 的系统指令：</label>
             <textarea id="systemInstruction" rows="4" placeholder="例如：你是一位奇幻小说作家。请用生动有趣的文笔写作。保持段落相对简短。"></textarea>

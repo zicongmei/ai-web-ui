@@ -16,6 +16,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorDisplay = document.getElementById('errorDisplay');
     const clearNextParagraphPromptBtn = document.getElementById('clearNextParagraphPromptBtn'); 
 
+    // Find and Replace DOM Elements
+    const toggleFindReplace = document.getElementById('toggleFindReplace');
+    const findReplaceContent = document.getElementById('findReplaceContent');
+    const findReplaceToggleIcon = document.getElementById('findReplaceToggleIcon');
+    const findInput = document.getElementById('findInput');
+    const replaceInput = document.getElementById('replaceInput');
+    const findMatchCaseCheckbox = document.getElementById('findMatchCaseCheckbox');
+    const findWholeWordCheckbox = document.getElementById('findWholeWordCheckbox');
+    const findRegexCheckbox = document.getElementById('findRegexCheckbox');
+    const findReplaceStatus = document.getElementById('findReplaceStatus');
+    const findPrevButton = document.getElementById('findPrevButton');
+    const findNextButton = document.getElementById('findNextButton');
+    const replaceButton = document.getElementById('replaceButton');
+    const replaceAllButton = document.getElementById('replaceAllButton'); 
+
     const currentRequestInputTokensDisplay = document.getElementById('currentRequestInputTokens');
     const currentRequestOutputTokensDisplay = document.getElementById('currentRequestOutputTokens');
     const accumulatedInputTokensDisplay = document.getElementById('accumulatedInputTokens'); 
@@ -68,6 +83,9 @@ document.addEventListener('DOMContentLoaded', () => {
     storyOutputTextarea.addEventListener('input', () => {
         localStorage.setItem('deepseekStoryOutput', storyOutputTextarea.value);
         revertLastParagraphBtn.disabled = !storyOutputTextarea.value.trim();
+        if (findInput && findInput.value) {
+            updateFindMatchCount();
+        }
     });
 
     clearNextParagraphPromptBtn.addEventListener('click', () => {
@@ -436,4 +454,303 @@ document.addEventListener('DOMContentLoaded', () => {
             errorDisplay.classList.add('hidden');
         }
     }
+
+    // --- 故事查找与替换 (Find and Replace in Story) ---
+    function setFindReplaceStatus(msg, type = 'info') {
+        if (!findReplaceStatus) return;
+        findReplaceStatus.textContent = msg;
+        findReplaceStatus.className = 'find-replace-status ' + type;
+    }
+
+    function getFindRegex(global = true) {
+        if (!findInput) return null;
+        const query = findInput.value;
+        if (!query) return null;
+
+        const matchCase = findMatchCaseCheckbox ? findMatchCaseCheckbox.checked : false;
+        const wholeWord = findWholeWordCheckbox ? findWholeWordCheckbox.checked : false;
+        const useRegex = findRegexCheckbox ? findRegexCheckbox.checked : false;
+
+        let flags = matchCase ? '' : 'i';
+        if (global) flags += 'g';
+
+        if (useRegex) {
+            try {
+                return new RegExp(query, flags);
+            } catch (e) {
+                setFindReplaceStatus('正则表达式无效: ' + e.message, 'error');
+                return null;
+            }
+        } else {
+            const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const pattern = wholeWord ? `\\b${escaped}\\b` : escaped;
+            try {
+                return new RegExp(pattern, flags);
+            } catch (e) {
+                setFindReplaceStatus('搜索模式错误', 'error');
+                return null;
+            }
+        }
+    }
+
+    function getAllMatches(text, regex) {
+        if (!text || !regex) return [];
+        const matches = [];
+        let match;
+        const maxSafety = 10000;
+        let count = 0;
+        while ((match = regex.exec(text)) !== null && count < maxSafety) {
+            count++;
+            matches.push({ index: match.index, length: match[0].length, text: match[0] });
+            if (match.index === regex.lastIndex) {
+                regex.lastIndex++;
+            }
+        }
+        return matches;
+    }
+
+    function updateFindMatchCount() {
+        if (!findInput || !storyOutputTextarea) return;
+        const query = findInput.value;
+        if (!query) {
+            setFindReplaceStatus('');
+            return;
+        }
+        const regex = getFindRegex(true);
+        if (!regex) return;
+        const text = storyOutputTextarea.value;
+        const matches = getAllMatches(text, regex);
+        if (matches.length === 0) {
+            setFindReplaceStatus('未找到匹配项', 'error');
+        } else {
+            setFindReplaceStatus(`找到 ${matches.length} 处匹配`, 'info');
+        }
+    }
+
+    function scrollToMatch(matchIndex) {
+        if (!storyOutputTextarea) return;
+        const textBefore = storyOutputTextarea.value.substring(0, matchIndex);
+        const linesBefore = textBefore.split('\n').length;
+        const totalLines = Math.max(1, storyOutputTextarea.value.split('\n').length);
+        
+        const boxRect = storyOutputTextarea.getBoundingClientRect();
+        const boxTop = boxRect.top + window.scrollY;
+        const estimatedOffset = (linesBefore / totalLines) * storyOutputTextarea.clientHeight;
+        const targetScrollY = boxTop + estimatedOffset - (window.innerHeight / 2);
+        
+        window.scrollTo({
+            top: Math.max(0, targetScrollY),
+            behavior: 'smooth'
+        });
+    }
+
+    function findNext(silent = false) {
+        if (!storyOutputTextarea || !findInput) return;
+        const query = findInput.value;
+        if (!query) {
+            if (!silent) setFindReplaceStatus('请输入要查找的文本', 'error');
+            return;
+        }
+        const regex = getFindRegex(true);
+        if (!regex) return;
+
+        const text = storyOutputTextarea.value;
+        const matches = getAllMatches(text, regex);
+        if (matches.length === 0) {
+            setFindReplaceStatus('未找到匹配项', 'error');
+            return;
+        }
+
+        const currentSelEnd = storyOutputTextarea.selectionEnd || 0;
+        let targetIdx = matches.findIndex(m => m.index >= currentSelEnd);
+        if (targetIdx === -1) {
+            targetIdx = 0;
+        }
+
+        const targetMatch = matches[targetIdx];
+        storyOutputTextarea.focus();
+        storyOutputTextarea.setSelectionRange(targetMatch.index, targetMatch.index + targetMatch.length);
+        scrollToMatch(targetMatch.index);
+        setFindReplaceStatus(`第 ${targetIdx + 1} / ${matches.length} 处匹配`, 'info');
+    }
+
+    function findPrev() {
+        if (!storyOutputTextarea || !findInput) return;
+        const query = findInput.value;
+        if (!query) {
+            setFindReplaceStatus('请输入要查找的文本', 'error');
+            return;
+        }
+        const regex = getFindRegex(true);
+        if (!regex) return;
+
+        const text = storyOutputTextarea.value;
+        const matches = getAllMatches(text, regex);
+        if (matches.length === 0) {
+            setFindReplaceStatus('未找到匹配项', 'error');
+            return;
+        }
+
+        const currentSelStart = storyOutputTextarea.selectionStart || 0;
+        let targetIdx = -1;
+        for (let i = matches.length - 1; i >= 0; i--) {
+            if (matches[i].index < currentSelStart) {
+                targetIdx = i;
+                break;
+            }
+        }
+        if (targetIdx === -1) {
+            targetIdx = matches.length - 1;
+        }
+
+        const targetMatch = matches[targetIdx];
+        storyOutputTextarea.focus();
+        storyOutputTextarea.setSelectionRange(targetMatch.index, targetMatch.index + targetMatch.length);
+        scrollToMatch(targetMatch.index);
+        setFindReplaceStatus(`第 ${targetIdx + 1} / ${matches.length} 处匹配`, 'info');
+    }
+
+    function replaceCurrent() {
+        if (!storyOutputTextarea || !findInput || !replaceInput) return;
+        const query = findInput.value;
+        if (!query) {
+            setFindReplaceStatus('请输入要查找的文本', 'error');
+            return;
+        }
+        const regex = getFindRegex(true);
+        if (!regex) return;
+
+        const text = storyOutputTextarea.value;
+        const matches = getAllMatches(text, regex);
+        if (matches.length === 0) {
+            setFindReplaceStatus('未找到可替换的匹配项', 'error');
+            return;
+        }
+
+        const selStart = storyOutputTextarea.selectionStart;
+        const selEnd = storyOutputTextarea.selectionEnd;
+        const isCurrentMatch = matches.some(m => m.index === selStart && (m.index + m.length) === selEnd);
+
+        if (isCurrentMatch) {
+            const replaceVal = replaceInput.value;
+            const matchedText = text.substring(selStart, selEnd);
+            const useRegex = findRegexCheckbox ? findRegexCheckbox.checked : false;
+            
+            let replacement = replaceVal;
+            if (useRegex) {
+                const singleRegex = getFindRegex(false);
+                if (singleRegex) {
+                    replacement = matchedText.replace(singleRegex, replaceVal);
+                }
+            }
+            
+            const newText = text.substring(0, selStart) + replacement + text.substring(selEnd);
+            storyOutputTextarea.value = newText;
+            localStorage.setItem('deepseekStoryOutput', newText);
+            revertLastParagraphBtn.disabled = !newText.trim();
+
+            storyOutputTextarea.setSelectionRange(selStart + replacement.length, selStart + replacement.length);
+            findNext(true);
+            setFindReplaceStatus('已替换 1 处', 'success');
+        } else {
+            findNext();
+        }
+    }
+
+    function replaceAll() {
+        if (!storyOutputTextarea || !findInput || !replaceInput) return;
+        const query = findInput.value;
+        if (!query) {
+            setFindReplaceStatus('请输入要查找的文本', 'error');
+            return;
+        }
+        const regex = getFindRegex(true);
+        if (!regex) return;
+
+        const text = storyOutputTextarea.value;
+        const matches = getAllMatches(text, regex);
+        if (matches.length === 0) {
+            setFindReplaceStatus('未找到可替换的匹配项', 'error');
+            return;
+        }
+
+        const replaceVal = replaceInput.value;
+        const useRegex = findRegexCheckbox ? findRegexCheckbox.checked : false;
+        
+        let newText;
+        if (useRegex) {
+            newText = text.replace(regex, replaceVal);
+        } else {
+            newText = text.replace(regex, () => replaceVal);
+        }
+
+        const count = matches.length;
+        storyOutputTextarea.value = newText;
+        localStorage.setItem('deepseekStoryOutput', newText);
+        revertLastParagraphBtn.disabled = !newText.trim();
+        
+        setFindReplaceStatus(`已替换 ${count} 处`, 'success');
+    }
+
+    function toggleFindReplaceMenu(forceOpen) {
+        if (!findReplaceContent) return;
+        const shouldOpen = (typeof forceOpen === 'boolean') ? forceOpen : findReplaceContent.classList.contains('collapsed');
+        if (shouldOpen) {
+            findReplaceContent.classList.remove('collapsed');
+            if (toggleFindReplace) toggleFindReplace.classList.add('expanded');
+            if (findReplaceToggleIcon) findReplaceToggleIcon.style.transform = 'rotate(0deg)';
+            if (findInput) {
+                findInput.focus();
+                findInput.select();
+            }
+            updateFindMatchCount();
+        } else {
+            findReplaceContent.classList.add('collapsed');
+            if (toggleFindReplace) toggleFindReplace.classList.remove('expanded');
+            if (findReplaceToggleIcon) findReplaceToggleIcon.style.transform = 'rotate(-90deg)';
+        }
+    }
+
+    // Find and Replace event listeners
+    if (toggleFindReplace) {
+        toggleFindReplace.addEventListener('click', () => toggleFindReplaceMenu());
+    }
+    if (findInput) {
+        findInput.addEventListener('input', updateFindMatchCount);
+        findInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) findPrev();
+                else findNext();
+            } else if (e.key === 'Escape') {
+                toggleFindReplaceMenu(false);
+            }
+        });
+    }
+    if (replaceInput) {
+        replaceInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.ctrlKey || e.metaKey) replaceAll();
+                else replaceCurrent();
+            } else if (e.key === 'Escape') {
+                toggleFindReplaceMenu(false);
+            }
+        });
+    }
+    if (findMatchCaseCheckbox) findMatchCaseCheckbox.addEventListener('change', updateFindMatchCount);
+    if (findWholeWordCheckbox) findWholeWordCheckbox.addEventListener('change', updateFindMatchCount);
+    if (findRegexCheckbox) findRegexCheckbox.addEventListener('change', updateFindMatchCount);
+
+    if (findNextButton) findNextButton.addEventListener('click', () => findNext());
+    if (findPrevButton) findPrevButton.addEventListener('click', () => findPrev());
+    if (replaceButton) replaceButton.addEventListener('click', replaceCurrent);
+    if (replaceAllButton) replaceAllButton.addEventListener('click', replaceAll);
+
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+            e.preventDefault();
+            toggleFindReplaceMenu(true);
+        }
+    });
 });
