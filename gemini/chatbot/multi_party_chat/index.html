@@ -100,6 +100,47 @@
             <button id="clearAllHistoryButton" class="danger-button">Clear All History</button>
         </div>
 
+        <!-- Find & Replace Section (Collapsed by default) -->
+        <div class="section-box find-replace-section">
+            <div class="collapsible-header find-replace-header" id="toggleFindReplace">
+                <span class="find-replace-title">
+                    <span class="find-icon">🔍</span> Find &amp; Replace in Chat History
+                </span>
+                <span class="toggle-icon" id="findReplaceToggleIcon" style="transform: rotate(-90deg);">▼</span>
+            </div>
+            <div id="findReplaceContent" class="collapsible-content collapsed">
+                <div class="find-replace-body">
+                    <div class="find-replace-row">
+                        <div class="find-replace-field">
+                            <label for="findInput">Find:</label>
+                            <input type="text" id="findInput" placeholder="Text to find..." autocomplete="off">
+                        </div>
+                        <div class="find-replace-field">
+                            <label for="replaceInput">Replace with:</label>
+                            <input type="text" id="replaceInput" placeholder="Replacement text..." autocomplete="off">
+                        </div>
+                    </div>
+                    <div class="find-replace-options">
+                        <label>
+                            <input type="checkbox" id="findMatchCaseCheckbox"> Match Case
+                        </label>
+                        <label>
+                            <input type="checkbox" id="findWholeWordCheckbox"> Whole Word
+                        </label>
+                        <label>
+                            <input type="checkbox" id="findRegexCheckbox"> Regex
+                        </label>
+                        <span id="findReplaceStatus" class="find-replace-status"></span>
+                    </div>
+                    <div class="find-replace-actions">
+                        <button id="findPrevButton" type="button">◀ Previous</button>
+                        <button id="findNextButton" type="button">Next ▶</button>
+                        <button id="replaceButton" type="button">Replace</button>
+                        <button id="replaceAllButton" type="button">Replace All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Config Sections -->
         <div class="api-key-section">

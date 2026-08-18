@@ -369,4 +369,189 @@ body {
         justify-content: center;
         flex-wrap: wrap;
     }
+
+    .find-replace-row {
+        flex-direction: column;
+        gap: 10px;
+    }
+    .find-replace-actions {
+        flex-direction: column;
+    }
+    .find-replace-actions button {
+        width: 100%;
+    }
+    .find-replace-status {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* Find & Replace Section */
+.find-replace-section {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.find-replace-header {
+    background-color: #f1f5f9;
+    padding: 9px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.95em;
+    color: #334155;
+    border-bottom: 1px solid transparent;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.find-replace-header:hover {
+    background-color: #e2e8f0;
+}
+
+.find-replace-header.expanded {
+    border-bottom-color: #e2e8f0;
+}
+
+.find-replace-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.find-replace-title .find-icon {
+    font-size: 1.05em;
+}
+
+.find-replace-body {
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.find-replace-row {
+    display: flex;
+    gap: 12px;
+}
+
+.find-replace-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.find-replace-field label {
+    font-size: 0.85em;
+    font-weight: bold;
+    color: #475569;
+}
+
+.find-replace-field input {
+    padding: 7px 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 4px;
+    font-size: 0.95em;
+    width: 100%;
+    box-sizing: border-box;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.find-replace-field input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.find-replace-options {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+    font-size: 0.85em;
+    color: #475569;
+}
+
+.find-replace-options label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.find-replace-options input[type="checkbox"] {
+    cursor: pointer;
+}
+
+.find-replace-status {
+    margin-left: auto;
+    font-weight: 600;
+    font-size: 0.9em;
+    color: #64748b;
+}
+
+.find-replace-status.info {
+    color: #0284c7;
+}
+
+.find-replace-status.success {
+    color: #16a34a;
+}
+
+.find-replace-status.error {
+    color: #dc2626;
+}
+
+.find-replace-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.find-replace-actions button {
+    padding: 7px 14px;
+    background-color: #64748b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 500;
+    transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.find-replace-actions button:hover {
+    background-color: #475569;
+}
+
+.find-replace-actions button:active {
+    transform: translateY(1px);
+}
+
+.find-replace-actions button#replaceButton,
+.find-replace-actions button#replaceAllButton {
+    background-color: #0284c7;
+}
+
+.find-replace-actions button#replaceButton:hover,
+.find-replace-actions button#replaceAllButton:hover {
+    background-color: #0369a1;
+}
+
+.toggle-icon {
+    font-size: 0.8em;
+    transition: transform 0.2s ease;
+}
+
+.collapsible-content.collapsed {
+    display: none;
 }
