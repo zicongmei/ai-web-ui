@@ -1,7 +1,7 @@
 // multimodal.js
 
 let currentApiKey = '';
-let selectedModel = 'gemini-2.0-flash';
+let selectedModel = 'gemini-2.5-flash';
 let selectedImages = []; // Array of { file, base64, mimeType }
 let abortController = null;
 

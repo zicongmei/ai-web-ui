@@ -75,10 +75,7 @@ const GEMINI_IMAGE_MODELS = {
     'gemini-3.1-flash-image': 'Gemini 3.1 Flash Image',
     'gemini-3.1-flash-lite-image': 'Gemini 3.1 Flash-Lite Image (Nano Banana 2 Lite)',
     'gemini-3-pro-image': 'Gemini 3 Pro Image',
-    'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image',
-    'imagen-4.0-fast-generate-001': 'Imagen 4 Fast',
-    'imagen-4.0-generate-001': 'Imagen 4 Standard',
-    'imagen-4.0-ultra-generate-001': 'Imagen 4 Ultra'
+    'gemini-2.5-flash-image': 'Gemini 2.5 Flash Image'
 };
 
 const GEMINI_3_PRO_MODEL_ID = 'gemini-3-pro-image'; // Define the Gemini 3 model ID
@@ -139,10 +136,7 @@ const IMAGE_RESOLUTION_DATA = {
         { ratio: '9:16', res: { '1K': '768x1376', '2K': '1536x2752', '4K': '3072x5504' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '16:9', res: { '1K': '1376x768', '2K': '2752x1536', '4K': '5504x3072' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } },
         { ratio: '21:9', res: { '1K': '1584x672', '2K': '3168x1344', '4K': '6336x2688' }, tokens: { '1K': 1120, '2K': 1120, '4K': 2000 } }
-    ],
-    'imagen-4.0-fast-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-4.0-generate-001': IMAGEN_STANDARD_RATIOS,
-    'imagen-4.0-ultra-generate-001': IMAGEN_STANDARD_RATIOS
+    ]
 };
 
 // Get DOM elements

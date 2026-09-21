@@ -15,9 +15,8 @@ const GEMINI_VIDEO_MODELS = {
     'veo-3.1-generate-preview': 'Veo 3.1 Standard (Preview)',
     'veo-3.1-fast-generate-preview': 'Veo 3.1 Fast (Preview)',
     'veo-3.1-lite-generate-preview': 'Veo 3.1 Lite (Preview)',
-    'veo-3.0-generate-001': 'Veo 3 Standard',
-    'veo-3.0-fast-generate-001': 'Veo 3 Fast',
-    'veo-2.0-generate-001': 'Veo 2 Standard'
+    'gemini-omni-1.1-flash': 'Gemini Omni 1.1 Flash',
+    'gemini-omni-flash-preview': 'Gemini Omni Flash Preview'
 };
 
 // DOM Elements

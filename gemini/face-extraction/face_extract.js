@@ -1,7 +1,7 @@
 // face_extract.js
 
 let currentApiKey = '';
-let selectedModel = 'gemini-2.0-flash';
+let selectedModel = 'gemini-2.5-flash';
 let selectedImages = []; // Array of { id, base64, mimeType, previewUrl, originalWidth, originalHeight }
 let extractedFaces = []; // Array of { id, base64, sourceImageId }
 let abortController = null;

@@ -3,6 +3,12 @@
 const GEMINI_PRICING_CONFIG = {
     // Text and Multimodal Generation Models
     TEXT: {
+        'gemini-3.8-flash': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 0.75 / 1_000_000,
+                outputRate: 3.75 / 1_000_000
+            })
+        },
         'gemini-3.7-flash': {
             getPricing: (promptTokenCount) => ({
                 inputRate: 0.75 / 1_000_000,
@@ -80,45 +86,20 @@ const GEMINI_PRICING_CONFIG = {
                 inputRate: 0.10 / 1_000_000,
                 outputRate: 0.40 / 1_000_000
             })
-        },
-        'gemini-2.0-flash': {
-            getPricing: (promptTokenCount) => ({
-                inputRate: 0.10 / 1_000_000,
-                outputRate: 0.40 / 1_000_000
-            })
-        },
-        'gemini-2.0-flash-lite': {
-            getPricing: (promptTokenCount) => ({
-                inputRate: 0.075 / 1_000_000,
-                outputRate: 0.30 / 1_000_000
-            })
         }
     },
 
-    // Video Generation Models (Veo)
+    // Video Generation Models (Veo and Gemini Omni)
     VIDEO_GEN: {
         'veo-3.1-generate-preview': { input: 0, output_per_second_per_sample: 0.40 },
         'veo-3.1-fast-generate-preview': { input: 0, output_per_second_per_sample: 0.10 },
         'veo-3.1-lite-generate-preview': { input: 0, output_per_second_per_sample: 0.05 },
-        'veo-3.0-generate-001': { input: 0, output_per_second_per_sample: 0.40 },
-        'veo-3.0-fast-generate-001': { input: 0, output_per_second_per_sample: 0.10 },
-        'veo-2.0-generate-001': { input: 0, output_per_second_per_sample: 0.35 }
+        'gemini-omni-1.1-flash': { input: 1.50 / 1_000_000, output_per_second_per_sample: 0.10 },
+        'gemini-omni-flash-preview': { input: 1.50 / 1_000_000, output_per_second_per_sample: 0.10 }
     },
 
     // Image Generation Models
     IMAGE_GEN: {
-        'imagen-4.0-fast-generate-001': {
-            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
-            output: { image_fixed_price: 0.02 }
-        },
-        'imagen-4.0-generate-001': {
-            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
-            output: { image_fixed_price: 0.04 }
-        },
-        'imagen-4.0-ultra-generate-001': {
-            input: { text_per_m_tokens: 0, image_fixed_price: 0 },
-            output: { image_fixed_price: 0.06 }
-        },
         'gemini-3.1-flash-image': {
             input: {
                 text_and_image_per_m_tokens: 0.50,
