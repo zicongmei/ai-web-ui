@@ -1103,10 +1103,18 @@ async function generateAbstract() {
             const text = candidate.content.parts.map(p => p.text).join('');
             const { title, content } = parseAbstractResponse(text, getTimestampTitle());
 
-            const usage = data.usageMetadata;
-            const inputTokens = usage?.promptTokenCount || 0;
-            const outputTokens = usage?.candidatesTokenCount || 0;
-            const cost = calculateCost(model, inputTokens, outputTokens);
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata?.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata?.promptTokenCount || 0) - (data.usageMetadata?.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata?.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata?.candidatesTokenCount || 0
+                };
+            const inputTokens = usage.uncachedTokens; // token not hit cache
+            const cachedTokens = usage.cachedTokens; // token hit cache
+            const outputTokens = usage.outputTokens;
+            const cost = calculateCost(model, inputTokens, outputTokens, cachedTokens, usage.promptTokens);
 
             const newEntry = {
                 id: Date.now().toString(),
@@ -1116,7 +1124,7 @@ async function generateAbstract() {
                 content: content,
                 model: model,
                 params: { language, model, numChapters: chapters, prompt },
-                stats: { inputTokens, outputTokens, cost }
+                stats: { inputTokens, cachedTokens, tokenHitCache: cachedTokens, tokenNotHitCache: inputTokens, outputTokens, cost }
             };
 
             history.push(newEntry);
@@ -1262,16 +1270,25 @@ async function pollBatchJob(id) {
         const text = candidate.content.parts.map(p => p.text).join('');
         const { title, content } = parseAbstractResponse(text, item.title);
 
-        const usage = candidateResponse.usageMetadata || candidate.usageMetadata;
-        const inputTokens = usage?.promptTokenCount || 0;
-        const outputTokens = usage?.candidatesTokenCount || 0;
-        const cost = calculateCost(model, inputTokens, outputTokens);
+        const rawUsage = candidateResponse.usageMetadata || candidate.usageMetadata;
+        const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+            ? GEMINI_PRICING_CONFIG.parseTokenUsage(rawUsage)
+            : {
+                cachedTokens: rawUsage?.cachedContentTokenCount || 0,
+                uncachedTokens: Math.max(0, (rawUsage?.promptTokenCount || 0) - (rawUsage?.cachedContentTokenCount || 0)),
+                promptTokens: rawUsage?.promptTokenCount || 0,
+                outputTokens: rawUsage?.candidatesTokenCount || 0
+            };
+        const inputTokens = usage.uncachedTokens;
+        const cachedTokens = usage.cachedTokens;
+        const outputTokens = usage.outputTokens;
+        const cost = calculateCost(model, inputTokens, outputTokens, cachedTokens, usage.promptTokens);
 
         // Update history item
         item.status = 'completed';
         item.title = title;
         item.content = content;
-        item.stats = { inputTokens, outputTokens, cost };
+        item.stats = { inputTokens, cachedTokens, tokenHitCache: cachedTokens, tokenNotHitCache: inputTokens, outputTokens, cost };
         saveHistory();
         
         if (currentAbstractId === id) {
@@ -1311,18 +1328,25 @@ async function pollBatchJob(id) {
     }
 }
 
-// Cost Calculation (Simplified based on price.js knowledge)
-function calculateCost(model, input, output) {
-    // We can assume GEMINI_PRICING_CONFIG is available globally if we import price.js in HTML
-    if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.TEXT[model]) {
-        const prices = GEMINI_PRICING_CONFIG.TEXT[model].getPricing(input);
-        return (input * prices.inputRate) + (output * prices.outputRate);
+// Cost Calculation (differentiating cached and non-cached)
+function calculateCost(model, uncachedInput, output, cachedInput = 0, totalPrompt = null) {
+    if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
+        if (GEMINI_PRICING_CONFIG.calculateCost) {
+            return GEMINI_PRICING_CONFIG.calculateCost(model, uncachedInput, output, cachedInput, totalPrompt);
+        }
+        if (GEMINI_PRICING_CONFIG.TEXT[model]) {
+            const promptCount = totalPrompt !== null ? totalPrompt : (uncachedInput + cachedInput);
+            const prices = GEMINI_PRICING_CONFIG.TEXT[model].getPricing(promptCount);
+            return (uncachedInput * (prices.inputRate || 0)) + (cachedInput * (prices.cacheHitRate || 0)) + (output * (prices.outputRate || 0));
+        }
     }
     return 0;
 }
 
 function updateStatsDisplay(stats) {
-    tokenStats.textContent = `Tokens: In ${stats.inputTokens} / Out ${stats.outputTokens}`;
+    const cachedCount = stats.cachedTokens || stats.tokenHitCache || 0;
+    const cachedText = cachedCount > 0 ? ` (Cached: ${cachedCount})` : '';
+    tokenStats.textContent = `Tokens: In ${stats.inputTokens}${cachedText} / Out ${stats.outputTokens}`;
     priceStats.textContent = `Est. Cost: $${stats.cost.toFixed(6)}`;
 }
 

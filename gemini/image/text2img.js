@@ -12,6 +12,7 @@ let allApiInteractions = []; // To store all API calls for debug info
 let totalGenerationTime = 0;
 let generationStartTime = 0; // Capture start time for wall-clock duration
 let totalInputTokens = 0;
+let totalCachedTokens = 0;
 let totalOutputTokens = 0;
 let totalThoughtTokens = 0; // New global for thought tokens
 let totalEstimatedCost = 0;
@@ -560,9 +561,10 @@ function saveGeneratedImage(base64Image, prompt) {
 }
 
 // Token and Price Calculation Logic
-function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize, selectedAspectRatio, useBatch = false) {
+function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCount, imageOutputSize, selectedAspectRatio, useBatch = false, cachedTokens = 0) {
     let inputCost = 0;
     let outputCost = 0;
+    const uncachedInputTokens = Math.max(0, inputTextTokens - cachedTokens);
     let totalInputTokensCalculated = inputTextTokens; // Actual tokens contributing to input cost
     let totalOutputTokensCalculated = 0; // Actual tokens contributing to output cost
 
@@ -576,15 +578,24 @@ function calculateCost(modelId, inputTextTokens, inputImageCount, outputImageCou
 
     // --- Input Cost Calculation ---
     if (modelId === 'gemini-3-pro-image') {
-        inputCost += (inputTextTokens / TOKENS_PER_MILLION) * modelPricing.input.text_per_m_tokens;
+        const cacheHitRate = modelPricing.input.cache_hit_per_m_tokens !== undefined
+            ? modelPricing.input.cache_hit_per_m_tokens
+            : (modelPricing.input.text_per_m_tokens * 0.25);
+        inputCost += (uncachedInputTokens / TOKENS_PER_MILLION) * modelPricing.input.text_per_m_tokens;
+        inputCost += (cachedTokens / TOKENS_PER_MILLION) * cacheHitRate;
         if (inputImageCount > 0) {
             inputCost += inputImageCount * modelPricing.input.image_fixed_price;
         }
     } else if (modelId.startsWith('gemini-2.5-flash-image') || modelId.startsWith('gemini-2.0-flash') || modelId === 'gemini-3.1-flash-image' || modelId === 'gemini-3.1-flash-lite-image') {
+        let uncachedTokensCalc = uncachedInputTokens;
         if (inputImageCount > 0) {
-            totalInputTokensCalculated += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
+            uncachedTokensCalc += inputImageCount * GEMINI_PRICING_CONFIG.TOKEN_EQUIVALENTS.IMAGE_DEFAULT_1K_TOKENS;
         }
-        inputCost += (totalInputTokensCalculated / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
+        const cacheHitRate = modelPricing.input.cache_hit_per_m_tokens !== undefined
+            ? modelPricing.input.cache_hit_per_m_tokens
+            : (modelPricing.input.text_and_image_per_m_tokens * 0.25);
+        inputCost += (uncachedTokensCalc / TOKENS_PER_MILLION) * modelPricing.input.text_and_image_per_m_tokens;
+        inputCost += (cachedTokens / TOKENS_PER_MILLION) * cacheHitRate;
     } else if (modelId.startsWith('imagen-')) {
         // Imagen models typically don't charge for input tokens in this API tier, or have fixed per-image pricing on output
         inputCost = 0;
@@ -673,20 +684,27 @@ function updateDebugButtonText() {
 
 function updateSummaryDisplay() {
     totalGenerationTimeSpan.textContent = `${(totalGenerationTime / 1000).toFixed(2)}s`;
-    totalInputTokensSpan.textContent = totalInputTokens.toLocaleString();
+    totalInputTokensSpan.textContent = totalCachedTokens > 0
+        ? `${totalInputTokens.toLocaleString()} (Cached: ${totalCachedTokens.toLocaleString()})`
+        : totalInputTokens.toLocaleString();
     totalOutputTokensSpan.textContent = totalOutputTokens.toLocaleString();
     totalThoughtTokensSpan.textContent = totalThoughtTokens.toLocaleString();
     totalEstimatedCostSpan.textContent = `$${totalEstimatedCost.toFixed(6)}`;
 }
 
 // Modify logApiInteraction to store all relevant data
-function logApiInteraction(url, request, response, durationMs, inputTokens, outputTokens, thoughtTokens, costDetails) {
+function logApiInteraction(url, request, response, durationMs, inputTokens, outputTokens, thoughtTokens, costDetails, cachedTokens = 0) {
+    const uncachedTokens = Math.max(0, inputTokens - cachedTokens);
     const interaction = {
         url,
         request,
         response,
         durationMs,
         inputTokens,
+        cachedTokens,
+        uncachedTokens,
+        tokenHitCache: cachedTokens,
+        tokenNotHitCache: uncachedTokens,
         outputTokens,
         thoughtTokens: thoughtTokens || 0, // Ensure it has a value
         costDetails, // {inputCost, outputCost, totalCost}
@@ -698,6 +716,7 @@ function logApiInteraction(url, request, response, durationMs, inputTokens, outp
     // Update global totals
     // Note: totalGenerationTime is now updated independently to reflect wall-clock time
     totalInputTokens += inputTokens;
+    totalCachedTokens += cachedTokens;
     totalOutputTokens += outputTokens;
     totalThoughtTokens += (thoughtTokens || 0);
     totalEstimatedCost += costDetails.totalCost;
@@ -725,8 +744,9 @@ function appendApiCallEntry(interaction, index) {
 
     const metricsDiv = document.createElement('div');
     metricsDiv.classList.add('api-call-metrics');
+    const cachedText = interaction.cachedTokens > 0 ? ` (Cached: ${interaction.cachedTokens.toLocaleString()})` : '';
     metricsDiv.innerHTML = `
-        <div class="api-call-metric"><strong>Input Tokens:</strong> ${interaction.inputTokens.toLocaleString()}</div>
+        <div class="api-call-metric"><strong>Input Tokens:</strong> ${interaction.inputTokens.toLocaleString()}${cachedText}</div>
         <div class="api-call-metric"><strong>Output Tokens:</strong> ${interaction.outputTokens.toLocaleString()}</div>
         <div class="api-call-metric"><strong>Thought Tokens:</strong> ${interaction.thoughtTokens.toLocaleString()}</div>
         <div class="api-call-metric"><strong>Estimated Cost:</strong> $${interaction.costDetails.totalCost.toFixed(6)}</div>
@@ -1304,22 +1324,31 @@ async function generateSingleImage(prompt, count = 1) {
     totalGenerationTime = performance.now() - generationStartTime;
     
     let actualInputTokens = inputTextTokens;
+    let actualCachedTokens = 0;
     let actualOutputTokens = 0;
     let actualThoughtTokens = 0;
 
     if (data.usageMetadata) {
-        actualInputTokens = data.usageMetadata.promptTokenCount || 0;
-        actualOutputTokens = data.usageMetadata.candidatesTokenCount || 0;
+        if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage) {
+            const usage = GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata);
+            actualInputTokens = usage.promptTokens;
+            actualCachedTokens = usage.cachedTokens;
+            actualOutputTokens = usage.outputTokens;
+        } else {
+            actualInputTokens = data.usageMetadata.promptTokenCount || 0;
+            actualCachedTokens = data.usageMetadata.cachedContentTokenCount || 0;
+            actualOutputTokens = data.usageMetadata.candidatesTokenCount || 0;
+        }
         actualThoughtTokens = data.usageMetadata.thoughtsTokenCount || 0;
     }
 
-    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, selectedAspectRatio, false);
+    const finalCostResult = calculateCost(selectedModel, actualInputTokens, inputImageCount, successfulOutputImages, imageOutputSize, selectedAspectRatio, false, actualCachedTokens);
 
     if (actualOutputTokens === 0 && successfulOutputImages > 0) {
         actualOutputTokens = finalCostResult.outputTokens;
     }
 
-    logApiInteraction(endpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult);
+    logApiInteraction(endpoint, requestBody, data, duration, actualInputTokens, actualOutputTokens, actualThoughtTokens, finalCostResult, actualCachedTokens);
 
     if (successfulOutputImages === 0) {
          throw new Error('No valid image data found in response.');

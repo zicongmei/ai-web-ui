@@ -8,6 +8,7 @@ let abortController = null;
 
 // Global Stats
 let totalTokensCount = 0;
+let totalCachedTokens = 0;
 let totalEstimatedCostValue = 0;
 
 // IndexedDB Constants
@@ -408,22 +409,43 @@ async function detectFaces(imageInfo) {
 
 function updateStats(data) {
     if (data.usageMetadata) {
-        const inputTokens = data.usageMetadata.promptTokenCount || 0;
-        const outputTokens = data.usageMetadata.candidatesTokenCount || 0;
-        const total = inputTokens + outputTokens;
+        let uncachedTokens = data.usageMetadata.promptTokenCount || 0;
+        let cachedTokens = data.usageMetadata.cachedContentTokenCount || 0;
+        let promptTokens = uncachedTokens;
+        let outputTokens = data.usageMetadata.candidatesTokenCount || 0;
+
+        if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage) {
+            const usage = GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata);
+            uncachedTokens = usage.uncachedTokens;
+            cachedTokens = usage.cachedTokens;
+            promptTokens = usage.promptTokens;
+            outputTokens = usage.outputTokens;
+        } else {
+            uncachedTokens = Math.max(0, promptTokens - cachedTokens);
+        }
+
+        const total = promptTokens + outputTokens;
         totalTokensCount += total;
+        totalCachedTokens += cachedTokens;
         
+        let currentCost = 0;
         if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
-            const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
-            if (pricing && pricing.getPricing) {
-                const { inputRate, outputRate } = pricing.getPricing(inputTokens);
-                const currentCost = (inputTokens * inputRate) + (outputTokens * outputRate);
-                totalEstimatedCostValue += currentCost;
+            if (typeof GEMINI_PRICING_CONFIG.calculateCost === 'function') {
+                currentCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, uncachedTokens, outputTokens, cachedTokens, promptTokens);
+            } else {
+                const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
+                if (pricing && pricing.getPricing) {
+                    const { inputRate, outputRate } = pricing.getPricing(promptTokens);
+                    currentCost = (uncachedTokens * inputRate) + (outputTokens * outputRate);
+                }
             }
         }
+        totalEstimatedCostValue += currentCost;
         
         summaryDisplay.style.display = 'block';
-        totalTokensSpan.textContent = totalTokensCount;
+        totalTokensSpan.textContent = totalCachedTokens > 0
+            ? `${totalTokensCount} (Cached: ${totalCachedTokens})`
+            : totalTokensCount;
         totalCostSpan.textContent = `$${totalEstimatedCostValue.toFixed(6)}`;
     }
 }

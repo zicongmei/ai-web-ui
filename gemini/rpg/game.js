@@ -518,11 +518,15 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         }
     }
 
-    function calculateRequestCost(model, inputTokens, outputTokens) {
+    function calculateRequestCost(model, uncachedTokens, outputTokens, cachedTokens = 0, totalPromptTokens = null) {
+        if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.calculateCost) {
+            return GEMINI_PRICING_CONFIG.calculateCost(model, uncachedTokens, outputTokens, cachedTokens, totalPromptTokens);
+        }
         const pricingConfig = GEMINI_PRICING_CONFIG.TEXT[model];
         if (!pricingConfig) return 0;
-        const { inputRate, outputRate } = pricingConfig.getPricing(inputTokens);
-        return (inputTokens * inputRate) + (outputTokens * outputRate);
+        const totalPrompt = totalPromptTokens !== null ? totalPromptTokens : (uncachedTokens + cachedTokens);
+        const { inputRate, outputRate, cacheHitRate } = pricingConfig.getPricing(totalPrompt);
+        return (uncachedTokens * inputRate) + (cachedTokens * (cacheHitRate || 0)) + (outputTokens * outputRate);
     }
 
     async function refreshMemories() {
@@ -604,10 +608,19 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                 if (longTermMatch) longTermPart = longTermMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
             }
 
-            const promptTokens = data.usageMetadata?.promptTokenCount || 0;
-            const candidateTokens = data.usageMetadata?.candidatesTokenCount || 0;
-            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
-            updateTokensAndCost(promptTokens, candidateTokens, requestCost);
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata?.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata?.promptTokenCount || 0) - (data.usageMetadata?.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata?.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata?.candidatesTokenCount || 0
+                };
+            const promptTokens = usage.uncachedTokens; // token not hit cache
+            const cachedTokens = usage.cachedTokens; // token hit cache
+            const candidateTokens = usage.outputTokens;
+            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens, cachedTokens, usage.promptTokens);
+            updateTokensAndCost(promptTokens, candidateTokens, requestCost, cachedTokens);
 
             if (shortTermPart) {
                 shortTermMemoryTextarea.value = shortTermPart;
@@ -765,11 +778,20 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
                 }
             }
 
-            const promptTokens = data.usageMetadata?.promptTokenCount || 0;
-            const candidateTokens = data.usageMetadata?.candidatesTokenCount || 0; 
-            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata?.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata?.promptTokenCount || 0) - (data.usageMetadata?.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata?.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata?.candidatesTokenCount || 0
+                };
+            const promptTokens = usage.uncachedTokens; // token not hit cache
+            const cachedTokens = usage.cachedTokens; // token hit cache
+            const candidateTokens = usage.outputTokens; 
+            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens, cachedTokens, usage.promptTokens);
 
-            updateTokensAndCost(promptTokens, candidateTokens, requestCost);
+            updateTokensAndCost(promptTokens, candidateTokens, requestCost, cachedTokens);
 
             if (storyPart) {
                 renderCharactersReactions(charactersReactionsList);
@@ -813,8 +835,9 @@ IMPORTANT: You must return your response in a valid JSON structure strictly matc
         }
     }
 
-    function updateTokensAndCost(promptTokens, candidateTokens, requestCost) {
-        currentRequestInputTokensDisplay.textContent = promptTokens;
+    function updateTokensAndCost(promptTokens, candidateTokens, requestCost, cachedTokens = 0) {
+        const cachedText = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+        currentRequestInputTokensDisplay.textContent = `${promptTokens}${cachedText}`;
         currentRequestOutputTokensDisplay.textContent = candidateTokens;
         currentRequestCostDisplay.textContent = `$${requestCost.toFixed(6)}`;
         

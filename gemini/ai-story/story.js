@@ -305,17 +305,21 @@ Use the same language as input or previous paragraph.`;
         reader.readAsText(file);
     }
 
-    function calculateRequestCost(model, inputTokens, outputTokens) {
+    function calculateRequestCost(model, uncachedTokens, outputTokens, cachedTokens = 0, totalPromptTokens = null) {
+        if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.calculateCost) {
+            return GEMINI_PRICING_CONFIG.calculateCost(model, uncachedTokens, outputTokens, cachedTokens, totalPromptTokens);
+        }
         const pricingConfig = GEMINI_PRICING_CONFIG.TEXT[model];
         if (!pricingConfig) return 0;
 
-        const { inputRate, outputRate } = pricingConfig.getPricing(inputTokens);
+        const totalPrompt = totalPromptTokens !== null ? totalPromptTokens : (uncachedTokens + cachedTokens);
+        const { inputRate, outputRate, cacheHitRate } = pricingConfig.getPricing(totalPrompt);
         
-        // inputRate and outputRate are already per token (e.g. 0.30 / 1_000_000)
-        const inputCost = inputTokens * inputRate;
+        const uncachedCost = uncachedTokens * inputRate;
+        const cachedCost = cachedTokens * (cacheHitRate || 0);
         const outputCost = outputTokens * outputRate;
 
-        return inputCost + outputCost;
+        return uncachedCost + cachedCost + outputCost;
     }
 
     async function generateParagraph() {
@@ -415,15 +419,26 @@ Use the same language as input or previous paragraph.`;
 
             const generatedText = data.candidates[0]?.content?.parts[0]?.text;
 
-            const promptTokens = data.usageMetadata?.promptTokenCount || 0;
-            const candidateTokens = data.usageMetadata?.candidatesTokenCount || 0; 
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata?.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata?.promptTokenCount || 0) - (data.usageMetadata?.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata?.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata?.candidatesTokenCount || 0
+                };
+
+            const promptTokens = usage.uncachedTokens; // token not hit cache
+            const cachedTokens = usage.cachedTokens; // token hit cache
+            const candidateTokens = usage.outputTokens; 
 
             // Calculate Cost
-            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens);
+            const requestCost = calculateRequestCost(selectedModel, promptTokens, candidateTokens, cachedTokens, usage.promptTokens);
             totalAccumulatedCost += requestCost;
 
             // Update Displays
-            currentRequestInputTokensDisplay.textContent = promptTokens;
+            const cachedText = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+            currentRequestInputTokensDisplay.textContent = `${promptTokens}${cachedText}`;
             currentRequestOutputTokensDisplay.textContent = candidateTokens;
             currentRequestCostDisplay.textContent = `$${requestCost.toFixed(6)}`;
             

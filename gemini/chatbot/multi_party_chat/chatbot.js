@@ -31,8 +31,12 @@ let systemInstruction = defaultSystemInstructionNoReactions;
 let characterReactionsList = []; // Array of { name: string, internal_thought: string, view_of_the_player: string }
 
 let totalInputTokens = 0;
+let totalUncachedTokens = 0;
+let totalCachedTokens = 0;
 let totalOutputTokens = 0;
 let currentInputTokens = 0;
+let currentUncachedTokens = 0;
+let currentCachedTokens = 0;
 let currentOutputTokens = 0;
 
 let thinkingBudget = -1;
@@ -535,7 +539,14 @@ function clearAllHistory() {
         renderCharactersReactions([]);
 
         totalInputTokens = 0; 
+        totalUncachedTokens = 0;
+        totalCachedTokens = 0;
         totalOutputTokens = 0; 
+        currentInputTokens = 0;
+        currentUncachedTokens = 0;
+        currentCachedTokens = 0;
+        currentOutputTokens = 0;
+        currentRequestCost = 0;
         totalCost = 0;
         
         renderChatHistory();
@@ -768,7 +779,7 @@ async function generateResponseForRole(targetRole) {
 
         const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent`;
 
-        currentInputTokens = 0; currentOutputTokens = 0; currentRequestCost = 0;
+        currentInputTokens = 0; currentCachedTokens = 0; currentOutputTokens = 0; currentRequestCost = 0;
 
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
@@ -785,12 +796,29 @@ async function generateResponseForRole(targetRole) {
         const data = await response.json();
         lastRawResponseData = JSON.stringify(data, null, 2);
 
+        let tokenHitCache = 0;
+        let tokenNotHitCache = 0;
+
         if (data.usageMetadata) {
-            currentInputTokens = data.usageMetadata.promptTokenCount || 0;
-            currentOutputTokens = data.usageMetadata.candidatesTokenCount || 0;
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata.promptTokenCount || 0) - (data.usageMetadata.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata.candidatesTokenCount || 0
+                };
+            tokenHitCache = usage.cachedTokens;
+            tokenNotHitCache = usage.uncachedTokens;
+            currentInputTokens = usage.promptTokens;
+            currentUncachedTokens = usage.uncachedTokens;
+            currentCachedTokens = usage.cachedTokens;
+            currentOutputTokens = usage.outputTokens;
             totalInputTokens += currentInputTokens;
+            totalUncachedTokens += currentUncachedTokens;
+            totalCachedTokens += currentCachedTokens;
             totalOutputTokens += currentOutputTokens;
-            calculateCost();
+            calculateCost(usage.promptTokens);
             renderStats();
             saveStats();
         }
@@ -862,6 +890,18 @@ async function generateResponseForRole(targetRole) {
 
         errorMessageDiv.textContent = '';
 
+        return {
+            speaker: targetRole,
+            text: generatedMessage,
+            tokenHitCache,
+            tokenNotHitCache,
+            cachedTokens: tokenHitCache,
+            uncachedTokens: tokenNotHitCache,
+            inputTokens: currentInputTokens,
+            outputTokens: currentOutputTokens,
+            cost: currentRequestCost
+        };
+
     } catch (e) {
         if (e.name !== 'AbortError') {
             errorMessageDiv.textContent = `Error: ${e.message}`;
@@ -869,6 +909,17 @@ async function generateResponseForRole(targetRole) {
         } else {
             errorMessageDiv.textContent = 'Cancelled.';
         }
+        return {
+            speaker: targetRole,
+            text: '',
+            tokenHitCache: 0,
+            tokenNotHitCache: 0,
+            cachedTokens: 0,
+            uncachedTokens: 0,
+            inputTokens: 0,
+            outputTokens: 0,
+            cost: 0
+        };
     } finally {
         toggleInputs(true);
         stopMessageButton.disabled = true;
@@ -891,18 +942,30 @@ function toggleInputs(enable) {
 }
 
 // --- Utils & Stats ---
-function calculateCost() {
-    const prices = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
-    if (prices) {
-        const { inputRate, outputRate } = prices.getPricing(currentInputTokens);
-        currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);
+function calculateCost(totalPromptTokens) {
+    const promptTotal = totalPromptTokens !== undefined && totalPromptTokens !== null ? totalPromptTokens : currentInputTokens;
+    if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.calculateCost) {
+        currentRequestCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, currentUncachedTokens, currentOutputTokens, currentCachedTokens, promptTotal);
         totalCost += currentRequestCost;
+    } else {
+        const prices = GEMINI_PRICING_CONFIG?.TEXT?.[selectedModel];
+        if (prices) {
+            const { inputRate, outputRate, cacheHitRate } = prices.getPricing(promptTotal);
+            currentRequestCost = (currentUncachedTokens * (inputRate || 0)) + (currentCachedTokens * (cacheHitRate || 0)) + (currentOutputTokens * (outputRate || 0));
+            totalCost += currentRequestCost;
+        }
     }
 }
 
 function renderStats() {
+    const nowBreakdown = (currentCachedTokens > 0 || currentUncachedTokens > 0)
+        ? ` (Cached: ${currentCachedTokens}, Non-Cached: ${currentUncachedTokens})`
+        : '';
+    const totalBreakdown = (totalCachedTokens > 0 || totalUncachedTokens > 0)
+        ? ` (Cached: ${totalCachedTokens}, Non-Cached: ${totalUncachedTokens})`
+        : '';
     tokenStatsDiv.innerHTML = `
-        <div><strong>Input:</strong> Now: ${currentInputTokens} | Total: ${totalInputTokens}</div>
+        <div><strong>Input:</strong> Now: ${currentInputTokens}${nowBreakdown} | Total: ${totalInputTokens}${totalBreakdown}</div>
         <div><strong>Output:</strong> Now: ${currentOutputTokens} | Total: ${totalOutputTokens}</div>
     `;
     costStatsDiv.innerHTML = `
@@ -913,6 +976,8 @@ function renderStats() {
 
 function saveStats() {
     setLocalStorageItem('totalInputTokens', totalInputTokens);
+    setLocalStorageItem('totalUncachedTokens', totalUncachedTokens);
+    setLocalStorageItem('totalCachedTokens', totalCachedTokens);
     setLocalStorageItem('totalOutputTokens', totalOutputTokens);
     setLocalStorageItem('totalCost', totalCost);
 }
@@ -920,6 +985,17 @@ function saveStats() {
 function loadStats() {
     const i = getLocalStorageItem('totalInputTokens');
     if (i !== null) totalInputTokens = parseInt(i, 10);
+    const cached = getLocalStorageItem('totalCachedTokens');
+    if (cached !== null) totalCachedTokens = parseInt(cached, 10);
+    const uncached = getLocalStorageItem('totalUncachedTokens');
+    if (uncached !== null) {
+        totalUncachedTokens = parseInt(uncached, 10);
+    } else {
+        totalUncachedTokens = Math.max(0, totalInputTokens - totalCachedTokens);
+    }
+    if (totalInputTokens < totalCachedTokens + totalUncachedTokens) {
+        totalInputTokens = totalCachedTokens + totalUncachedTokens;
+    }
     const o = getLocalStorageItem('totalOutputTokens');
     if (o !== null) totalOutputTokens = parseInt(o, 10);
     const c = getLocalStorageItem('totalCost');

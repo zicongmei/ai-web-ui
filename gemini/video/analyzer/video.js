@@ -11,6 +11,7 @@ let currentVideoDuration = 0; // Store duration for token estimation
 // Global totals
 let totalGenerationTime = 0;
 let totalInputTokens = 0;
+let totalCachedTokens = 0;
 let totalOutputTokens = 0;
 let totalEstimatedCost = 0;
 
@@ -300,12 +301,28 @@ async function generateAnalysis() {
         textOutput.textContent = text;
 
         // Stats & Cost
-        let inputTokens = data.usageMetadata?.promptTokenCount || totalEstInputTokens;
+        let uncachedTokens = totalEstInputTokens;
+        let cachedTokens = 0;
+        let promptTokens = totalEstInputTokens;
         let outputTokens = data.usageMetadata?.candidatesTokenCount || 0;
-        
-        const cost = calculateCost(model, inputTokens, outputTokens);
 
-        logApiInteraction(endpoint, requestBody, data, duration, inputTokens, outputTokens, cost);
+        if (data.usageMetadata) {
+            if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage) {
+                const usage = GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata);
+                uncachedTokens = usage.uncachedTokens;
+                cachedTokens = usage.cachedTokens;
+                promptTokens = usage.promptTokens;
+                outputTokens = usage.outputTokens;
+            } else {
+                promptTokens = data.usageMetadata.promptTokenCount || totalEstInputTokens;
+                cachedTokens = data.usageMetadata.cachedContentTokenCount || 0;
+                uncachedTokens = Math.max(0, promptTokens - cachedTokens);
+            }
+        }
+        
+        const cost = calculateCost(model, uncachedTokens, outputTokens, cachedTokens, promptTokens);
+
+        logApiInteraction(endpoint, requestBody, data, duration, promptTokens, outputTokens, cost, cachedTokens, uncachedTokens);
         statusMessage.textContent = 'Analysis complete.';
 
     } catch (e) {
@@ -331,24 +348,32 @@ function stopGeneration() {
 
 // --- Helper Functions ---
 
-function calculateCost(modelId, inputTokens, outputTokens) {
-    const pricing = GEMINI_PRICING_CONFIG.TEXT[modelId];
+function calculateCost(modelId, uncachedTokens, outputTokens, cachedTokens = 0, totalPromptTokens = null) {
+    if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && typeof GEMINI_PRICING_CONFIG.calculateCost === 'function') {
+        return GEMINI_PRICING_CONFIG.calculateCost(modelId, uncachedTokens, outputTokens, cachedTokens, totalPromptTokens);
+    }
+    const pricing = GEMINI_PRICING_CONFIG?.TEXT?.[modelId];
     if (!pricing) return 0;
-    const { inputRate, outputRate } = pricing.getPricing(inputTokens);
-    const inputCost = inputTokens * inputRate;
+    const totalPrompt = totalPromptTokens !== null ? totalPromptTokens : (uncachedTokens + cachedTokens);
+    const { inputRate, outputRate } = pricing.getPricing(totalPrompt);
+    const inputCost = uncachedTokens * inputRate;
+    const cacheCost = cachedTokens * (pricing.cacheHitRate !== undefined ? pricing.cacheHitRate : inputRate);
     const outputCost = outputTokens * outputRate;
-    return inputCost + outputCost;
+    return inputCost + cacheCost + outputCost;
 }
 
-function logApiInteraction(url, request, response, durationMs, inputTokens, outputTokens, cost) {
+function logApiInteraction(url, request, response, durationMs, inputTokens, outputTokens, cost, cachedTokens = 0, uncachedTokens = 0) {
     const interaction = {
-        url, request, response, durationMs, inputTokens, outputTokens, cost,
+        url, request, response, durationMs, inputTokens, outputTokens, cost, cachedTokens, uncachedTokens,
+        tokenHitCache: cachedTokens,
+        tokenNotHitCache: uncachedTokens,
         timestamp: new Date().toISOString()
     };
     allApiInteractions.push(interaction);
     
     totalGenerationTime += durationMs;
     totalInputTokens += inputTokens;
+    totalCachedTokens += cachedTokens;
     totalOutputTokens += outputTokens;
     totalEstimatedCost += cost;
 
@@ -363,7 +388,9 @@ function logApiInteraction(url, request, response, durationMs, inputTokens, outp
 
 function updateSummaryDisplay() {
     totalGenerationTimeSpan.textContent = `${(totalGenerationTime / 1000).toFixed(2)}s`;
-    totalInputTokensSpan.textContent = totalInputTokens.toLocaleString();
+    totalInputTokensSpan.textContent = totalCachedTokens > 0
+        ? `${totalInputTokens.toLocaleString()} (Cached: ${totalCachedTokens.toLocaleString()})`
+        : totalInputTokens.toLocaleString();
     totalOutputTokensSpan.textContent = totalOutputTokens.toLocaleString();
     totalEstimatedCostSpan.textContent = `$${totalEstimatedCost.toFixed(6)}`;
 }
@@ -385,8 +412,9 @@ function appendApiCallEntry(interaction, index) {
 
     const metrics = document.createElement('div');
     metrics.className = 'api-call-metrics';
+    const cachedText = interaction.cachedTokens > 0 ? ` (Cached: ${interaction.cachedTokens})` : '';
     metrics.innerHTML = `
-        <div class="api-call-metric"><strong>In Tokens:</strong> ${interaction.inputTokens}</div>
+        <div class="api-call-metric"><strong>In Tokens:</strong> ${interaction.inputTokens}${cachedText}</div>
         <div class="api-call-metric"><strong>Out Tokens:</strong> ${interaction.outputTokens}</div>
         <div class="api-call-metric"><strong>Cost:</strong> $${interaction.cost.toFixed(6)}</div>
     `;

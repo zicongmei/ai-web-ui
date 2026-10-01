@@ -288,29 +288,44 @@ function resetUIState() {
 
 function updateStats(data) {
     if (data.usageMetadata) {
-        const inputTokens = data.usageMetadata.promptTokenCount || 0;
-        const outputTokens = data.usageMetadata.candidatesTokenCount || 0;
+        const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+            ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+            : {
+                cachedTokens: data.usageMetadata.cachedContentTokenCount || 0,
+                uncachedTokens: Math.max(0, (data.usageMetadata.promptTokenCount || 0) - (data.usageMetadata.cachedContentTokenCount || 0)),
+                promptTokens: data.usageMetadata.promptTokenCount || 0,
+                outputTokens: data.usageMetadata.candidatesTokenCount || 0
+            };
+        const inputTokens = usage.uncachedTokens; // token not hit cache
+        const cachedTokens = usage.cachedTokens; // token hit cache
+        const outputTokens = usage.outputTokens;
         
         totalInputTokens += inputTokens;
         totalOutputTokens += outputTokens;
         
-        currentTokenStats.textContent = `Tokens: In ${inputTokens}, Out ${outputTokens}`;
+        const cachedText = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+        currentTokenStats.textContent = `Tokens: In ${inputTokens}${cachedText}, Out ${outputTokens}`;
         totalTokenStats.textContent = `Tokens: In ${totalInputTokens}, Out ${totalOutputTokens}`;
         
         // Calculate cost using GEMINI_PRICING_CONFIG if available
         if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
-            const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
-            if (pricing && pricing.getPricing) {
-                const { inputRate, outputRate } = pricing.getPricing(inputTokens);
-                const currentCost = (inputTokens * inputRate) + (outputTokens * outputRate);
-                totalCost += currentCost;
-                
-                currentCostStats.textContent = `Cost: $${currentCost.toFixed(6)}`;
-                totalCostStats.textContent = `Total Cost: $${totalCost.toFixed(6)}`;
+            let currentCost = 0;
+            if (GEMINI_PRICING_CONFIG.calculateCost) {
+                currentCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, inputTokens, outputTokens, cachedTokens, usage.promptTokens);
             } else {
-                currentCostStats.textContent = `Cost: (Pricing N/A)`;
-                totalCostStats.textContent = `Total Cost: $${totalCost.toFixed(6)} (approx)`;
+                const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
+                if (pricing && pricing.getPricing) {
+                    const { inputRate, outputRate, cacheHitRate } = pricing.getPricing(usage.promptTokens);
+                    currentCost = (inputTokens * (inputRate || 0)) + (cachedTokens * (cacheHitRate || 0)) + (outputTokens * (outputRate || 0));
+                }
             }
+            totalCost += currentCost;
+            
+            currentCostStats.textContent = `Cost: $${currentCost.toFixed(6)}`;
+            totalCostStats.textContent = `Total Cost: $${totalCost.toFixed(6)}`;
+        } else {
+            currentCostStats.textContent = `Cost: (Pricing N/A)`;
+            totalCostStats.textContent = `Total Cost: $${totalCost.toFixed(6)} (approx)`;
         }
     }
 }

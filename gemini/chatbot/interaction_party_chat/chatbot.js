@@ -8,8 +8,12 @@ let selectedModel = 'gemini-2.5-flash';
 let systemInstruction = 'Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language (Chinese , English, etc.) as input or previous diaglog. Do not include the thought in repsonse text.'; 
 
 let totalInputTokens = 0;
+let totalUncachedTokens = 0;
+let totalCachedTokens = 0;
 let totalOutputTokens = 0;
 let currentInputTokens = 0;
+let currentUncachedTokens = 0;
+let currentCachedTokens = 0;
 let currentOutputTokens = 0;
 
 let thinkingBudget = -1;
@@ -454,7 +458,14 @@ function clearAllHistory() {
         updateUserMessagePlaceholder(); 
         
         totalInputTokens = 0; 
+        totalUncachedTokens = 0;
+        totalCachedTokens = 0;
         totalOutputTokens = 0; 
+        currentInputTokens = 0;
+        currentUncachedTokens = 0;
+        currentCachedTokens = 0;
+        currentOutputTokens = 0;
+        currentRequestCost = 0;
         totalCost = 0;
         
         renderChatHistory();
@@ -566,7 +577,7 @@ async function generateResponseForRole(targetRole) {
 
         const API_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/interactions?key=${currentApiKey}`;
 
-        currentInputTokens = 0; currentOutputTokens = 0; currentRequestCost = 0;
+        currentInputTokens = 0; currentUncachedTokens = 0; currentCachedTokens = 0; currentOutputTokens = 0; currentRequestCost = 0;
 
         const response = await fetch(API_ENDPOINT, {
             method: 'POST',
@@ -604,10 +615,31 @@ async function generateResponseForRole(targetRole) {
         }
 
         // Handle token usage: Interactions API uses 'usage' instead of 'usageMetadata'
-        if (data.usage) {
-            currentInputTokens = data.usage.total_input_tokens || 0;
-            currentOutputTokens = data.usage.total_output_tokens || 0;
+        const usageData = data.usage || data.usageMetadata;
+        if (usageData) {
+            let uncached = 0;
+            let cached = 0;
+            let promptTokens = 0;
+            let outputTokens = 0;
+            if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage) {
+                const parsed = GEMINI_PRICING_CONFIG.parseTokenUsage(usageData);
+                uncached = parsed.uncachedTokens;
+                cached = parsed.cachedTokens;
+                promptTokens = parsed.promptTokens;
+                outputTokens = parsed.outputTokens;
+            } else {
+                promptTokens = usageData.total_input_tokens || usageData.promptTokenCount || 0;
+                cached = usageData.cached_input_tokens || usageData.cached_tokens || usageData.cachedContentTokenCount || 0;
+                uncached = Math.max(0, promptTokens - cached);
+                outputTokens = usageData.total_output_tokens || usageData.candidatesTokenCount || 0;
+            }
+            currentInputTokens = promptTokens;
+            currentUncachedTokens = uncached;
+            currentCachedTokens = cached;
+            currentOutputTokens = outputTokens;
             totalInputTokens += currentInputTokens;
+            totalUncachedTokens += currentUncachedTokens;
+            totalCachedTokens += currentCachedTokens;
             totalOutputTokens += currentOutputTokens;
             calculateCost();
             renderStats();
@@ -661,17 +693,30 @@ function toggleInputs(enable) {
 // --- Utils & Stats ---
 
 function calculateCost() {
-    const prices = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
+    const uncachedTokens = Math.max(0, currentInputTokens - currentCachedTokens);
+    if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && typeof GEMINI_PRICING_CONFIG.calculateCost === 'function') {
+        currentRequestCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, uncachedTokens, currentOutputTokens, currentCachedTokens, currentInputTokens);
+        totalCost += currentRequestCost;
+        return;
+    }
+    const prices = GEMINI_PRICING_CONFIG?.TEXT?.[selectedModel];
     if (prices) {
         const { inputRate, outputRate } = prices.getPricing(currentInputTokens);
-        currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);
+        const cacheRate = prices.cacheHitRate !== undefined ? prices.cacheHitRate : inputRate;
+        currentRequestCost = (uncachedTokens * inputRate) + (currentCachedTokens * cacheRate) + (currentOutputTokens * outputRate);
         totalCost += currentRequestCost;
     }
 }
 
 function renderStats() {
+    const nowBreakdown = (currentCachedTokens > 0 || currentUncachedTokens > 0)
+        ? ` (Cached: ${currentCachedTokens}, Non-Cached: ${currentUncachedTokens})`
+        : '';
+    const totalBreakdown = (totalCachedTokens > 0 || totalUncachedTokens > 0)
+        ? ` (Cached: ${totalCachedTokens}, Non-Cached: ${totalUncachedTokens})`
+        : '';
     tokenStatsDiv.innerHTML = `
-        <div><strong>Input:</strong> Now: ${currentInputTokens} | Total: ${totalInputTokens}</div>
+        <div><strong>Input:</strong> Now: ${currentInputTokens}${nowBreakdown} | Total: ${totalInputTokens}${totalBreakdown}</div>
         <div><strong>Output:</strong> Now: ${currentOutputTokens} | Total: ${totalOutputTokens}</div>
     `;
     costStatsDiv.innerHTML = `
@@ -682,14 +727,30 @@ function renderStats() {
 
 function saveStats() {
     setLocalStorageItem('totalInputTokens', totalInputTokens);
+    setLocalStorageItem('totalUncachedTokens', totalUncachedTokens);
+    setLocalStorageItem('totalCachedTokens', totalCachedTokens);
     setLocalStorageItem('totalOutputTokens', totalOutputTokens);
     setLocalStorageItem('totalCost', totalCost);
 }
 
 function loadStats() {
-    totalInputTokens = parseInt(getLocalStorageItem('totalInputTokens')) || 0;
-    totalOutputTokens = parseInt(getLocalStorageItem('totalOutputTokens')) || 0;
-    totalCost = parseFloat(getLocalStorageItem('totalCost')) || 0;
+    const i = getLocalStorageItem('totalInputTokens');
+    if (i !== null) totalInputTokens = parseInt(i, 10);
+    const cached = getLocalStorageItem('totalCachedTokens');
+    if (cached !== null) totalCachedTokens = parseInt(cached, 10);
+    const uncached = getLocalStorageItem('totalUncachedTokens');
+    if (uncached !== null) {
+        totalUncachedTokens = parseInt(uncached, 10);
+    } else {
+        totalUncachedTokens = Math.max(0, totalInputTokens - totalCachedTokens);
+    }
+    if (totalInputTokens < totalCachedTokens + totalUncachedTokens) {
+        totalInputTokens = totalCachedTokens + totalUncachedTokens;
+    }
+    const o = getLocalStorageItem('totalOutputTokens');
+    if (o !== null) totalOutputTokens = parseInt(o, 10);
+    const c = getLocalStorageItem('totalCost');
+    if (c !== null) totalCost = parseFloat(c);
     renderStats();
 }
 

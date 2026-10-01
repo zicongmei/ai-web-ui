@@ -365,23 +365,37 @@ function logApiInteraction(title, request, response) {
 
 function updateStats(data, callTime) {
     if (data.usageMetadata) {
-        const inputTokens = data.usageMetadata.promptTokenCount || 0;
-        const outputTokens = data.usageMetadata.candidatesTokenCount || 0;
-        const total = inputTokens + outputTokens;
+        const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+            ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+            : {
+                cachedTokens: data.usageMetadata.cachedContentTokenCount || 0,
+                uncachedTokens: Math.max(0, (data.usageMetadata.promptTokenCount || 0) - (data.usageMetadata.cachedContentTokenCount || 0)),
+                promptTokens: data.usageMetadata.promptTokenCount || 0,
+                outputTokens: data.usageMetadata.candidatesTokenCount || 0
+            };
+        const inputTokens = usage.uncachedTokens; // token not hit cache
+        const cachedTokens = usage.cachedTokens; // token hit cache
+        const outputTokens = usage.outputTokens;
+        const total = inputTokens + cachedTokens + outputTokens;
         totalTokensCount += total;
         
         let currentEstimatedCost = 0;
         if (typeof GEMINI_PRICING_CONFIG !== 'undefined') {
-            const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
-            if (pricing && pricing.getPricing) {
-                const { inputRate, outputRate } = pricing.getPricing(inputTokens);
-                currentEstimatedCost = (inputTokens * inputRate) + (outputTokens * outputRate);
-                totalEstimatedCostValue += currentEstimatedCost;
+            if (GEMINI_PRICING_CONFIG.calculateCost) {
+                currentEstimatedCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, inputTokens, outputTokens, cachedTokens, usage.promptTokens);
+            } else {
+                const pricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
+                if (pricing && pricing.getPricing) {
+                    const { inputRate, outputRate, cacheHitRate } = pricing.getPricing(usage.promptTokens);
+                    currentEstimatedCost = (inputTokens * (inputRate || 0)) + (cachedTokens * (cacheHitRate || 0)) + (outputTokens * (outputRate || 0));
+                }
             }
+            totalEstimatedCostValue += currentEstimatedCost;
         }
         
         summaryDisplay.style.display = 'block';
-        inputTokensSpan.textContent = inputTokens;
+        const cachedText = cachedTokens > 0 ? ` (Cached: ${cachedTokens})` : '';
+        inputTokensSpan.textContent = `${inputTokens}${cachedText}`;
         outputTokensSpan.textContent = outputTokens;
         totalTokensSpan.textContent = totalTokensCount;
         totalCostSpan.textContent = `$${totalEstimatedCostValue.toFixed(6)}`;

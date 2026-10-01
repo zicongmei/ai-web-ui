@@ -6,9 +6,13 @@ let selectedModel = 'gemini-2.5-flash-lite';
 let systemInstruction = ''; // New variable for system instruction, reflects current input field content
 
 let totalInputTokens = 0;
+let totalUncachedTokens = 0;
+let totalCachedTokens = 0;
 let totalOutputTokens = 0;
-let currentInputTokens = 0; // New: Tokens for the current request
-let currentOutputTokens = 0; // New: Tokens for the current request
+let currentInputTokens = 0; // Total prompt tokens for the current request
+let currentUncachedTokens = 0; // Tokens not hit cache for the current request
+let currentCachedTokens = 0; // Tokens hit cache for the current request
+let currentOutputTokens = 0; // Output tokens for the current request
 
 // New: Variables for thinking budget/level
 let thinkingBudget = -1; // Default for non-gemini3 models
@@ -233,6 +237,8 @@ function loadChatHistoryFromLocalStorage() {
 // Function to save token and cost stats to localStorage
 function saveStatsToLocalStorage() {
     setLocalStorageItem('totalInputTokens', totalInputTokens.toString());
+    setLocalStorageItem('totalUncachedTokens', totalUncachedTokens.toString());
+    setLocalStorageItem('totalCachedTokens', totalCachedTokens.toString());
     setLocalStorageItem('totalOutputTokens', totalOutputTokens.toString());
     setLocalStorageItem('totalCost', totalCost.toString()); // Save total cost
     console.log('Token and cost stats saved to local storage.');
@@ -241,11 +247,24 @@ function saveStatsToLocalStorage() {
 // Function to load token and cost stats from localStorage
 function loadStatsFromLocalStorage() {
     const storedInput = getLocalStorageItem('totalInputTokens');
+    const storedUncached = getLocalStorageItem('totalUncachedTokens');
+    const storedCached = getLocalStorageItem('totalCachedTokens');
     const storedOutput = getLocalStorageItem('totalOutputTokens');
     const storedTotalCost = getLocalStorageItem('totalCost');
 
     if (storedInput) {
         totalInputTokens = parseInt(storedInput, 10);
+    }
+    if (storedCached) {
+        totalCachedTokens = parseInt(storedCached, 10);
+    }
+    if (storedUncached) {
+        totalUncachedTokens = parseInt(storedUncached, 10);
+    } else {
+        totalUncachedTokens = Math.max(0, totalInputTokens - totalCachedTokens);
+    }
+    if (totalInputTokens < totalCachedTokens + totalUncachedTokens) {
+        totalInputTokens = totalCachedTokens + totalUncachedTokens;
     }
     if (storedOutput) {
         totalOutputTokens = parseInt(storedOutput, 10);
@@ -253,7 +272,7 @@ function loadStatsFromLocalStorage() {
     if (storedTotalCost) {
         totalCost = parseFloat(storedTotalCost);
     }
-    console.log(`Stats loaded: Input=${totalInputTokens}, Output=${totalOutputTokens}, TotalCost=$${totalCost.toFixed(5)}`);
+    console.log(`Stats loaded: Input=${totalInputTokens} (Cached=${totalCachedTokens}, Non-Cached=${totalUncachedTokens}), Output=${totalOutputTokens}, TotalCost=$${totalCost.toFixed(5)}`);
 }
 
 // Function to load thinking config from localStorage
@@ -429,8 +448,14 @@ function renderChatHistory() {
 // Function to render accumulated token stats
 function renderTokenStats() {
     if (tokenStatsDiv) {
+        const nowBreakdown = (currentCachedTokens > 0 || currentUncachedTokens > 0)
+            ? ` (Cached: ${currentCachedTokens}, Non-Cached: ${currentUncachedTokens})`
+            : '';
+        const totalBreakdown = (totalCachedTokens > 0 || totalUncachedTokens > 0)
+            ? ` (Cached: ${totalCachedTokens}, Non-Cached: ${totalUncachedTokens})`
+            : '';
         tokenStatsDiv.innerHTML = `
-            <div><strong>Input Tokens:</strong> Current: ${currentInputTokens} | Total: ${totalInputTokens}</div>
+            <div><strong>Input Tokens:</strong> Current: ${currentInputTokens}${nowBreakdown} | Total: ${totalInputTokens}${totalBreakdown}</div>
             <div><strong>Output Tokens:</strong> Current: ${currentOutputTokens} | Total: ${totalOutputTokens}</div>
         `;
     }
@@ -553,22 +578,45 @@ async function _sendContentToModel(userMessageTextForAPI, contentToSendForAPI) {
             }
         }
 
+        let tokenHitCache = 0;
+        let tokenNotHitCache = 0;
+
         // Update token counts and calculate cost
         if (data.usageMetadata) {
-            currentInputTokens = data.usageMetadata.promptTokenCount || 0; // Update current request tokens
-            currentOutputTokens = data.usageMetadata.candidatesTokenCount || 0; // Update current request tokens
+            const usage = (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.parseTokenUsage)
+                ? GEMINI_PRICING_CONFIG.parseTokenUsage(data.usageMetadata)
+                : {
+                    cachedTokens: data.usageMetadata.cachedContentTokenCount || 0,
+                    uncachedTokens: Math.max(0, (data.usageMetadata.promptTokenCount || 0) - (data.usageMetadata.cachedContentTokenCount || 0)),
+                    promptTokens: data.usageMetadata.promptTokenCount || 0,
+                    outputTokens: data.usageMetadata.candidatesTokenCount || 0
+                };
+
+            tokenHitCache = usage.cachedTokens;
+            tokenNotHitCache = usage.uncachedTokens;
+            currentCachedTokens = usage.cachedTokens; // Tokens hit cache
+            currentUncachedTokens = usage.uncachedTokens; // Tokens not hit cache
+            currentInputTokens = usage.promptTokens; // Total prompt tokens
+            currentOutputTokens = usage.outputTokens; // Output tokens
 
             totalInputTokens += currentInputTokens;
+            totalUncachedTokens += currentUncachedTokens;
+            totalCachedTokens += currentCachedTokens;
             totalOutputTokens += currentOutputTokens;
             
-            // Calculate cost for the current request
-            const modelPricing = GEMINI_PRICING_CONFIG.TEXT[selectedModel];
-            if (modelPricing && modelPricing.getPricing) {
-                const { inputRate, outputRate } = modelPricing.getPricing(currentInputTokens);
-                currentRequestCost = (currentInputTokens * inputRate) + (currentOutputTokens * outputRate);
+            // Calculate cost for the current request differentiating cache
+            if (typeof GEMINI_PRICING_CONFIG !== 'undefined' && GEMINI_PRICING_CONFIG.calculateCost) {
+                currentRequestCost = GEMINI_PRICING_CONFIG.calculateCost(selectedModel, currentUncachedTokens, currentOutputTokens, currentCachedTokens, usage.promptTokens);
                 totalCost += currentRequestCost;
             } else {
-                console.warn(`No valid pricing function found for model: ${selectedModel}`);
+                const modelPricing = GEMINI_PRICING_CONFIG?.TEXT?.[selectedModel];
+                if (modelPricing && modelPricing.getPricing) {
+                    const { inputRate, outputRate, cacheHitRate } = modelPricing.getPricing(usage.promptTokens);
+                    currentRequestCost = (currentUncachedTokens * (inputRate || 0)) + (currentCachedTokens * (cacheHitRate || 0)) + (currentOutputTokens * (outputRate || 0));
+                    totalCost += currentRequestCost;
+                } else {
+                    console.warn(`No valid pricing function found for model: ${selectedModel}`);
+                }
             }
 
             renderTokenStats();
@@ -586,7 +634,16 @@ async function _sendContentToModel(userMessageTextForAPI, contentToSendForAPI) {
         errorMessageDiv.textContent = ''; // Clear thinking message
         renderChatHistory(); // Render the new model message and update raw history input
         saveChatHistoryToLocalStorage(); // Save updated history
-        return true; // Indicate success
+        return {
+            success: true,
+            tokenHitCache,
+            tokenNotHitCache,
+            cachedTokens: tokenHitCache,
+            uncachedTokens: tokenNotHitCache,
+            totalInputTokens: tokenHitCache + tokenNotHitCache,
+            outputTokens: currentOutputTokens,
+            cost: currentRequestCost
+        };
 
     } catch (error) {
         if (error.name === 'AbortError') {
@@ -598,11 +655,21 @@ async function _sendContentToModel(userMessageTextForAPI, contentToSendForAPI) {
         }
         // On error, current tokens and cost should be 0 as the request failed or was incomplete.
         currentInputTokens = 0;
+        currentCachedTokens = 0;
         currentOutputTokens = 0;
         currentRequestCost = 0; // Reset current request cost on error
         renderTokenStats(); // Update UI to reflect 0 for current
         renderCostStats(); // Update UI to reflect 0 for current request cost
-        return false; // Indicate failure
+        return {
+            success: false,
+            tokenHitCache: 0,
+            tokenNotHitCache: 0,
+            cachedTokens: 0,
+            uncachedTokens: 0,
+            totalInputTokens: 0,
+            outputTokens: 0,
+            cost: 0
+        };
     } finally {
         abortController = null; // Clear the controller
         stopMessageButton.disabled = true;
@@ -963,8 +1030,12 @@ function clearAllHistory() {
     if (confirm('Are you sure you want to clear all chat history? This cannot be undone.')) {
         chatHistory = []; // Clear the array
         totalInputTokens = 0; // Reset tokens
+        totalUncachedTokens = 0; // Reset uncached tokens
+        totalCachedTokens = 0; // Reset cached tokens
         totalOutputTokens = 0; // Reset tokens
         currentInputTokens = 0; // Reset current tokens
+        currentUncachedTokens = 0; // Reset current uncached tokens
+        currentCachedTokens = 0; // Reset current cached tokens
         currentOutputTokens = 0; // Reset current tokens
         currentRequestCost = 0; // Reset current request cost
         totalCost = 0; // Reset total cost
