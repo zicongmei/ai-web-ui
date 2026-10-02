@@ -99,6 +99,49 @@ const GEMINI_PRICING_CONFIG = {
                 outputRate: 0.40 / 1_000_000,
                 cacheHitRate: 0.01 / 1_000_000
             })
+        },
+        // Live Speech-to-Text & Live API Models
+        'gemini-3.5-transcribe-live': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 3.50 / 1_000_000,
+                outputRate: 21.00 / 1_000_000,
+                cacheHitRate: 0
+            })
+        },
+        'gemini-3.5-transcribe': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 2.00 / 1_000_000,
+                outputRate: 12.00 / 1_000_000,
+                cacheHitRate: 0
+            })
+        },
+        'gemini-3.8-live': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 3.00 / 1_000_000,
+                outputRate: 4.50 / 1_000_000,
+                cacheHitRate: 0
+            })
+        },
+        'gemini-3.8-live-extended-thinking': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 3.00 / 1_000_000,
+                outputRate: 4.50 / 1_000_000,
+                cacheHitRate: 0
+            })
+        },
+        'gemini-3.1-flash-live-preview': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 3.00 / 1_000_000,
+                outputRate: 4.50 / 1_000_000,
+                cacheHitRate: 0
+            })
+        },
+        'gemini-2.5-flash-native-audio-preview-12-2025': {
+            getPricing: (promptTokenCount) => ({
+                inputRate: 3.00 / 1_000_000,
+                outputRate: 2.00 / 1_000_000,
+                cacheHitRate: 0
+            })
         }
     },
 
@@ -178,7 +221,7 @@ const GEMINI_PRICING_CONFIG = {
         const promptTokens = usageMetadata.promptTokenCount ?? usageMetadata.prompt_tokens ?? usageMetadata.total_input_tokens ?? usageMetadata.inputTokens ?? 0;
         const cachedTokens = usageMetadata.cachedContentTokenCount ?? usageMetadata.cached_content_token_count ?? usageMetadata.cached_tokens ?? usageMetadata.cachedTokens ?? usageMetadata.cached_input_tokens ?? 0;
         const uncachedTokens = Math.max(0, promptTokens - cachedTokens);
-        const outputTokens = usageMetadata.candidatesTokenCount ?? usageMetadata.candidates_tokens ?? usageMetadata.total_output_tokens ?? usageMetadata.outputTokens ?? 0;
+        const outputTokens = usageMetadata.candidatesTokenCount ?? usageMetadata.responseTokenCount ?? usageMetadata.candidates_tokens ?? usageMetadata.response_token_count ?? usageMetadata.total_output_tokens ?? usageMetadata.outputTokens ?? 0;
         return {
             tokenHitCache: cachedTokens,
             tokenNotHitCache: uncachedTokens,
