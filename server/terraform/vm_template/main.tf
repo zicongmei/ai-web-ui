@@ -43,6 +43,9 @@ locals {
   local_llm_model = "gemma4:${var.gemma_model_size}"
   network_tag     = "local-llm-https-server"
 
+  # Instance template name_prefix includes prefix, model size, and effective VM machine type (max 37 chars for GCP name_prefix)
+  instance_template_name_prefix = substr("${var.template_name_prefix}-${var.gemma_model_size}-${local.effective_machine_type}-", 0, 37)
+
   # Embed server/backend and server/frontend files (gzip + base64) so the VM template is 100% self-contained on boot
   embedded_files = {
     "/opt/ai-web-ui/server/backend/requirements.txt"             = base64gzip(file("${path.module}/../../backend/requirements.txt"))
@@ -141,8 +144,8 @@ resource "google_compute_firewall" "allow_ssh" {
 
 # GCP Compute Engine VM Instance Template (does not launch a running VM)
 resource "google_compute_instance_template" "local_llm_template" {
-  name_prefix  = "${var.template_name_prefix}-"
-  description  = "VM Instance Template for hosting Gemma 4 (${local.local_llm_model}) backend and Local LLM Web UI on port 443"
+  name_prefix  = local.instance_template_name_prefix
+  description  = "VM Instance Template for hosting Gemma 4 (${local.local_llm_model}) on ${local.effective_machine_type} with Local LLM Web UI on port 443"
   machine_type = local.effective_machine_type
   region       = var.region
 

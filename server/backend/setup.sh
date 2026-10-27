@@ -43,10 +43,11 @@ if lspci | grep -i nvidia >/dev/null 2>&1; then
         echo "Installing NVIDIA headless driver..."
         apt-get install -y ubuntu-drivers-common || true
         ubuntu-drivers autoinstall || apt-get install -y nvidia-driver-550-server || true
-    else
-        echo "NVIDIA driver already installed:"
-        nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
     fi
+    modprobe nvidia || true
+    modprobe nvidia_uvm || true
+    echo "NVIDIA GPU status:"
+    nvidia-smi --query-gpu=name,memory.total --format=csv,noheader || true
 else
     echo "No NVIDIA GPU detected. Running in CPU-only mode."
 fi

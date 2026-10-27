@@ -10,9 +10,9 @@ variable "region" {
 }
 
 variable "template_name_prefix" {
-  description = "Name prefix for the GCP Compute Engine VM Instance Template."
+  description = "Base name prefix for the GCP Compute Engine VM Instance Template (model size and machine type are appended automatically)."
   type        = string
-  default     = "local-llm-gemma4-tpl"
+  default     = "local-llm"
 }
 
 variable "gpu_type" {

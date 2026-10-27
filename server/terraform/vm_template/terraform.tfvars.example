@@ -1,6 +1,6 @@
 project_id           = "your-gcp-project-id"
 region               = "us-central1"
-template_name_prefix = "local-llm-gemma4-tpl"
+template_name_prefix = "local-llm"
 
 # ==============================================================================
 # GPU Type Configuration
