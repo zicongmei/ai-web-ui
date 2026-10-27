@@ -13,19 +13,19 @@ It includes:
 
 ## 1. Possible `gpu_type` Values in GCP
 
-Set `gpu_type = ""` (or `null`) in `terraform.tfvars` to run **CPU-only without a GPU**. To attach a GPU, set `gpu_type` to one of the exact GCP accelerator identifiers below:
+Set `gpu_type = ""` in `terraform.tfvars` to run **CPU-only without a GPU**. To attach a GPU, set `gpu_type` to one of the exact GCP accelerator identifiers below:
 
-| `gpu_type` Value | GPU Model | GPU VRAM | Compatible Machine Series | Default `machine_type` (if left `""`) | Best Gemma 4 Models | Approx. On-Demand Cost (`us-central1`) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `""` *(or `null`)* | **None (CPU-Only)** | 0 GB (uses System RAM) | `N4`, `C4`, `C3D`, `E2`, `N2` | `n4-standard-8` (32 GB RAM) | `e2b`, `e4b`, `12b`, `26b` | **~$0.36 / hr** (~$265 / mo) |
-| `"nvidia-l4"` | **NVIDIA L4** (Ada Lovelace) | **24 GB GDDR6** | `g2-standard-*` (`4`, `8`, `12`, `16`, `32`) | `g2-standard-8` (32 GB RAM) | `e2b`, `e4b`, `12b`, **`26b`**, `31b` | **~$0.71–$0.85 / hr** (~$516–$619 / mo) |
-| `"nvidia-tesla-t4"` | **NVIDIA Tesla T4** (Turing) | **16 GB GDDR6** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **~$0.73 / hr** (~$533 / mo, VM + GPU) |
-| `"nvidia-tesla-p4"` | **NVIDIA Tesla P4** (Pascal) | **8 GB GDDR5** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b` | **~$0.98 / hr** (~$715 / mo, VM + GPU) |
-| `"nvidia-tesla-p100"` | **NVIDIA Tesla P100** (Pascal) | **16 GB HBM2** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **~$1.84 / hr** (~$1,343 / mo, VM + GPU) |
-| `"nvidia-tesla-v100"` | **NVIDIA Tesla V100** (Volta) | **16 GB HBM2** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **~$2.86 / hr** (~$2,088 / mo, VM + GPU) |
-| `"nvidia-tesla-a100"` | **NVIDIA A100 40GB** (Ampere) | **40 GB HBM2** | `a2-highgpu-*` (`1g`, `2g`, `4g`, `8g`) | `a2-highgpu-1g` (12 vCPU, 85 GB RAM) | `26b`, **`31b`** (long context / FP16) | **~$3.67 / hr** (~$2,679 / mo) |
-| `"nvidia-a100-80gb"` | **NVIDIA A100 80GB** (Ampere) | **80 GB HBM2e** | `a2-ultragpu-*` (`1g`, `2g`, `4g`, `8g`) | `a2-ultragpu-1g` (12 vCPU, 170 GB RAM) | `31b` (full precision BF16 / 256K ctx) | **~$5.07 / hr** (~$3,701 / mo) |
-| `"nvidia-h100-80gb"` | **NVIDIA H100 80GB** (Hopper) | **80 GB HBM3** | `a3-highgpu-*` (`1g`, `2g`, `4g`, `8g`) | `a3-highgpu-1g` (26 vCPU, 234 GB RAM) | `31b` (high-concurrency BF16/FP8) | **~$11.06 / hr** (~$8,074 / mo) |
+| `gpu_type` Value | GPU Model | GPU VRAM | Compatible Machine Series | Default `machine_type` (if left `""`) | Best Gemma 4 Models | GPU-Only Cost (`us-central1` On-Demand / Spot) | Total VM + GPU Cost (`us-central1` On-Demand / Spot) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `""` | **None (CPU-Only)** | 0 GB (uses System RAM) | `N4`, `C4`, `C3`, `E2`, `N2` | `n4-standard-8` (32 GB RAM) | `e2b`, `e4b`, `12b`, `26b` | **$0.00 / hr** | **~$0.36 / hr** (~$0.11 / hr Spot) |
+| `"nvidia-l4"` | **NVIDIA L4** (Ada Lovelace) | **24 GB GDDR6** | `g2-standard-*` (`4`, `8`, `12`, `16`, `32`) | `g2-standard-8` (32 GB RAM) | `e2b`, `e4b`, **`12b`**, **`26b`**, `31b` | **~$0.56 / hr** (~$0.22 / hr Spot, bundled in `g2-*`) | **~$0.85 / hr** (~$0.34–$0.51 / hr Spot) |
+| `"nvidia-tesla-t4"` | **NVIDIA Tesla T4** (Turing) | **16 GB GDDR6** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **$0.35 / hr** (~$0.11 / hr Spot) | **~$0.73 / hr** (~$0.19 / hr Spot) |
+| `"nvidia-tesla-p4"` | **NVIDIA Tesla P4** (Pascal) | **8 GB GDDR5** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b` | **$0.60 / hr** (~$0.22 / hr Spot) | **~$0.98 / hr** (~$0.30 / hr Spot) |
+| `"nvidia-tesla-p100"` | **NVIDIA Tesla P100** (Pascal) | **16 GB HBM2** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **$1.46 / hr** (~$0.43 / hr Spot) | **~$1.84 / hr** (~$0.51 / hr Spot) |
+| `"nvidia-tesla-v100"` | **NVIDIA Tesla V100** (Volta) | **16 GB HBM2** | `n1-standard-*`, `n1-highmem-*` | `n1-standard-8` (30 GB RAM) | `e2b`, `e4b`, `12b` | **$2.48 / hr** (~$0.74 / hr Spot) | **~$2.86 / hr** (~$0.82 / hr Spot) |
+| `"nvidia-tesla-a100"` | **NVIDIA A100 40GB** (Ampere) | **40 GB HBM2** | `a2-highgpu-*` (`1g`, `2g`, `4g`, `8g`) | `a2-highgpu-1g` (12 vCPU, 85 GB RAM) | `26b`, **`31b`** (long context / FP16) | **~$2.93 / hr** (~$1.17 / hr Spot, bundled in `a2-*`) | **~$3.67 / hr** (~$1.47–$2.20 / hr Spot) |
+| `"nvidia-a100-80gb"` | **NVIDIA A100 80GB** (Ampere) | **80 GB HBM2e** | `a2-ultragpu-*` (`1g`, `2g`, `4g`, `8g`) | `a2-ultragpu-1g` (12 vCPU, 170 GB RAM) | `31b` (full precision BF16 / 256K ctx) | **~$3.93 / hr** (~$1.57 / hr Spot, bundled in `a2-*`) | **~$5.07 / hr** (~$2.03–$3.04 / hr Spot) |
+| `"nvidia-h100-80gb"` | **NVIDIA H100 80GB** (Hopper) | **80 GB HBM3** | `a3-highgpu-*` (`1g`, `2g`, `4g`, `8g`) | `a3-highgpu-1g` (26 vCPU, 234 GB RAM) | `31b` (high-concurrency BF16/FP8) | **~$9.80 / hr** (bundled in `a3-*`) | **~$11.06 / hr** (~$6.60 / hr Spot) |
 
 > **Important GCP Rule:** Each GPU type only works with its compatible machine series (`nvidia-l4` requires `g2-*`; `t4`/`v100`/`p100`/`p4` require `n1-*`; `a100` requires `a2-*`; `h100` requires `a3-*`). If you leave `machine_type = ""`, Terraform automatically selects the matching machine series for your `gpu_type`.
 
@@ -53,9 +53,9 @@ When running Gemma 4 via Ollama (4-bit `Q4_K_M` quantization by default), memory
 | **N4** | CPU-Only (`gpu_type = ""`) | `n4-standard-4` | 4 vCPU, 16 GB RAM | Intel Emerald Rapids, DDR5 + AMX | ~$0.181 / hr | ~$132 / mo | ~$0.055 / hr |
 | **N4** | CPU-Only (`gpu_type = ""`) | `n4-standard-8` | 8 vCPU, 32 GB RAM | Intel Emerald Rapids, DDR5 + AMX | **~$0.363 / hr** | **~$265 / mo** | **~$0.110 / hr** |
 | **N4** | CPU-Only (`gpu_type = ""`) | `n4-highmem-8` | 8 vCPU, 64 GB RAM | Intel Emerald Rapids, DDR5 + AMX | ~$0.490 / hr | ~$358 / mo | ~$0.150 / hr |
-| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-4` | 4 vCPU, 16 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | ~$0.707 / hr | ~$516 / mo | ~$0.220 / hr |
-| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-8` | 8 vCPU, 32 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | **~$0.848 / hr** | **~$619 / mo** | **~$0.260 / hr** |
-| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-12` | 12 vCPU, 48 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | ~$0.990 / hr | ~$723 / mo | ~$0.300 / hr |
+| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-4` | 4 vCPU, 16 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | ~$0.707 / hr | ~$516 / mo | ~$0.28–$0.42 / hr |
+| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-8` | 8 vCPU, 32 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | **~$0.854 / hr** | **~$623 / mo** | **~$0.34–$0.51 / hr** |
+| **G2 + L4** | GPU (`gpu_type = "nvidia-l4"`) | `g2-standard-12` | 12 vCPU, 48 GB RAM + **1x L4 (24 GB)** | NVIDIA L4 Ada Lovelace GPU | ~$0.990 / hr | ~$723 / mo | ~$0.40–$0.59 / hr |
 
 ---
 
