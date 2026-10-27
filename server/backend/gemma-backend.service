@@ -1,0 +1,21 @@
+[Unit]
+Description=Gemma 4 Local LLM Backend API Server
+After=network-online.target ollama.service
+Wants=network-online.target ollama.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ai-web-ui/server/backend
+EnvironmentFile=-/etc/default/gemma-backend
+Environment="LOCAL_LLM_MODEL=gemma4:e4b"
+Environment="OLLAMA_BASE_URL=http://127.0.0.1:11434"
+Environment="OLLAMA_NUM_CTX=8192"
+ExecStart=/opt/ai-web-ui/server/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 2
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Local LLM AI RPG Game</title>
+    <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="container">
+        <h1>Local LLM AI RPG Game</h1>
+        <div class="error-message hidden" id="errorDisplay"></div>
+        <div class="input-group checkbox-group" style="margin-bottom: 20px; display: flex; align-items: center;">
+            <input id="useMemoryCheckbox" style="width: auto; margin-right: 8px; cursor: pointer;" type="checkbox"/>
+            <label for="useMemoryCheckbox" style="margin-bottom: 0; cursor: pointer; user-select: none;">Use Short-term and Long-term Memory</label>
+        </div>
+        <div class="input-group">
+            <div class="collapsible-header" id="toggleCharactersThoughts">
+                <label for="charactersThoughtsDisplay">Characters' reaction (Current Scene)</label>
+                <span class="toggle-icon">▼</span>
+            </div>
+            <div class="collapsible-content" id="charactersThoughtsContent">
+                <div id="charactersReactionsContainer"></div>
+                <textarea id="charactersThoughtsDisplay" style="display: none;"></textarea>
+            </div>
+        </div>
+        <div class="hidden" id="memorySection">
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleShortTermMemory">
+                    <label for="shortTermMemoryDisplay">Short Term Memory (Recent 3-5 turns)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="collapsible-content" id="shortTermMemoryContent">
+                    <textarea id="shortTermMemoryDisplay" placeholder="Summary of recent events..." rows="3"></textarea>
+                </div>
+            </div>
+            <div class="input-group">
+                <div class="collapsible-header" id="toggleLongTermMemory">
+                    <label for="longTermMemoryDisplay">Long Term Memory (Milestones &amp; World State)</label>
+                    <span class="toggle-icon">▼</span>
+                </div>
+                <div class="collapsible-content" id="longTermMemoryContent">
+                    <textarea id="longTermMemoryDisplay" placeholder="Summary of key historical milestones..." rows="5"></textarea>
+                </div>
+            </div>
+            <button class="secondary-btn" id="refreshMemoriesBtn" style="margin-bottom: 20px;">Regenerate Memory from Full Text</button>
+        </div>
+        <div class="input-group">
+            <label for="gameHistory">Game History (editable):</label>
+            <textarea id="gameHistory" placeholder="Start your adventure here, or leave blank and provide a prompt for the first scene." rows="20"></textarea>
+        </div>
+        <div class="input-group">
+            <label for="nextMovePrompt">What is your next move?</label>
+            <textarea id="nextMovePrompt" placeholder="e.g., I explore the dark cave to the north." rows="3"></textarea>
+        </div>
+        <div class="input-group">
+            <label for="targetWordCount">Target word count for next story generation (optional, default: 100):</label>
+            <input id="targetWordCount" min="1" placeholder="e.g., 100" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;" type="number"/>
+        </div>
+        <div class="action-buttons">
+            <button id="generateBtn">Submit Move</button>
+            <button class="stop-btn hidden" id="stopBtn">Stop Generation</button>
+        </div>
+        <button class="secondary-btn" disabled="" id="revertLastMoveBtn">Remove Last Turn</button>
+        <button class="secondary-btn" id="clearNextMovePromptBtn" type="button">Clear Draft</button>
+        <button class="secondary-btn" id="clearAllBtn">Clear All Contents</button>
+        <button class="secondary-btn" id="saveGameBtn">Save Game</button>
+        <button class="secondary-btn" id="loadGameBtn">Load Game</button>
+        <input accept=".json" id="loadGameInput" style="display: none;" type="file"/>
+        <div class="hidden" id="loadingIndicator">Local LLM is thinking...</div>
+
+        <!-- Find & Replace Section (Collapsed by default) -->
+        <div class="find-replace-section">
+            <div class="collapsible-header find-replace-header" id="toggleFindReplace">
+                <span class="find-replace-title">
+                    <span class="find-icon">🔍</span> Find &amp; Replace in Game History
+                </span>
+                <span class="toggle-icon" id="findReplaceToggleIcon" style="transform: rotate(-90deg);">▼</span>
+            </div>
+            <div class="collapsible-content collapsed" id="findReplaceContent">
+                <div class="find-replace-body">
+                    <div class="find-replace-row">
+                        <div class="find-replace-field">
+                            <label for="findInput">Find:</label>
+                            <input autocomplete="off" id="findInput" placeholder="Text to find..." type="text"/>
+                        </div>
+                        <div class="find-replace-field">
+                            <label for="replaceInput">Replace with:</label>
+                            <input autocomplete="off" id="replaceInput" placeholder="Replacement text..." type="text"/>
+                        </div>
+                    </div>
+                    <div class="find-replace-options">
+                        <label>
+                            <input id="findMatchCaseCheckbox" type="checkbox"/> Match Case
+                        </label>
+                        <label>
+                            <input id="findWholeWordCheckbox" type="checkbox"/> Whole Word
+                        </label>
+                        <label>
+                            <input id="findRegexCheckbox" type="checkbox"/> Regex
+                        </label>
+                        <span class="find-replace-status" id="findReplaceStatus"></span>
+                    </div>
+                    <div class="find-replace-actions">
+                        <button id="findPrevButton" type="button">◀ Previous</button>
+                        <button id="findNextButton" type="button">Next ▶</button>
+                        <button id="replaceButton" type="button">Replace</button>
+                        <button id="replaceAllButton" type="button">Replace All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <label for="systemInstruction">System Instruction for Local LLM:</label>
+            <div class="next-paragraph-input-controls">
+                <textarea id="systemInstruction" placeholder="You are a Dungeon Master for a text-based RPG. Describe the outcomes of the user's actions vividly. Maintain a consistent world." rows="7"></textarea>
+                <button class="secondary-btn clear-prompt-btn" id="resetSystemInstructionBtn" type="button">Reset</button>
+            </div>
+        </div>
+        <div class="token-display-group">
+            <p><strong>Input tokens for current request:</strong> <span id="currentRequestInputTokens">0</span></p>
+            <p><strong>Output tokens for current request:</strong> <span id="currentRequestOutputTokens">0</span></p>
+            <p><strong>Total tokens for current request:</strong> <span id="currentRequestTotalTokens">0</span></p>
+            <p><strong>Delay for current request:</strong> <span id="currentRequestDelay">0.00s</span></p>
+            <hr/>
+            <p><strong>Accumulated input tokens:</strong> <span id="accumulatedInputTokens">0</span></p>
+            <p><strong>Accumulated output tokens:</strong> <span id="accumulatedOutputTokens">0</span></p>
+            <p><strong>Total accumulated tokens:</strong> <span id="accumulatedTokens">0</span></p>
+        </div>
+    </div>
+
+    <!-- Debug Button and Panel -->
+    <div id="debugContainer">
+        <button class="debug-toggle-btn" id="debugToggleBtn">Debug</button>
+        <div class="debug-panel hidden" id="debugPanel">
+            <div class="debug-header">
+                <h3>Local LLM API Logs</h3>
+                <button class="secondary-btn debug-clear-btn" id="clearDebugLogsBtn">Clear Logs</button>
+            </div>
+            <div class="debug-logs-content" id="debugLogs">
+                <!-- Logs will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script defer="" src="./game.js"></script>
+</body>
+</html>

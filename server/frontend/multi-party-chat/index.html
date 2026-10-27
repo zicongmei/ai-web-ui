@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, shrink-to-fit=no" name="viewport"/>
+    <title>Local LLM Multi-Party Chat</title>
+    <link href="style.css" rel="stylesheet"/>
+</head>
+<body>
+    <div class="header">Local LLM Multi-Party Chat</div>
+    <div class="container">
+        <!-- Controls for Chat Display -->
+        <div class="chat-history-controls">
+            <button id="decreaseFontSizeButton">-</button>
+            <button id="increaseFontSizeButton">+</button>
+            <button id="resetFontSizeButton">Reset</button>
+            <span>Font Size</span>
+        </div>
+
+        <!-- Chat History Area (Editable & Auto-expanding) -->
+        <textarea class="chat-history-box" id="chatHistoryBox" placeholder="Chat history will appear here. You can edit this text directly..."></textarea>
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- Character Reaction Switch & Display -->
+        <div class="reaction-config-section" style="margin-top: 15px; margin-bottom: 10px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; margin-bottom: 10px;">
+                <input id="useReactionsCheckbox" type="checkbox"/>
+                Use Character Reactions
+            </label>
+            <div class="hidden" id="characterReactionContainer"></div>
+        </div>
+
+        <!-- User Input Area -->
+        <div class="chat-input-area">
+            <textarea autocomplete="off" id="messageInput" placeholder="Type a message..." rows="1"></textarea>
+            <button id="sendUserMessageButton">Add as User</button>
+        </div>
+
+        <!-- Narrator Input Area -->
+        <div class="chat-input-area">
+            <textarea autocomplete="off" id="narratorMessageInput" placeholder="Type a message for Narrator..." rows="1"></textarea>
+            <button id="sendNarratorMessageButton">Add as Narrator</button>
+        </div>
+
+        <!-- Response Generation Section (Dynamic Buttons) -->
+        <div class="section-box bot-actions-section">
+            <h3>Generate Response</h3>
+            <div class="input-group" style="margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                <label for="targetWordCount" style="font-weight: bold; font-size: 0.95em;">Target Word Count (Optional):</label>
+                <input id="targetWordCount" min="1" placeholder="e.g. 100" style="width: 80px; padding: 4px; border: 1px solid #ccc; border-radius: 4px;" type="number" value="100"/>
+            </div>
+            <div class="bot-buttons-container" id="responseGenerationButtonsContainer">
+                <!-- Buttons like "User", "Narrator", "Mike" will appear here -->
+            </div>
+            <button class="stop-button hidden" id="stopMessageButton">Stop Generation</button>
+        </div>
+
+        <!-- History Actions -->
+        <div class="chat-actions-section">
+            <button id="removeLastEntryButton">Remove Last Line</button>
+            <button id="regenerateLastLineButton">Regenerate Last Line</button>
+        </div>
+
+        <!-- Role Management Section -->
+        <div class="section-box role-management-section">
+            <h3>Role Management</h3>
+            <div class="add-role-controls">
+                <input autocomplete="off" id="newRoleNameInput" placeholder="Enter Bot Name (e.g. Mike)" type="text"/>
+                <button id="addRoleButton">Add Role</button>
+            </div>
+            <div class="active-roles-list" id="activeRolesList">
+                <!-- Roles will be listed here -->
+            </div>
+        </div>
+
+        <!-- User Name Section -->
+        <div class="user-name-section">
+            <label for="userNameInput">Your Name:</label>
+            <input autocomplete="off" id="userNameInput" type="text" value="User"/>
+        </div>
+
+        <!-- System Instruction -->
+        <div class="system-instruction-section">
+            <label for="systemInstructionInput">Background / System Context:</label>
+            <textarea autocomplete="off" id="systemInstructionInput" placeholder="Define the setting, scenario, or shared context for all characters...">Your task is to write the messages in this chat/roleplay. Use *asterisks* for actions, and (parantheses) for the internal thought processes of a character. NEVER try to "wrap up" the roleplay. This is a never-ending roleplay. Multi-line messages are not allowed - each individual message must be a single paragraph. Avoid unnecessary and unoriginal repetition of previous messages. Write the next message - remember to make them interesting, authentic, descriptive, natural, engaging, and creative. Use the same language as input or previous dialog. Do not include the thought in response text.</textarea>
+            <div style="display: flex; gap: 8px; margin-top: 5px; align-self: flex-end;">
+                <button id="resetSystemInstructionButton" type="button">Reset Context</button>
+                <button id="clearSystemInstructionButton" type="button">Clear Context</button>
+            </div>
+        </div>
+
+        <!-- History File Actions -->
+        <div class="chat-actions-section">
+            <button id="saveChatButton">Save to File</button>
+            <input accept=".json" id="loadChatFileInput" style="display: none;" type="file"/>
+            <button id="loadChatButton">Load from File</button>
+            <button class="danger-button" id="clearAllHistoryButton">Clear All History</button>
+        </div>
+
+        <!-- Find & Replace Section (Collapsed by default) -->
+        <div class="section-box find-replace-section">
+            <div class="collapsible-header find-replace-header" id="toggleFindReplace">
+                <span class="find-replace-title">
+                    <span class="find-icon">🔍</span> Find &amp; Replace in Chat History
+                </span>
+                <span class="toggle-icon" id="findReplaceToggleIcon" style="transform: rotate(-90deg);">▼</span>
+            </div>
+            <div class="collapsible-content collapsed" id="findReplaceContent">
+                <div class="find-replace-body">
+                    <div class="find-replace-row">
+                        <div class="find-replace-field">
+                            <label for="findInput">Find:</label>
+                            <input autocomplete="off" id="findInput" placeholder="Text to find..." type="text"/>
+                        </div>
+                        <div class="find-replace-field">
+                            <label for="replaceInput">Replace with:</label>
+                            <input autocomplete="off" id="replaceInput" placeholder="Replacement text..." type="text"/>
+                        </div>
+                    </div>
+                    <div class="find-replace-options">
+                        <label>
+                            <input id="findMatchCaseCheckbox" type="checkbox"/> Match Case
+                        </label>
+                        <label>
+                            <input id="findWholeWordCheckbox" type="checkbox"/> Whole Word
+                        </label>
+                        <label>
+                            <input id="findRegexCheckbox" type="checkbox"/> Regex
+                        </label>
+                        <span class="find-replace-status" id="findReplaceStatus"></span>
+                    </div>
+                    <div class="find-replace-actions">
+                        <button id="findPrevButton" type="button">◀ Previous</button>
+                        <button id="findNextButton" type="button">Next ▶</button>
+                        <button id="replaceButton" type="button">Replace</button>
+                        <button id="replaceAllButton" type="button">Replace All</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Debug Section -->
+        <div class="api-debug-section">
+            <button id="showApiDebugButton">Show Last API Call</button>
+            <div class="hidden" id="apiDebugContent">
+                <h4>Request:</h4>
+                <pre id="apiRequestBody"></pre>
+                <h4>Response:</h4>
+                <pre id="apiResponseBody"></pre>
+            </div>
+        </div>
+        <div class="token-stats" id="tokenStats"></div>
+    </div>
+    <script defer="" src="chat.js"></script>
+</body>
+</html>
