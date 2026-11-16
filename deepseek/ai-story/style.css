@@ -83,6 +83,7 @@ textarea {
 .next-paragraph-input-controls textarea {
     flex-grow: 1; /* Allow textarea to take available space */
     width: auto; /* Override generic textarea width to play nice with flex */
+    min-width: 0;
 }
 
 .clear-prompt-btn {
@@ -314,16 +315,23 @@ button:disabled {
     }
 
     .next-paragraph-input-controls {
-        flex-direction: column;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 8px;
     }
     
     .next-paragraph-input-controls textarea {
-        width: 100%;
+        flex: 1;
+        min-width: 0;
+        width: auto;
     }
 
     .clear-prompt-btn {
-        width: 100%;
-        margin-top: 5px;
+        width: auto;
+        margin-top: 0;
+        flex-shrink: 0;
+        align-self: flex-start;
+        padding: 8px 12px;
     }
 
     .action-buttons {
